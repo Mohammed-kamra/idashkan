@@ -86,7 +86,7 @@ import {
   expiryGiftCardBg,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
-
+/** test */
 /** When scrolled near this row, load the next chunk for that product-type section (same idea as MainPage store sentinel). */
 const ProductTypeLoadSentinel = ({ typeKey, hasMore, onLoadMore }) => {
   const ref = useRef(null);
