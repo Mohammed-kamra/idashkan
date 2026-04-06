@@ -54,10 +54,10 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => scheduleSplashFinish(onComplete, prefersReducedMotion), [
-    onComplete,
-    prefersReducedMotion,
-  ]);
+  useEffect(
+    () => scheduleSplashFinish(onComplete, prefersReducedMotion),
+    [onComplete, prefersReducedMotion],
+  );
 
   const pageBg = darkMode
     ? "linear-gradient(168deg, #12100e 0%, #1a1814 42%, #0f2320 100%)"
