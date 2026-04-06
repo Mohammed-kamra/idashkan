@@ -43,6 +43,7 @@ import {
   formatExpiredAgoText,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import FullScreenImageModal from "../components/FullScreenImageModal";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -70,6 +71,7 @@ const ProductDetail = () => {
   // Notification dialog state (reason: "like" | "review")
   const [loginNotificationOpen, setLoginNotificationOpen] = useState(false);
   const [loginNotificationReason] = useState("like");
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
   // Handle like button click (works for both logged-in and guest/device users)
   const handleLikeClick = async () => {
@@ -360,6 +362,13 @@ const ProductDetail = () => {
                 component="img"
                 image={resolveMediaUrl(product.image)}
                 alt={locName(product)}
+                onClick={() =>
+                  setFullscreenImage({
+                    url: resolveMediaUrl(product.image),
+                    alt: locName(product),
+                  })
+                }
+                role="presentation"
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -367,6 +376,8 @@ const ProductDetail = () => {
                   height: { xs: 150, sm: 350, md: 400 },
                   objectFit: "contain",
                   borderRadius: 2,
+                  cursor: "pointer",
+                  "&:focus-visible": { outline: "2px solid", outlineOffset: 4 },
                 }}
               />
             ) : (
@@ -1213,6 +1224,13 @@ const ProductDetail = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <FullScreenImageModal
+        open={Boolean(fullscreenImage)}
+        onClose={() => setFullscreenImage(null)}
+        imageUrl={fullscreenImage?.url}
+        alt={fullscreenImage?.alt || ""}
+      />
     </Box>
   );
 };

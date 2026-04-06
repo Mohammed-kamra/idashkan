@@ -90,7 +90,7 @@ const GiftShowcase = ({ gifts }) => {
           sx={{ textTransform: "none" }}
         >
           {t("See All")}{" "}
-          <ArrowForwardIcon sx={{ transform: "rotate(180deg)" }} />
+          <ArrowForwardIcon sx={{ transform: "rotate(180deg)", fontSize: "1rem" }} />
         </Button>
       </Box>
 

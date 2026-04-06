@@ -45,12 +45,16 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error("Error refreshing user profile:", error);
-      // If user not found (404), account may have been deleted after deactivation
-      if (error.response?.status === 404) {
+      const status = error.response?.status;
+      if (status === 401) {
         logout();
         return;
       }
+      if (status === 404) {
+        logout();
+        return;
+      }
+      console.error("Error refreshing user profile:", error);
       console.log(
         "Profile refresh failed, but keeping user logged in with existing data",
       );

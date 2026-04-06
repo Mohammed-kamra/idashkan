@@ -65,7 +65,6 @@ import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
-import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { motion } from "framer-motion";
@@ -228,9 +227,6 @@ const StoreProfile = () => {
       // ignore
     }
   }, [cartItems, store?._id, store?.isHasDelivery, id, cartHydrated]);
-
-  // Pull-to-refresh for store profile
-  usePullToRefresh(fetchStoreData);
 
   // Initialize like states when products change
   useEffect(() => {

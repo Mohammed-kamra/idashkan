@@ -215,7 +215,6 @@ const BrandProfile = () => {
     }
   }, [id]);
 
-  // Pull-to-refresh for brand profile
   usePullToRefresh(fetchBrandData);
 
   // Initialize like states when products change

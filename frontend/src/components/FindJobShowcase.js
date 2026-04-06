@@ -103,7 +103,10 @@ const FindJobShowcase = ({ jobs }) => {
           variant="outlined"
           sx={{ textTransform: "none" }}
         >
-          {t("See All")} <ArrowForwardIcon sx={{ transform: "rotate(180deg)" }} />
+          {t("See All")}{" "}
+          <ArrowForwardIcon
+            sx={{ transform: "rotate(180deg)", fontSize: "1rem" }}
+          />
         </Button>
       </Box>
 
@@ -180,7 +183,9 @@ const FindJobShowcase = ({ jobs }) => {
                             : "rgba(30,111,217,0.08)",
                       }}
                     >
-                      <WorkOutlineIcon sx={{ fontSize: 64, color: "rgba(255,255,255,0.85)" }} />
+                      <WorkOutlineIcon
+                        sx={{ fontSize: 64, color: "rgba(255,255,255,0.85)" }}
+                      />
                     </Box>
                   )}
 
@@ -222,9 +227,13 @@ const FindJobShowcase = ({ jobs }) => {
                           size="small"
                           icon={
                             ownerIsBrand ? (
-                              <BusinessIcon sx={{ color: "white !important" }} />
+                              <BusinessIcon
+                                sx={{ color: "white !important" }}
+                              />
                             ) : (
-                              <StorefrontIcon sx={{ color: "white !important" }} />
+                              <StorefrontIcon
+                                sx={{ color: "white !important" }}
+                              />
                             )
                           }
                           label={ownerName}
@@ -249,4 +258,3 @@ const FindJobShowcase = ({ jobs }) => {
 };
 
 export default FindJobShowcase;
-

@@ -63,6 +63,7 @@ import useIsMobileLayout from "../hooks/useIsMobileLayout";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import FullScreenImageModal from "../components/FullScreenImageModal";
 
 const ProductCategory = () => {
   const theme = useTheme();
@@ -85,6 +86,7 @@ const ProductCategory = () => {
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [productImageFullscreen, setProductImageFullscreen] = useState(null);
 
   // Mobile layout states
   const [storeTypes, setStoreTypes] = useState([]);
@@ -1674,7 +1676,22 @@ const ProductCategory = () => {
                     height="200"
                     image={resolveMediaUrl(selectedProduct.image)}
                     alt={locName(selectedProduct)}
-                    sx={{ objectFit: "contain", borderRadius: 1 }}
+                    onClick={() =>
+                      setProductImageFullscreen({
+                        url: resolveMediaUrl(selectedProduct.image),
+                        alt: locName(selectedProduct),
+                      })
+                    }
+                    role="presentation"
+                    sx={{
+                      objectFit: "contain",
+                      borderRadius: 1,
+                      cursor: "pointer",
+                      "&:focus-visible": {
+                        outline: "2px solid",
+                        outlineOffset: 4,
+                      },
+                    }}
                   />
                 ) : (
                   <Box
@@ -1813,6 +1830,13 @@ const ProductCategory = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <FullScreenImageModal
+        open={Boolean(productImageFullscreen)}
+        onClose={() => setProductImageFullscreen(null)}
+        imageUrl={productImageFullscreen?.url}
+        alt={productImageFullscreen?.alt || ""}
+      />
 
       {/* Login Notification Dialog */}
       <Dialog

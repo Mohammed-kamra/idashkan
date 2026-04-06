@@ -68,11 +68,11 @@ import BrandShowcase from "../components/BrandShowcase";
 import StoreShowcase from "../components/StoreShowcase";
 import GiftShowcase from "../components/GiftShowcase";
 import FindJobShowcase from "../components/FindJobShowcase";
+import FullScreenImageModal from "../components/FullScreenImageModal";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { useCityFilter } from "../context/CityFilterContext";
-import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import useIsMobileLayout from "../hooks/useIsMobileLayout";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import {
@@ -113,6 +113,7 @@ const MainPage = () => {
     useState("like");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [productImageFullscreen, setProductImageFullscreen] = useState(null);
 
   // Filter toggle state for mobile
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -313,9 +314,6 @@ const MainPage = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // Pull-to-refresh on mobile: pull down from top to reload page data
-  usePullToRefresh(fetchData);
 
   // Mobile behavior for For You / Following tabs:
   // hide on scroll down, show on scroll up.
@@ -2154,9 +2152,7 @@ const MainPage = () => {
                       product.previousPrice > product.newPrice;
                     const storeName =
                       locName(product?.storeId) ||
-                      locName(
-                        storeById[String(getID(product?.storeId))],
-                      ) ||
+                      locName(storeById[String(getID(product?.storeId))]) ||
                       t("Unknown Store");
 
                     return (
@@ -2654,7 +2650,7 @@ const MainPage = () => {
                         width: { xs: "100%", md: "100%" },
                         height:
                           productRows.length > 1
-                            ? { xs: "505px", sm: "680px", md: "auto" } // Increased to fully show 2 rows
+                            ? { xs: "530px", sm: "680px", md: "auto" } // Increased to fully show 2 rows
                             : { xs: "auto", sm: "300px", md: "auto" },
                       }}
                     >
@@ -2739,7 +2735,7 @@ const MainPage = () => {
                                 flexShrink: 0,
                                 minHeight:
                                   productRows.length > 1
-                                    ? { xs: "170px", sm: "330px" }
+                                    ? { xs: "250px", sm: "330px" }
                                     : "auto",
                                 alignItems: "stretch",
                               }}
@@ -2758,8 +2754,8 @@ const MainPage = () => {
                                     key={product._id}
                                     sx={{
                                       cursor: "pointer",
-                                      height: { xs: "auto", sm: "330px" }, // taller for 2-row visibility
-                                      minHeight: { xs: "200px", sm: "330px" },
+                                      height: { xs: "250px", sm: "330px" }, // taller for 2-row visibility
+                                      minHeight: { xs: "250px", sm: "330px" },
                                       width: {
                                         xs: "140px",
                                         sm: "200px",
@@ -3365,7 +3361,7 @@ const MainPage = () => {
                       width: { xs: "100%", md: "100%" },
                       height:
                         productRows.length > 1
-                          ? { xs: "520px", sm: "680px", md: "auto" }
+                          ? { xs: "530px", sm: "680px", md: "auto" }
                           : { xs: "auto", sm: "300px", md: "auto" },
                       ...(productRows.length > 1 && {
                         overflowX: "auto",
@@ -3425,7 +3421,7 @@ const MainPage = () => {
                             flexShrink: 0,
                             minHeight:
                               productRows.length > 1
-                                ? { xs: "170px", sm: "330px" }
+                                ? { xs: "250px", sm: "330px" }
                                 : "auto",
                             alignItems: "stretch",
                           }}
@@ -3444,8 +3440,8 @@ const MainPage = () => {
                                 key={product._id}
                                 sx={{
                                   cursor: "pointer",
-                                  height: { xs: "auto", sm: "330px" },
-                                  minHeight: { xs: "170px", sm: "330px" },
+                                  height: { xs: "250px", sm: "330px" },
+                                  minHeight: { xs: "250px", sm: "330px" },
                                   width: {
                                     xs: "140px",
                                     sm: "200px",
@@ -3781,10 +3777,22 @@ const MainPage = () => {
                       component="img"
                       image={resolveMediaUrl(selectedProduct.image)}
                       alt={locName(selectedProduct)}
+                      onClick={() =>
+                        setProductImageFullscreen({
+                          url: resolveMediaUrl(selectedProduct.image),
+                          alt: locName(selectedProduct),
+                        })
+                      }
+                      role="presentation"
                       sx={{
                         height: { xs: 200, sm: 280, md: 320 },
                         objectFit: "contain",
                         borderRadius: 2,
+                        cursor: "pointer",
+                        "&:focus-visible": {
+                          outline: "2px solid",
+                          outlineOffset: 4,
+                        },
                       }}
                     />
                   ) : (
@@ -4304,6 +4312,13 @@ const MainPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <FullScreenImageModal
+        open={Boolean(productImageFullscreen)}
+        onClose={() => setProductImageFullscreen(null)}
+        imageUrl={productImageFullscreen?.url}
+        alt={productImageFullscreen?.alt || ""}
+      />
 
       {/* Scroll to Top Button */}
       {showScrollTop && (

@@ -93,8 +93,10 @@ const optionalAuth = async (req, res, next) => {
           req.userId = user._id;
         }
       } catch (error) {
-        // Token is invalid, but we don't fail the request
-        console.log("Invalid token in optional auth:", error.message);
+        // Expired/invalid token: proceed as guest (optional auth)
+        if (error.name !== "TokenExpiredError") {
+          console.log("Invalid token in optional auth:", error.message);
+        }
       }
     }
 

@@ -7,7 +7,13 @@ import { translationAPI } from "./services/api";
  */
 export async function mergeRemoteTranslations() {
   try {
-    const res = await translationAPI.getAll();
+    // Avoid waiting on the global axios timeout (45s) when the API is down or misconfigured.
+    const res = await Promise.race([
+      translationAPI.getAll(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("translations fetch timeout")), 8000),
+      ),
+    ]);
     const rows = res.data?.data;
     if (!Array.isArray(rows) || rows.length === 0) return;
 

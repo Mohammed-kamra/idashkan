@@ -8,13 +8,13 @@ import { mergeRemoteTranslations } from "./mergeRemoteTranslations";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
-mergeRemoteTranslations().finally(() => {
-  root.render(
-    <React.StrictMode>
-      <Root />
-    </React.StrictMode>,
-  );
-});
+// Never block first paint on remote translations (slow/_unreachable API caused long white screens in production).
+root.render(
+  <React.StrictMode>
+    <Root />
+  </React.StrictMode>,
+);
+mergeRemoteTranslations().catch(() => {});
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

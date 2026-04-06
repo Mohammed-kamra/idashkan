@@ -84,7 +84,6 @@ const Gifts = () => {
     applyFilters();
   }, [gifts, filters, selectedCity]);
 
-  // Pull-to-refresh for gifts page
   usePullToRefresh(fetchData);
 
   async function fetchData() {
