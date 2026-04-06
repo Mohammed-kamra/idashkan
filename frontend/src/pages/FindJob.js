@@ -33,6 +33,7 @@ import {
   formatExpiryChipLabel,
   shouldShowExpiryChip,
   expiryChipBg,
+  isExpiryStillValid,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
@@ -111,16 +112,24 @@ const FindJob = () => {
     ],
   };
 
+  const publicJobs = useMemo(
+    () =>
+      (jobs || []).filter((j) => {
+        if (j?.active === false) return false;
+        return isExpiryStillValid(j?.expireDate);
+      }),
+    [jobs],
+  );
+
   const filteredJobs = useMemo(() => {
-    if (selectedType === "all") return jobs;
-    return (jobs || []).filter((j) => {
-      // brand jobs bypass store-type filter
+    if (selectedType === "all") return publicJobs;
+    return publicJobs.filter((j) => {
       if (!j?.storeId) return true;
       const st = j.storeId?.storeTypeId;
       const stId = st && (st._id || st);
       return String(stId) === String(selectedType);
     });
-  }, [jobs, selectedType]);
+  }, [publicJobs, selectedType]);
 
   const getOwner = (job) => {
     if (job?.brandId?._id) return { type: "brand", ...job.brandId };

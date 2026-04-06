@@ -19,33 +19,40 @@ const BrandShowcase = ({ brands }) => {
     return null;
   }
 
+  const vipBrands = brands.filter((b) => Boolean(b?.isVip));
+  const displayBrands = vipBrands.length > 0 ? vipBrands : brands;
+
+  const slideCount = displayBrands.length;
+  const clamp = (maxVisible) => Math.max(1, Math.min(maxVisible, slideCount));
+  const desktopShow = clamp(5);
+  // slidesToShow > slideCount breaks slick layout (slides stack vertically).
   const settings = {
     dots: false,
-    infinite: true,
+    infinite: slideCount > desktopShow,
     speed: 5000,
-    autoplay: true,
+    autoplay: slideCount > desktopShow,
     autoplaySpeed: 1000,
     cssEase: "linear",
-    slidesToShow: 5,
+    slidesToShow: desktopShow,
     slidesToScroll: 1,
     arrows: false,
     responsive: [
       {
         breakpoint: 1024,
         settings: {
-          slidesToShow: 4,
+          slidesToShow: clamp(4),
         },
       },
       {
         breakpoint: 600,
         settings: {
-          slidesToShow: 3,
+          slidesToShow: clamp(3),
         },
       },
       {
         breakpoint: 480,
         settings: {
-          slidesToShow: 2,
+          slidesToShow: clamp(2),
         },
       },
     ],
@@ -90,7 +97,7 @@ const BrandShowcase = ({ brands }) => {
             mb: 0,
           }}
         >
-          {t("Featured Brands")}
+          {t(vipBrands.length > 0 ? "VIP Brands" : "Featured Brands")}
         </Typography>
         <Button
           component={Link}
@@ -106,7 +113,7 @@ const BrandShowcase = ({ brands }) => {
         </Button>
       </Box>
       <Slider {...settings}>
-        {brands.map((brand) => (
+        {displayBrands.map((brand) => (
           <Box
             key={brand._id}
             component={Link}

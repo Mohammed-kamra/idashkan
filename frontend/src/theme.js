@@ -127,9 +127,10 @@ export const createAppTheme = (
       },
       MuiAppBar: {
         styleOverrides: {
+          // Real gradient is on NavigationBar via inline style (not flipped in RTL).
           root: {
-            background:
-              `linear-gradient(120deg, ${primaryMain} 0%, #4A90E2 56%, #FF7A1A 100%)`,
+            backgroundColor: "transparent",
+            backgroundImage: "none",
           },
         },
       },

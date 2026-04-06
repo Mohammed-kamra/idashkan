@@ -227,13 +227,9 @@ const FindJobShowcase = ({ jobs }) => {
                           size="small"
                           icon={
                             ownerIsBrand ? (
-                              <BusinessIcon
-                                sx={{ color: "white !important" }}
-                              />
+                              <BusinessIcon />
                             ) : (
-                              <StorefrontIcon
-                                sx={{ color: "white !important" }}
-                              />
+                              <StorefrontIcon />
                             )
                           }
                           label={ownerName}
@@ -242,6 +238,13 @@ const FindJobShowcase = ({ jobs }) => {
                             color: "white",
                             border: "1px solid rgba(255,255,255,0.25)",
                             maxWidth: "100%",
+                            overflow: "hidden",
+                            "& .MuiChip-icon": {
+                              color: "white",
+                              fontSize: "0.875rem",
+                              marginInlineStart: "6px",
+                              marginInlineEnd: "4px",
+                            },
                           }}
                         />
                       ) : null}

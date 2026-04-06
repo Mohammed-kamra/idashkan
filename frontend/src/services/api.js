@@ -169,6 +169,8 @@ export const videoAPI = {
 // Jobs API calls
 export const jobAPI = {
   getAll: (params = {}) => api.get("/jobs", { params }),
+  /** Admin data entry: inactive + expired included. Requires Bearer token + admin account. */
+  getAllAdmin: (params = {}) => api.get("/jobs/admin", { params }),
   create: (data) => api.post("/jobs", data),
   update: (id, data) => api.put(`/jobs/${id}`, data),
   delete: (id) => api.delete(`/jobs/${id}`),

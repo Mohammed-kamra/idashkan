@@ -92,7 +92,7 @@ const PrivacyPolicy = () => {
             </Typography>
             <Box component="ul" sx={{ pl: 3, "& li": { mb: 1 } }}>
               <li>
-                <strong>{t("Account")}</strong>: {t("Privacy Account def")}
+                <strong>Account</strong>: {t("Privacy Account def")}
               </li>
               <li>
                 <strong>{t("Application")}</strong>:{" "}

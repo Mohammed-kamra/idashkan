@@ -50,7 +50,10 @@ import { useCityFilter } from "../context/CityFilterContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useActiveTheme } from "../context/ActiveThemeContext";
 import kurdishFlag from "../styles/kurdish_flag.jpg";
-import { normalizeWhatsAppUrl } from "../utils/openWhatsAppLink";
+import {
+  normalizeWhatsAppUrl,
+  openWhatsAppLink,
+} from "../utils/openWhatsAppLink";
 import {
   useDataLanguage,
   DATA_LANG_AR,
@@ -531,26 +534,52 @@ const ProfilePage = () => {
                 overflowX: "auto",
               }}
             >
-              {contactItems.map((item) => (
-                <Button
-                  key={item.key}
-                  component="a"
-                  href={normalizeUrl(item.value, item.key)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    minWidth: 36,
-                    px: 1,
-                    color: "text.primary",
-                    borderColor: "divider",
-                    flexShrink: 0,
-                  }}
-                >
-                  {item.icon}
-                </Button>
-              ))}
+              {contactItems.map((item) => {
+                const href = normalizeUrl(item.value, item.key);
+                if (item.key === "whatsapp" && href) {
+                  return (
+                    <Button
+                      key={item.key}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openWhatsAppLink(href);
+                      }}
+                      size="small"
+                      variant="outlined"
+                      sx={{
+                        minWidth: 36,
+                        px: 1,
+                        color: "text.primary",
+                        borderColor: "divider",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {item.icon}
+                    </Button>
+                  );
+                }
+                return (
+                  <Button
+                    key={item.key}
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      minWidth: 36,
+                      px: 1,
+                      color: "text.primary",
+                      borderColor: "divider",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.icon}
+                  </Button>
+                );
+              })}
             </Box>
           )}
           <ListItemButton component={Link} to="/privacy-policy">

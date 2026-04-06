@@ -20,28 +20,34 @@ const StoreShowcase = ({ stores }) => {
     return null;
   }
 
+  const vipStores = stores.filter((s) => Boolean(s?.isVip));
+  const displayStores = vipStores.length > 0 ? vipStores : stores;
+
+  const slideCount = displayStores.length;
+  const clamp = (maxVisible) => Math.max(1, Math.min(maxVisible, slideCount));
+  const desktopShow = clamp(5);
   const settings = {
     dots: false,
-    infinite: true,
+    infinite: slideCount > desktopShow,
     speed: 5000,
-    autoplay: true,
+    autoplay: slideCount > desktopShow,
     autoplaySpeed: 1000,
     cssEase: "linear",
-    slidesToShow: 5,
+    slidesToShow: desktopShow,
     slidesToScroll: 1,
     arrows: false,
     responsive: [
       {
         breakpoint: 1024,
-        settings: { slidesToShow: 4 },
+        settings: { slidesToShow: clamp(4) },
       },
       {
         breakpoint: 600,
-        settings: { slidesToShow: 3 },
+        settings: { slidesToShow: clamp(3) },
       },
       {
         breakpoint: 480,
-        settings: { slidesToShow: 2 },
+        settings: { slidesToShow: clamp(2) },
       },
     ],
   };
@@ -85,7 +91,7 @@ const StoreShowcase = ({ stores }) => {
             mb: 0,
           }}
         >
-          {t("Featured Stores")}
+          {t(vipStores.length > 0 ? "VIP Stores" : "Featured Stores")}
         </Typography>
         <Button
           component={Link}
@@ -101,7 +107,7 @@ const StoreShowcase = ({ stores }) => {
         </Button>
       </Box>
       <Slider {...settings}>
-        {stores.map((store) => (
+        {displayStores.map((store) => (
           <Box
             key={store._id}
             component={Link}

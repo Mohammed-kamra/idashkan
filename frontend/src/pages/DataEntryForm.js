@@ -584,7 +584,7 @@ const DataEntryForm = () => {
 
   const fetchJobs = async () => {
     try {
-      const response = await jobAPI.getAll();
+      const response = await jobAPI.getAllAdmin();
       setJobs(response.data || []);
     } catch (err) {
       console.error("Error fetching jobs:", err);

@@ -78,7 +78,10 @@ import { useAuth } from "../context/AuthContext";
 import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { resolveMediaUrl } from "../utils/mediaUrl";
-import { normalizeWhatsAppUrl } from "../utils/openWhatsAppLink";
+import {
+  normalizeWhatsAppUrl,
+  openWhatsAppLink,
+} from "../utils/openWhatsAppLink";
 import {
   isExpiryStillValid,
   getExpiryRemainingInfo,
@@ -1328,24 +1331,48 @@ const BrandProfile = () => {
       </Typography>
       {socialLinks
         .filter((item) => Boolean(item.value))
-        .map((item) => (
-          <IconButton
-            key={item.key}
-            component="a"
-            href={normalizeUrl(item.value, item.key)}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="small"
-            sx={{
-              color: "white",
-              bgcolor: "rgba(255,255,255,0.15)",
-              "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-              flexShrink: 0,
-            }}
-          >
-            {item.icon}
-          </IconButton>
-        ))}
+        .map((item) => {
+          const href = normalizeUrl(item.value, item.key);
+          if (item.key === "whatsapp" && href) {
+            return (
+              <IconButton
+                key={item.key}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openWhatsAppLink(href);
+                }}
+                size="small"
+                sx={{
+                  color: "white",
+                  bgcolor: "rgba(255,255,255,0.15)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
+                  flexShrink: 0,
+                }}
+              >
+                {item.icon}
+              </IconButton>
+            );
+          }
+          return (
+            <IconButton
+              key={item.key}
+              component="a"
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="small"
+              sx={{
+                color: "white",
+                bgcolor: "rgba(255,255,255,0.15)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
+                flexShrink: 0,
+              }}
+            >
+              {item.icon}
+            </IconButton>
+          );
+        })}
     </Box>
   );
 

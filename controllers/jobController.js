@@ -11,31 +11,31 @@ const isAdminUser = (user) => {
 // @desc    Get jobs (public)
 // @route   GET /api/jobs?storeTypeId=...&q=...
 // @access  Public
+const buildJobsQuery = (q) => {
+  const filter = {
+    active: { $ne: false },
+    $or: [{ expireDate: null }, { expireDate: { $gt: new Date() } }],
+  };
+  if (q) {
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter.$and = [
+      {
+        $or: [
+          { title: { $regex: escaped, $options: "i" } },
+          { description: { $regex: escaped, $options: "i" } },
+        ],
+      },
+    ];
+  }
+  return filter;
+};
+
+// Public list — always active + non-expired (same for every user; auth does not widen results).
 const getJobs = async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     const storeTypeId = String(req.query.storeTypeId || "").trim();
-    const adminList = isAdminUser(req.user);
-
-    // Public app: only active, non-expired jobs. Admin (data entry): all rows so expiry status is visible.
-    const filter = adminList
-      ? {}
-      : {
-          active: { $ne: false },
-          $or: [{ expireDate: null }, { expireDate: { $gt: new Date() } }],
-        };
-    if (q) {
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.$and = [
-        {
-          $or: [
-            { title: { $regex: escaped, $options: "i" } },
-            { description: { $regex: escaped, $options: "i" } },
-          ],
-        },
-      ];
-    }
-
+    const filter = buildJobsQuery(q);
     const jobs = await Job.find(filter)
       .sort({ createdAt: -1 })
       .populate({
@@ -60,6 +60,54 @@ const getJobs = async (req, res) => {
     res.json(filtered);
   } catch (err) {
     console.error("Get jobs error:", err.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// Admin list — includes inactive and expired (data entry / moderation only).
+const getJobsAdmin = async (req, res) => {
+  try {
+    if (!isAdminUser(req.user)) {
+      return res.status(403).json({ message: "Admin privileges required" });
+    }
+    const q = String(req.query.q || "").trim();
+    const storeTypeId = String(req.query.storeTypeId || "").trim();
+    const filter = {};
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$and = [
+        {
+          $or: [
+            { title: { $regex: escaped, $options: "i" } },
+            { description: { $regex: escaped, $options: "i" } },
+          ],
+        },
+      ];
+    }
+
+    const jobs = await Job.find(filter)
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "storeId",
+        select: storeJob,
+        populate: { path: "storeTypeId", select: storeTypeList },
+      })
+      .populate({ path: "brandId", select: brandJob })
+      .lean();
+
+    const filtered =
+      storeTypeId && storeTypeId !== "all"
+        ? jobs.filter((j) => {
+            if (!j.storeId) return true;
+            const st = j.storeId.storeTypeId;
+            const stId = st && (st._id || st);
+            return String(stId) === String(storeTypeId);
+          })
+        : jobs;
+
+    res.json(filtered);
+  } catch (err) {
+    console.error("Get jobs admin error:", err.message);
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -184,5 +232,5 @@ const deleteJob = async (req, res) => {
   }
 };
 
-module.exports = { getJobs, createJob, updateJob, deleteJob };
+module.exports = { getJobs, getJobsAdmin, createJob, updateJob, deleteJob };
 

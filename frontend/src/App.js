@@ -1,7 +1,7 @@
 import "./i18n";
 import "./styles/kurdishFonts.css";
 import "./styles/themes.css";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -50,6 +50,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotificationEnableBanner from "./components/NotificationEnableBanner";
+import SplashScreen from "./components/SplashScreen";
 import {
   ContentRefreshProvider,
   useContentRefresh,
@@ -101,6 +102,13 @@ function AppContent() {
     }
   });
 
+  /** Shown on every cold load (browser tab or WebView) — no one-time skip. */
+  const [splashFinished, setSplashFinished] = useState(false);
+
+  const handleSplashComplete = useCallback(() => {
+    setSplashFinished(true);
+  }, []);
+
   // RTL/LTR direction effect and language data attribute
   useEffect(() => {
     document.body.dir =
@@ -142,9 +150,12 @@ function AppContent() {
     <CacheProvider value={cacheRtl}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        {!splashFinished ? (
+          <SplashScreen darkMode={darkMode} onComplete={handleSplashComplete} />
+        ) : null}
         <Box
           sx={{
-            display: "flex",
+            display: splashFinished ? "flex" : "none",
             flexDirection: "column",
             minHeight: "100vh", // Make the Box cover the full viewport height
           }}

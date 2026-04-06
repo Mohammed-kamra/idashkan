@@ -65,6 +65,14 @@ import { isExpiryStillValid } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 
+const storeTypeIdFromValue = (storeTypeId) => {
+  if (storeTypeId == null || storeTypeId === "") return null;
+  if (typeof storeTypeId === "object" && storeTypeId._id != null) {
+    return String(storeTypeId._id);
+  }
+  return String(storeTypeId);
+};
+
 const ProductCategory = () => {
   const theme = useTheme();
   const isMobile = useIsMobileLayout();
@@ -151,12 +159,23 @@ const ProductCategory = () => {
         const types = res.data || [];
         setStoreTypes(types);
         if (typeof window !== "undefined" && window.innerWidth < 900) {
-          setSelectedStoreTypeId(types[0]?._id || "all");
+          const pending = location.state?.category;
+          const hasCategoryNav =
+            pending &&
+            (typeof pending === "string"
+              ? pending.trim() && pending !== "All Categories"
+              : Boolean(pending._id || pending.name));
+          if (!hasCategoryNav) {
+            setSelectedStoreTypeId(types[0]?._id || "all");
+          }
         }
       } catch (e) {
         setStoreTypes([]);
       }
     })();
+    // Intentionally omit location from deps: only read initial navigation state on first load
+    // so clearing state later does not reset the rail to the first store type.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -228,6 +247,10 @@ const ProductCategory = () => {
           }
           if (matchedCategory) {
             stateAppliedRef.current = true;
+            const stId = storeTypeIdFromValue(matchedCategory.storeTypeId);
+            if (stId) {
+              setSelectedStoreTypeId(stId);
+            }
             setSelectedCategory(matchedCategory);
             const types = await fetchCategoryTypes(matchedCategory._id);
             await fetchProductsByCategory(matchedCategory._id);
@@ -331,12 +354,16 @@ const ProductCategory = () => {
   };
 
   const handleStoreTypeChange = (storeTypeId) => {
+    stateAppliedRef.current = false;
     setSelectedStoreTypeId(storeTypeId);
     setSelectedCategory(null);
     setSelectedCategoryType(null);
     setCategoryTypes([]);
     setProducts([]);
     setFilteredProducts([]);
+    if (isMobile) {
+      setMobileViewMode("categories");
+    }
   };
 
   const handleProductClick = (product) => {
@@ -581,7 +608,7 @@ const ProductCategory = () => {
                 sx={{
                   textAlign: "center",
                   fontWeight: 600,
-                  fontSize: "0.875rem",
+                  fontSize: "0.75rem",
                 }}
               >
                 {locName(type) || t(type.name)}

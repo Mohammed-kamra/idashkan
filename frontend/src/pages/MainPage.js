@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useCallback,
@@ -83,6 +84,12 @@ import {
   expiryChipBg,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { useContentRefresh } from "../context/ContentRefreshContext";
+import {
+  readMainPageCache,
+  writeMainPageCache,
+  buildMainPagePayload,
+} from "../utils/mainPageCache";
 
 const MainPage = () => {
   const theme = useTheme();
@@ -152,6 +159,7 @@ const MainPage = () => {
 
   // City filter hook
   const { selectedCity } = useCityFilter();
+  const { refreshKey } = useContentRefresh();
 
   // State for tracking like counts locally
   const [likeCounts, setLikeCounts] = useState({});
@@ -299,9 +307,102 @@ const MainPage = () => {
     ],
   };
 
-  useEffect(() => {
-    fetchData();
+  const applyMainPagePayload = useCallback((payload) => {
+    setStores(payload.stores);
+    setAllCategories(payload.allCategories);
+    setAllProducts(payload.allProducts);
+    setStoreTypes(payload.storeTypes);
+    setBrands(payload.brands);
+    setGifts(payload.gifts);
+    setJobs(payload.jobs);
+    setProductsByStore(payload.productsByStore);
+    setLikeCounts(payload.likeCounts);
+    setLikeStates(payload.likeStates);
+    setBannerAds(payload.bannerAds);
   }, []);
+
+  const fetchData = useCallback(
+    async ({ silent = false } = {}) => {
+      try {
+        if (!silent) setLoading(true);
+        setError("");
+        const [
+          storesResponse,
+          categoriesResponse,
+          productsResponse,
+          adsResponse,
+          storeTypesResponse,
+          brandsResponse,
+          giftsResponse,
+          jobsResponse,
+        ] = await Promise.all([
+          storeAPI.getAll(),
+          categoryAPI.getAll(),
+          productAPI.getAll(),
+          adAPI.getAll({ page: "home" }),
+          storeTypeAPI.getAll(),
+          brandAPI.getAll(),
+          giftAPI.getAll().catch(() => ({ data: { data: [] } })),
+          jobAPI.getAll().catch(() => ({ data: [] })),
+        ]);
+
+        const storesData = storesResponse.data;
+        const categoriesData = categoriesResponse.data;
+        const productsData = productsResponse.data;
+        const adsData = adsResponse.data || [];
+        const brandsData = brandsResponse.data || [];
+        const giftsData = Array.isArray(giftsResponse.data?.data)
+          ? giftsResponse.data.data
+          : Array.isArray(giftsResponse.data)
+            ? giftsResponse.data
+            : [];
+        const jobsData = Array.isArray(jobsResponse.data)
+          ? jobsResponse.data
+          : [];
+
+        const payload = buildMainPagePayload({
+          storesData,
+          categoriesData,
+          productsData,
+          adsData,
+          storeTypesData: storeTypesResponse?.data || [],
+          brandsData,
+          giftsData,
+          jobsData,
+        });
+        applyMainPagePayload(payload);
+        writeMainPageCache(refreshKey, payload);
+      } catch (err) {
+        setError(
+          err.response
+            ? "Server error. Please try again later."
+            : "Network error. Please check your connection.",
+        );
+        console.error("Error fetching data:", err);
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [refreshKey, applyMainPagePayload],
+  );
+
+  useLayoutEffect(() => {
+    const cached = readMainPageCache(refreshKey);
+    if (cached) {
+      applyMainPagePayload(cached);
+      setLoading(false);
+      setError("");
+    }
+  }, [refreshKey, applyMainPagePayload]);
+
+  useEffect(() => {
+    const cached = readMainPageCache(refreshKey);
+    if (cached) {
+      fetchData({ silent: true });
+    } else {
+      fetchData();
+    }
+  }, [refreshKey, fetchData]);
 
   // Handle scroll to show/hide scroll to top button
   useEffect(() => {
@@ -410,96 +511,6 @@ const MainPage = () => {
     };
     fetchFollowed();
   }, [mainPageTab, getFollowedStores, user]);
-
-  async function fetchData() {
-    try {
-      setLoading(true);
-
-      // Fetch stores, categories, and all products in parallel
-      const [
-        storesResponse,
-        categoriesResponse,
-        productsResponse,
-        adsResponse,
-        storeTypesResponse,
-        brandsResponse,
-        giftsResponse,
-        jobsResponse,
-      ] = await Promise.all([
-        storeAPI.getAll(),
-        categoryAPI.getAll(),
-        productAPI.getAll(),
-        adAPI.getAll({ page: "home" }),
-        storeTypeAPI.getAll(),
-        brandAPI.getAll(),
-        giftAPI.getAll().catch(() => ({ data: { data: [] } })),
-        jobAPI.getAll().catch(() => ({ data: [] })),
-      ]);
-
-      const storesData = storesResponse.data;
-      const categoriesData = categoriesResponse.data;
-      const productsData = productsResponse.data;
-      const adsData = adsResponse.data || [];
-      const brandsData = brandsResponse.data || [];
-      const giftsData = Array.isArray(giftsResponse.data?.data)
-        ? giftsResponse.data.data
-        : Array.isArray(giftsResponse.data)
-          ? giftsResponse.data
-          : [];
-      const jobsData = Array.isArray(jobsResponse.data)
-        ? jobsResponse.data
-        : [];
-
-      // Shuffle stores logic
-      const vipStores = storesData
-        .filter((store) => store.isVip)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      const nonVipStores = storesData.filter((store) => !store.isVip);
-
-      // Fisher-Yates shuffle algorithm
-      for (let i = nonVipStores.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [nonVipStores[i], nonVipStores[j]] = [nonVipStores[j], nonVipStores[i]];
-      }
-
-      const shuffledStores = [...vipStores, ...nonVipStores];
-
-      setStores(shuffledStores);
-      setAllCategories(categoriesData);
-      setAllProducts(productsData);
-      setStoreTypes(storeTypesResponse?.data || []);
-      setBrands(brandsData);
-      setGifts(giftsData);
-      setJobs(jobsData);
-
-      // Group products by store and initialize like counts/states
-      const productsMap = {};
-      const initialLikeCounts = {};
-      const initialLikeStates = {};
-      productsData.forEach((product) => {
-        if (!productsMap[product.storeId]) {
-          productsMap[product.storeId] = [];
-        }
-        productsMap[product.storeId].push(product);
-        initialLikeCounts[product._id] = product.likeCount || 0;
-        initialLikeStates[product._id] = false;
-      });
-
-      setProductsByStore(productsMap);
-      setLikeCounts(initialLikeCounts);
-      setLikeStates(initialLikeStates);
-      setBannerAds(adsData);
-    } catch (err) {
-      setError(
-        err.response
-          ? "Server error. Please try again later."
-          : "Network error. Please check your connection.",
-      );
-      console.error("Error fetching data:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   // Memoized list of categories based on the selected store type
   const filteredCategories = useMemo(() => {
@@ -1427,7 +1438,7 @@ const MainPage = () => {
             sx={{
               color: "black",
               fontWeight: 800,
-              fontSize: "1.2rem",
+              fontSize: "1rem",
               fontWeight: "bold",
             }}
             label={t("For You")}
@@ -1436,8 +1447,8 @@ const MainPage = () => {
             sx={{
               color: "black",
               fontWeight: 800,
-              fontSize: "1.2rem",
-              fontWeight: "bold",
+              fontSize: "1rem",
+              fontWeight: " bold",
             }}
             label={t("Following")}
           />
@@ -2788,7 +2799,7 @@ const MainPage = () => {
                                       sx={{
                                         position: "relative",
                                         overflow: "hidden",
-                                        height: { xs: "130px", sm: "200px" }, // Reduced height on xs
+                                        height: { xs: "160px", sm: "200px" }, // Reduced height on xs
                                         flexShrink: 0,
                                         backgroundColor: "#f8f9fa",
                                       }}
@@ -2799,14 +2810,14 @@ const MainPage = () => {
                                       {product.image ? (
                                         <CardMedia
                                           component="img"
-                                          height="150"
+                                          height="160"
                                           image={resolveMediaUrl(product.image)}
                                           alt={locName(product)}
                                           sx={{
                                             objectFit: "contain",
                                             width: "100%",
                                             height: {
-                                              xs: "150px", // Reduced height
+                                              xs: "160px", // Reduced height
                                               sm: "200px", // Reduced height
                                               md: "250px",
                                             },
@@ -3475,7 +3486,7 @@ const MainPage = () => {
                                   sx={{
                                     position: "relative",
                                     overflow: "hidden",
-                                    height: { xs: "130px", sm: "200px" },
+                                    height: { xs: "160px", sm: "200px" },
                                     flexShrink: 0,
                                     backgroundColor: "#f8f9fa",
                                   }}
@@ -3486,12 +3497,12 @@ const MainPage = () => {
                                       component="img"
                                       image={resolveMediaUrl(product.image)}
                                       alt={locName(product)}
-                                      height="150"
+                                      height="160"
                                       sx={{
                                         objectFit: "contain",
                                         width: "100%",
                                         height: {
-                                          xs: "150px",
+                                          xs: "160px",
                                           sm: "200px",
                                           md: "250px",
                                         },
@@ -3502,7 +3513,7 @@ const MainPage = () => {
                                     <Box
                                       sx={{
                                         height: {
-                                          xs: "150px",
+                                          xs: "160px",
                                           sm: "200px",
                                           md: "250px",
                                         },

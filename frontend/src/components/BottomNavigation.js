@@ -50,6 +50,10 @@ const NAV_PATH_LANG = "__nav_language__";
 const NAV_PATH_REFRESH = "__nav_refresh__";
 const NAV_PATH_NOTIFICATIONS = "__nav_notifications__";
 
+/** Same as top AppBar in every language (RTL must not mirror this gradient). */
+const BOTTOM_NAV_GRADIENT =
+  "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)";
+
 const BottomNavigationBar = () => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
@@ -269,11 +273,9 @@ const BottomNavigationBar = () => {
     >
       <Paper
         elevation={8}
+        style={{ background: BOTTOM_NAV_GRADIENT }}
         sx={{
           borderRadius: "70px 70px",
-          background:
-            "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)",
-
           backdropFilter: "blur(20px)",
           border: `1px solid ${
             theme.palette.mode === "dark"
