@@ -3,26 +3,61 @@ import { Box } from "@mui/material";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
-const LOGO_SRC = `${process.env.PUBLIC_URL}/logo192.png`;
+export const LOGO192_SRC = `${process.env.PUBLIC_URL}/logo192.png`;
 
 const EASE = [0.25, 0.1, 0.25, 1];
-const TOTAL_MS = 2800;
+/** At least this long on screen so MainPage can fetch under the overlay */
+const MIN_SPLASH_MS = 5600;
+/** Do not block longer than this waiting for the logo */
+const LOGO_WAIT_MAX_MS = 11000;
 
 /**
- * First-launch intro — Middle East–inspired palette, app logo, smooth single-layer motion.
+ * Waits for logo (or timeout), ensures MIN_SPLASH_MS total, then onComplete.
+ * Main app should mount underneath (see App.js) so home data loads during this window.
+ */
+function scheduleSplashFinish(onComplete, prefersReducedMotion) {
+  if (prefersReducedMotion) {
+    const t = window.setTimeout(onComplete, 700);
+    return () => window.clearTimeout(t);
+  }
+
+  let cancelled = false;
+  const t0 = Date.now();
+
+  const logoReady = new Promise((resolve) => {
+    const img = new Image();
+    const done = () => resolve();
+    img.onload = done;
+    img.onerror = done;
+    img.src = LOGO192_SRC;
+    window.setTimeout(done, LOGO_WAIT_MAX_MS);
+  });
+
+  logoReady.then(() => {
+    if (cancelled) return;
+    const elapsed = Date.now() - t0;
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
+    window.setTimeout(() => {
+      if (!cancelled) onComplete();
+    }, remaining);
+  });
+
+  return () => {
+    cancelled = true;
+  };
+}
+
+/**
+ * First-launch intro — Middle East–inspired palette, app logo.
  */
 const SplashScreen = ({ onComplete, darkMode = false }) => {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    if (prefersReducedMotion) {
-      const t = window.setTimeout(onComplete, 450);
-      return () => window.clearTimeout(t);
-    }
-    const t = window.setTimeout(onComplete, TOTAL_MS);
-    return () => window.clearTimeout(t);
-  }, [onComplete, prefersReducedMotion]);
+  useEffect(() => scheduleSplashFinish(onComplete, prefersReducedMotion), [
+    onComplete,
+    prefersReducedMotion,
+  ]);
 
   const pageBg = darkMode
     ? "linear-gradient(168deg, #12100e 0%, #1a1814 42%, #0f2320 100%)"
@@ -67,7 +102,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
         sx={{
           position: "fixed",
           inset: 0,
-          zIndex: (t) => t.zIndex.modal + 10,
+          zIndex: (theme) => theme.zIndex.modal + 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -77,8 +112,10 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
       >
         <Box
           component="img"
-          src={LOGO_SRC}
+          src={LOGO192_SRC}
           alt=""
+          fetchPriority="high"
+          decoding="async"
           sx={{ width: { xs: 88, sm: 100 }, height: "auto", mb: 2 }}
         />
         <motion.h1
@@ -93,7 +130,6 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
     );
   }
 
-  /* One orchestrated opacity on the root — avoids nested opacity fights / flicker */
   return (
     <Box
       role="presentation"
@@ -101,7 +137,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
       sx={{
         position: "fixed",
         inset: 0,
-        zIndex: (t) => t.zIndex.modal + 10,
+        zIndex: (theme) => theme.zIndex.modal + 10,
         overflow: "hidden",
         background: pageBg,
         display: "flex",
@@ -110,7 +146,6 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
         px: 2,
       }}
     >
-      {/* Static decorative layer — no infinite motion (prevents GPU shimmer glitches) */}
       <Box
         sx={{
           position: "absolute",
@@ -121,16 +156,11 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
         }}
       />
 
+      {/* Short entrance only — total time is driven by scheduleSplashFinish (logo + min hold) */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{
-          opacity: [0, 1, 1, 0],
-        }}
-        transition={{
-          duration: TOTAL_MS / 1000,
-          times: [0, 0.14, 0.78, 1],
-          ease: "easeInOut",
-        }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.85, ease: EASE }}
         style={{
           position: "relative",
           display: "flex",
@@ -145,15 +175,17 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
           animate={{ scale: 1, y: 0 }}
           transition={{
             delay: 0.06,
-            duration: 0.75,
+            duration: 0.8,
             ease: EASE,
           }}
           style={{ willChange: "transform" }}
         >
           <Box
             component="img"
-            src={LOGO_SRC}
+            src={LOGO192_SRC}
             alt=""
+            fetchPriority="high"
+            decoding="async"
             sx={{
               width: { xs: 100, sm: 112 },
               height: "auto",
@@ -171,7 +203,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
           initial={{ y: 10, letterSpacing: "0.22em" }}
           animate={{ y: 0, letterSpacing: "0.04em" }}
           transition={{
-            delay: 0.18,
+            delay: 0.16,
             duration: 0.82,
             ease: EASE,
           }}
@@ -183,7 +215,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
           initial={{ y: 8 }}
           animate={{ y: 0 }}
           transition={{
-            delay: 0.4,
+            delay: 0.38,
             duration: 0.55,
             ease: EASE,
           }}

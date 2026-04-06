@@ -154,10 +154,14 @@ function AppContent() {
           <SplashScreen darkMode={darkMode} onComplete={handleSplashComplete} />
         ) : null}
         <Box
+          aria-hidden={!splashFinished}
           sx={{
-            display: splashFinished ? "flex" : "none",
+            display: "flex",
             flexDirection: "column",
-            minHeight: "100vh", // Make the Box cover the full viewport height
+            minHeight: "100vh",
+            opacity: splashFinished ? 1 : 0,
+            pointerEvents: splashFinished ? "auto" : "none",
+            transition: "opacity 0.35s ease-out",
           }}
         >
           <Collapse in={showTestBanner} appear={false}>

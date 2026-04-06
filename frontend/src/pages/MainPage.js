@@ -1215,13 +1215,19 @@ const MainPage = () => {
     filteredFollowedStoresWithProducts.length,
   ]);
 
-  // Effect for pagination
+  // Effect for pagination — on mobile, preload two chunks (16 stores) so rows after the
+  // first BrandShowcase block exist without depending on the infinite-scroll sentinel
+  // (it often misses after route return / overlay / browser chrome). Reset rotating
+  // showcase picks whenever the store list identity changes.
   useEffect(() => {
-    setStoresPage(1); // Reset to first page on filter change
-    const initialDisplayed = sortedFilteredStores.slice(0, storesPerPage);
-    setDisplayedStores(initialDisplayed);
-    setHasMoreStores(sortedFilteredStores.length > storesPerPage);
-  }, [sortedFilteredStores, storesPerPage]);
+    randomShowcaseStoresRef.current = {};
+    const chunk = storesPerPage;
+    const initialMax = isMobile ? chunk * 2 : chunk;
+    const initialCount = Math.min(sortedFilteredStores.length, initialMax);
+    setDisplayedStores(sortedFilteredStores.slice(0, initialCount));
+    setStoresPage(Math.max(1, Math.ceil(initialCount / chunk)));
+    setHasMoreStores(initialCount < sortedFilteredStores.length);
+  }, [sortedFilteredStores, storesPerPage, isMobile]);
 
   const loadMoreStores = useCallback(() => {
     setStoresPage((prevPage) => {
@@ -1235,9 +1241,9 @@ const MainPage = () => {
 
   loadMoreStoresRef.current = loadMoreStores;
 
-  // Mobile: load next store page when user scrolls near the sentinel (no button tap).
+  // Infinite scroll: load next store chunk when sentinel nears the viewport (all breakpoints).
   useEffect(() => {
-    if (!isMobile || mainPageTab !== 0 || !hasMoreStores) return undefined;
+    if (mainPageTab !== 0 || !hasMoreStores) return undefined;
     const el = loadMoreSentinelRef.current;
     if (!el) return undefined;
 
@@ -1252,11 +1258,11 @@ const MainPage = () => {
           ticking = false;
         }, 400);
       },
-      { root: null, rootMargin: "320px 0px", threshold: 0 },
+      { root: null, rootMargin: "400px 0px", threshold: 0 },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isMobile, mainPageTab, hasMoreStores]);
+  }, [mainPageTab, hasMoreStores]);
 
   const requestUserLocation = () => {
     if (!navigator?.geolocation) return;
@@ -2361,7 +2367,12 @@ const MainPage = () => {
                       }
 
                       if (variant === 1) {
-                        if (!randomShowcaseStoresRef.current[blockIndex]) {
+                        const prevList =
+                          randomShowcaseStoresRef.current[blockIndex];
+                        const needFill =
+                          sortedFilteredStores.length > 0 &&
+                          (!Array.isArray(prevList) || prevList.length === 0);
+                        if (needFill) {
                           const shuffled = [...sortedFilteredStores].sort(
                             () => Math.random() - 0.5,
                           );
@@ -2371,7 +2382,9 @@ const MainPage = () => {
 
                         return (
                           <StoreShowcase
-                            stores={randomShowcaseStoresRef.current[blockIndex]}
+                            stores={
+                              randomShowcaseStoresRef.current[blockIndex] ?? []
+                            }
                           />
                         );
                       }
@@ -3700,47 +3713,19 @@ const MainPage = () => {
         )}
       </Box>
 
-      {/* Load more: desktop = button; mobile = scroll sentinel auto-loads */}
+      {/* Infinite scroll sentinel — loads more stores as user scrolls near bottom */}
       {mainPageTab === 0 && hasMoreStores && (
         <Box
+          ref={loadMoreSentinelRef}
           sx={{
-            display: "flex",
-            justifyContent: "center",
-            mt: 4,
+            width: "100%",
+            minHeight: 24,
+            mt: 3,
             mb: 2,
-            minHeight: isMobile ? 12 : "auto",
+            flexShrink: 0,
           }}
-        >
-          {isMobile ? (
-            <Box
-              ref={loadMoreSentinelRef}
-              sx={{ width: "100%", height: 12 }}
-              aria-hidden
-            />
-          ) : (
-            <Button
-              onClick={loadMoreStores}
-              variant="outlined"
-              size="large"
-              sx={{
-                borderRadius: 3,
-                px: 4,
-                py: 1.5,
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                textTransform: "none",
-                borderWidth: 2,
-                "&:hover": {
-                  borderWidth: 2,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                },
-                transition: "all 0.3s ease",
-              }}
-            >
-              {t("Load More")}
-            </Button>
-          )}
-        </Box>
+          aria-hidden
+        />
       )}
 
       {mainPageTab === 0 && finalFilteredStores.length === 0 && !loading && (
