@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
   useLayoutEffect,
@@ -26,14 +26,10 @@ import {
   Grid,
   Paper,
   Divider,
-  Rating,
   Tabs,
   Tab,
   Skeleton,
 } from "@mui/material";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -58,7 +54,6 @@ import StarIcon from "@mui/icons-material/Star";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import ClearAllIcon from "@mui/icons-material/ClearAll";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -70,6 +65,10 @@ import StoreShowcase from "../components/StoreShowcase";
 import GiftShowcase from "../components/GiftShowcase";
 import FindJobShowcase from "../components/FindJobShowcase";
 import FullScreenImageModal from "../components/FullScreenImageModal";
+import BannerCarousel from "../components/BannerCarousel";
+import FilterChips from "../components/FilterChips";
+import StoreGroupSection from "../components/StoreGroupSection";
+import FlashDealsSection from "../components/FlashDealsSection";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
@@ -279,33 +278,6 @@ const MainPage = () => {
         })),
     [bannerAds],
   );
-
-  const bannerSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          dots: true,
-          arrows: false,
-        },
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          dots: true,
-          arrows: false,
-          autoplaySpeed: 4000,
-        },
-      },
-    ],
-  };
 
   const applyMainPagePayload = useCallback((payload) => {
     setStores(payload.stores);
@@ -1215,7 +1187,7 @@ const MainPage = () => {
     filteredFollowedStoresWithProducts.length,
   ]);
 
-  // Effect for pagination — on mobile, preload two chunks (16 stores) so rows after the
+  // Effect for pagination â€” on mobile, preload two chunks (16 stores) so rows after the
   // first BrandShowcase block exist without depending on the infinite-scroll sentinel
   // (it often misses after route return / overlay / browser chrome). Reset rotating
   // showcase picks whenever the store list identity changes.
@@ -1299,75 +1271,67 @@ const MainPage = () => {
     return (
       <Box
         sx={{
-          px: { xs: 0.5, sm: 1.5, md: 3 },
+          px: { xs: 1, sm: 1.5, md: 3 },
           pt: { xs: "100px", sm: "113px", md: "113px" },
         }}
       >
+        {/* Banner skeleton */}
+        <Skeleton
+          variant="rounded"
+          width="100%"
+          height={160}
+          sx={{ mb: 2, borderRadius: "16px" }}
+        />
+        {/* Filter chips skeleton */}
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          {[80, 100, 90, 110, 80].map((w, i) => (
+            <Skeleton key={i} variant="rounded" width={w} height={34} sx={{ borderRadius: "999px" }} />
+          ))}
+        </Box>
+        {/* Store group skeletons */}
         {[1, 2, 3].map((idx) => (
-          <Card
+          <Box
             key={idx}
             sx={{
-              mb: { xs: 2, sm: 2.5 },
-              borderRadius: { xs: 2, md: 3 },
+              mb: 2,
+              borderRadius: "20px",
               overflow: "hidden",
+              border: "1px solid",
+              borderColor: "divider",
             }}
           >
-            {/* Store header placeholder */}
+            {/* Store header */}
             <Box
               sx={{
-                p: { xs: 1, sm: 2, md: 3, lg: 1 },
+                p: "12px 14px",
                 display: "flex",
                 alignItems: "center",
-                gap: { xs: 2, sm: 3 },
+                gap: 1.5,
+                background: theme.palette.mode === "dark"
+                  ? "rgba(30,111,217,0.1)"
+                  : "rgba(30,111,217,0.06)",
               }}
             >
-              <Skeleton variant="rounded" width={64} height={64} />
+              <Skeleton variant="rounded" width={52} height={52} sx={{ borderRadius: "14px", flexShrink: 0 }} />
               <Box sx={{ flex: 1 }}>
-                <Skeleton variant="text" width="40%" height={36} />
-                <Skeleton variant="text" width="65%" height={24} />
-                <Skeleton variant="rounded" width={140} height={26} />
+                <Skeleton variant="text" width="45%" height={24} />
+                <Skeleton variant="text" width="70%" height={18} />
+                <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                  <Skeleton variant="rounded" width={100} height={22} sx={{ borderRadius: "999px" }} />
+                  <Skeleton variant="rounded" width={80} height={22} sx={{ borderRadius: "999px" }} />
+                </Box>
               </Box>
             </Box>
-
-            {/* Product cards placeholder (2 rows) */}
-            <Box sx={{ p: { xs: 0.5, sm: 0.7, md: 3 } }}>
-              {[1, 2].map((row) => (
-                <Box
-                  key={row}
-                  sx={{
-                    display: "flex",
-                    gap: { xs: 0.5, md: 3 },
-                    mb: row === 1 ? 1 : 0,
-                  }}
-                >
-                  {[1, 2, 3].map((col) => (
-                    <Card
-                      key={`${row}-${col}`}
-                      sx={{
-                        width: { xs: "140px", sm: "200px", md: "280px" },
-                        minWidth: { xs: "140px", sm: "200px", md: "280px" },
-                        borderRadius: 2,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <Skeleton variant="rectangular" height={160} />
-                      <Box sx={{ p: 1.5 }}>
-                        <Skeleton variant="text" width="90%" height={26} />
-                        <Skeleton variant="text" width="75%" height={26} />
-                        <Skeleton variant="text" width="50%" height={22} />
-                        <Skeleton
-                          variant="rounded"
-                          width="70%"
-                          height={32}
-                          sx={{ mt: 0.5 }}
-                        />
-                      </Box>
-                    </Card>
-                  ))}
+            {/* Products row */}
+            <Box sx={{ p: "12px 14px", display: "flex", gap: 1 }}>
+              {[1, 2, 3, 4].map((c) => (
+                <Box key={c} sx={{ flexShrink: 0 }}>
+                  <Skeleton variant="rounded" width={148} height={150} sx={{ borderRadius: "12px 12px 0 0" }} />
+                  <Skeleton variant="rounded" width={148} height={68} sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }} />
                 </Box>
               ))}
             </Box>
-          </Card>
+          </Box>
         ))}
       </Box>
     );
@@ -1376,11 +1340,12 @@ const MainPage = () => {
   return (
     <Box
       sx={{
-        px: { xs: 0.5, sm: 1.5, md: 3 },
+        px: { xs: 1, sm: 1.5, md: 3 },
         pt: { xs: "100px", sm: "113px", md: "113px" },
+        pb: { xs: 10, sm: 4 },
       }}
     >
-      {/* For You / Following Tabs - Fixed (no scrolling), after banner */}
+      {/* --- */}
       <Box
         sx={{
           position: "fixed",
@@ -1389,145 +1354,110 @@ const MainPage = () => {
           right: 0,
           zIndex: 1090,
           width: "fit-content",
-          backgroundColor: "#ffffff",
-          borderRadius: { xs: 2, md: 3 },
+          borderRadius: "14px",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           margin: "0 auto",
+          backdropFilter: "blur(12px)",
+          background: theme.palette.mode === "dark"
+            ? "rgba(15,23,42,0.85)"
+            : "rgba(255,255,255,0.9)",
+          boxShadow: theme.palette.mode === "dark"
+            ? "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
+            : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
           transform: !isMobile
             ? "translateY(0)"
             : showMainTabs
               ? "translateY(0)"
-              : "translateY(-130%)",
-          transition: "transform 240ms ease",
+              : "translateY(-160%)",
+          transition: "transform 280ms cubic-bezier(0.4,0,0.2,1)",
           willChange: "transform",
         }}
       >
         <Tabs
           value={mainPageTab}
-          TabIndicatorProps={{
-            children: <span className="MuiTabs-indicatorSpan" />,
-          }}
+          TabIndicatorProps={{ children: <span className="MuiTabs-indicatorSpan" /> }}
           onChange={(_, v) => {
             setMainPageTab(v);
-            if (v === 1) {
-              setFollowLoadingTab(true);
-            }
+            if (v === 1) setFollowLoadingTab(true);
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
           sx={{
-            minHeight: 48,
+            minHeight: 44,
+            px: 0.5,
             "& .MuiTabs-indicator": {
               display: "flex",
               justifyContent: "center",
               backgroundColor: "transparent",
             },
             "& .MuiTabs-indicatorSpan": {
-              width: "70%",
-              backgroundColor: "var(--brand-accent-orange)",
+              width: "60%",
+              backgroundColor: "var(--brand-accent-orange, #ff8c00)",
               borderRadius: "999px",
               height: "3px",
             },
             "& .MuiTab-root": {
-              fontWeight: 800,
+              fontWeight: 700,
               textTransform: "none",
-              color: "black",
-              minHeight: 48,
+              color: theme.palette.mode === "dark" ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)",
+              minHeight: 44,
               minWidth: "auto",
               px: 2,
+              fontSize: "0.9rem",
+              transition: "color 0.2s",
+              "&.Mui-selected": {
+                color: theme.palette.mode === "dark" ? "white" : "#111827",
+                fontWeight: 800,
+              },
             },
           }}
         >
-          <Tab
-            sx={{
-              color: "black",
-              fontWeight: 800,
-              fontSize: "1rem",
-              fontWeight: "bold",
-            }}
-            label={t("For You")}
-          />
-          <Tab
-            sx={{
-              color: "black",
-              fontWeight: 800,
-              fontSize: "1rem",
-              fontWeight: " bold",
-            }}
-            label={t("Following")}
-          />
+          <Tab label={t("For You")} />
+          <Tab label={t("Following")} />
         </Tabs>
       </Box>
-      {/* Advertisement Banner - Fixed (no scrolling) */}
-      <Box
-        sx={{
-          position: "relative",
-          backgroundColor:
-            theme.palette.mode === "dark" ? "#121212" : "#ffffff",
-
-          borderRadius: { xs: 2, md: 3 },
-          mb: 2,
-          boxSizing: "border-box",
+      {/* --- */}
+      <BannerCarousel
+        banners={bannerAdsWithImages}
+        onBannerClick={(ad) => {
+          if (ad.brandId) navigate(`/brands/${ad.brandId}`);
+          else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
+          else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
         }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: "lg",
-            margin: "0 auto",
-            height: { xs: "150px", sm: "200px", md: "250px" },
-            borderRadius: { xs: 2, md: 3 },
-            overflow: "hidden",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+      />
+      {/* --- */}
+      <Box sx={{ mb: 0 }}>
+        <FilterChips
+          search={search}
+          onSearchChange={setSearch}
+          storeTypes={visibleStoreTypes}
+          selectedStoreTypeId={selectedStoreTypeId}
+          onStoreTypeSelect={handleStoreTypeChange}
+          visibleCategories={visibleCategories}
+          selectedCategory={selectedCategory}
+          onCategorySelect={handleCategoryChange}
+          sortByNewest={sortByNewestDiscount}
+          sortByNearMe={sortByNearMe}
+          onToggleNewest={() => {
+            setSortByNewestDiscount((prev) => {
+              const next = !prev;
+              if (next) setSortByNearMe(false);
+              return next;
+            });
           }}
-        >
-          <Slider {...bannerSettings}>
-            {(bannerAdsWithImages.length > 0 ? bannerAdsWithImages : []).map(
-              (ad, index) => (
-                <div key={ad._id || index}>
-                  <img
-                    onClick={() =>
-                      ad.brandId
-                        ? navigate(`/brands/${ad.brandId}`)
-                        : ad.storeId
-                          ? navigate(`/stores/${ad.storeId}`)
-                          : ad.giftId
-                            ? navigate(`/gifts/${ad.giftId}`)
-                            : null
-                    }
-                    src={ad.src || ad}
-                    alt={`Banner ${index + 1}`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      cursor: ad.brandId ? "pointer" : "default",
-                    }}
-                  />
-                </div>
-              ),
-            )}
-          </Slider>
-        </Box>
-      </Box>
-      {/* Enhanced Filters Section */}
-      <Box
-        sx={{
-          // backgroundColor: theme.palette.mode === "dark" ? "#4A90E2" : "black",
-          borderBottom: "1px solid var(--brand-accent-orange)",
-          borderRadius: "8px",
-          p: { xs: 2, md: 3 },
-
-          mb: 3,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-          display: "block",
-          position: "relative",
-        }}
-      >
-        {/* Filter Content */}
-        <Box>
+          onToggleNearMe={() => {
+            setSortByNearMe((prev) => {
+              const next = !prev;
+              if (next) { setSortByNewestDiscount(false); requestUserLocation(); }
+              return next;
+            });
+          }}
+          geoLoading={geoLoading}
+          onClearAll={clearAllFilters}
+        />
+        {/* legacy filter content â€” hidden, kept for price-range state wiring */}
+        <Box sx={{ display: "none" }}>
           {/* Search and Basic Filters */}
           <Box
             sx={{
@@ -1746,7 +1676,7 @@ const MainPage = () => {
                     }}
                   >
                     <span style={{ marginRight: "4px", flexShrink: 0 }}>
-                      {type.icon || "🏪"}
+                      {type.icon || "ًںڈھ"}
                     </span>
                     <span
                       style={{
@@ -2003,389 +1933,66 @@ const MainPage = () => {
               {t("Clear All Filters")}
             </Button>
           </Box>
-        </Box>
+        </Box>{/* end legacy hidden */}
       </Box>
 
+      {/* --- */}
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
-          gap: { xs: 1, sm: 2, md: 3 },
+          gap: 0,
         }}
       >
         {mainPageTab === 0 ? (
           <>
-            <Typography
-              variant="subtitle2"
-              color="black"
-              fontSize="0.9rem"
-              fontWeight={500}
-            >
-              {t("Sort by")} :
-            </Typography>
+            {/* Flash Deals / Most Viewed */}
+            <FlashDealsSection
+              products={topViewedProducts}
+              onProductOpen={handleProductClick}
+              likeStates={likeStates}
+              isProductLiked={isProductLiked}
+              onLikeClick={handleLikeClick}
+              likeLoading={likeLoading}
+              formatPrice={formatPrice}
+              storeById={storeById}
+              getID={getID}
+            />
 
-            <Box
-              sx={{
-                display: "flex",
-                gap: 1,
-                flexWrap: "nowrap",
-                overflowX: "auto",
-                alignItems: "center",
-              }}
-            >
-              <Button
-                variant={sortByNewestDiscount ? "contained" : "outlined"}
-                startIcon={<AccessTimeIcon />}
-                onClick={() => {
-                  setSortByNewestDiscount((prev) => {
-                    const next = !prev;
-                    if (next) {
-                      setSortByNearMe(false);
-                    }
-                    return next;
-                  });
-                }}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {t("Newest Discounts")}
-              </Button>
-              <Button
-                variant={sortByNearMe ? "contained" : "outlined"}
-                startIcon={<MyLocationIcon />}
-                onClick={() => {
-                  setSortByNearMe((prev) => {
-                    const next = !prev;
-                    if (next) {
-                      setSortByNewestDiscount(false);
-                      // Always request location when enabling so the browser can prompt if needed.
-                      requestUserLocation();
-                    }
-                    return next;
-                  });
-                }}
-                disabled={geoLoading}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {geoLoading ? t("Locating...") : t("Near Me")}
-              </Button>
-            </Box>
-
+            {/* Find Job */}
             <FindJobShowcase jobs={showcaseEligibleJobs} />
 
-            {topViewedProducts.length > 0 && (
-              <Card
-                sx={{
-                  borderRadius: { xs: 2, md: 3 },
-                  overflow: "hidden",
-                  background:
-                    theme.palette.mode === "dark"
-                      ? "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)"
-                      : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-                  border: `1px solid ${
-                    theme.palette.mode === "dark" ? "#1E6FD9" : "#e9ecef"
-                  }`,
-                }}
-              >
-                <Box
-                  sx={{
-                    background: "var(--color-secondary)",
-                    // theme.palette.mode === "dark" ? "#4A90E2" : theme.palette.primary.main,
-                    px: { xs: 1.2, sm: 2 },
-                    py: { xs: 1, sm: 1.4 },
-                    color: "white",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Typography
-                    sx={{ fontWeight: 800, fontSize: { xs: 14, sm: 18 } }}
-                  >
-                    {t("Most Viewed")}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    icon={
-                      <VisibilityIcon
-                        sx={{
-                          color: "white !important",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          textAlign: "center",
-                        }}
-                      />
-                    }
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textAlign: "center",
-                      color: "white",
-                      backgroundColor: "rgba(255,255,255,0.18)",
-                      border: "1px solid rgba(255,255,255,0.35)",
-                    }}
-                  />
-                </Box>
-
-                <Box
-                  sx={{
-                    px: { xs: 0.8, sm: 1.2 },
-                    py: { xs: 1, sm: 1.4 },
-                    display: "flex",
-                    gap: { xs: 0.8, sm: 1.4 },
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    "&::-webkit-scrollbar": { height: 8 },
-                    "&::-webkit-scrollbar-track": {
-                      backgroundColor:
-                        theme.palette.mode === "dark" ? "#4a5568" : "#f1f1f1",
-                      borderRadius: 4,
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                      backgroundColor:
-                        theme.palette.mode === "dark" ? "#4A90E2" : "#1E6FD9",
-                      borderRadius: 4,
-                    },
-                  }}
-                >
-                  {topViewedProducts.map((product) => {
-                    const views = Number(
-                      product?.viewCount ??
-                        product?.views ??
-                        product?.view ??
-                        0,
-                    );
-                    const hasPreviousPrice =
-                      product.previousPrice &&
-                      product.newPrice &&
-                      product.previousPrice > product.newPrice;
-                    const storeName =
-                      locName(product?.storeId) ||
-                      locName(storeById[String(getID(product?.storeId))]) ||
-                      t("Unknown Store");
-
-                    return (
-                      <Card
-                        key={`most-viewed-${product._id}`}
-                        sx={{
-                          width: { xs: 150, sm: 185, md: 210 },
-                          minWidth: { xs: 150, sm: 185, md: 210 },
-                          borderRadius: 2,
-                          overflow: "hidden",
-                          border: "1px solid #e2e8f0",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Box sx={{ px: 1, pt: 0.8 }}>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              display: "block",
-                              fontWeight: 700,
-                              color: "#1E6FD9",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {storeName}
-                          </Typography>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            position: "relative",
-                            height: { xs: 110, sm: 130 },
-                            backgroundColor: "#f8f9fa",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => handleProductClick(product)}
-                        >
-                          {product.image ? (
-                            <CardMedia
-                              component="img"
-                              image={resolveMediaUrl(product.image)}
-                              alt={locName(product)}
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          ) : (
-                            <Box
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                display: "grid",
-                                placeItems: "center",
-                              }}
-                            >
-                              <StorefrontIcon
-                                sx={{ fontSize: 44, color: "#a0aec0" }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
-
-                        <CardContent sx={{ p: 1 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              pt: 1,
-                              fontWeight: 700,
-                              minHeight: "2.6em",
-                              lineHeight: 1.3,
-                              fontSize: {
-                                xs: "0.8rem",
-                                sm: "0.9rem",
-                                md: "1rem",
-                              },
-                              display: "-webkit-box",
-                              textAlign: "center",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              overflow: "hidden",
-                            }}
-                          >
-                            {locName(product)}
-                          </Typography>
-
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                              mt: 0.4,
-                            }}
-                          >
-                            <VisibilityIcon
-                              sx={{ fontSize: 15, color: "text.secondary" }}
-                            />
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {Number.isFinite(views) ? views : 0}
-                            </Typography>
-                          </Box>
-
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              textDecoration: hasPreviousPrice
-                                ? "line-through"
-                                : "none",
-                              color: "red",
-                              display: "block",
-                              mt: 0.3,
-                              minHeight: "1.2em",
-                              visibility: hasPreviousPrice
-                                ? "visible"
-                                : "hidden",
-                            }}
-                          >
-                            {hasPreviousPrice
-                              ? formatPrice(product.previousPrice)
-                              : "\u00A0"}
-                          </Typography>
-
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              color: "var(--color-secondary)",
-                              // backgroundColor: "var(--brand-accent-orange)",
-                              borderRadius: "8px",
-                              borderBottom:
-                                "1px solid var(--brand-accent-orange)",
-                              px: 0.7,
-                              py: 0.2,
-                              fontWeight: 900,
-                              width: "fit-content",
-                            }}
-                          >
-                            {formatPrice(product.newPrice)}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </Box>
-              </Card>
-            )}
 
             {displayedStores.map((store, index) => {
-              // 3. Get the products for this card from the master filtered list
               const productsForCard = filteredProducts.filter(
                 (p) => getID(p.storeId) === getID(store._id),
               );
 
-              // Split into 2 rows when more than 2 products
-              const productRows =
-                productsForCard.length > 2
-                  ? [
-                      productsForCard.slice(
-                        0,
-                        Math.ceil(productsForCard.length / 2),
-                      ),
-                      productsForCard.slice(
-                        Math.ceil(productsForCard.length / 2),
-                      ),
-                    ]
-                  : [productsForCard];
-
-              const totalDiscountedInStore = productsForCard.filter(
-                (p) =>
-                  p.isDiscount ||
-                  (p.previousPrice &&
-                    p.newPrice &&
-                    p.previousPrice > p.newPrice),
-              ).length;
-
-              // Every 8 store cards: Brand (8) → Store (random 20) → Gift (last 5) (repeat).
+              // Every 8 store cards: Brand (8) â†’ Store (random 20) â†’ Gift (last 5) (repeat).
               const rotatingShowcase =
                 (index + 1) % 8 === 0
                   ? (() => {
-                      const blockIndex = (index + 1) / 8 - 1; // 0-based showcase block
+                      const blockIndex = (index + 1) / 8 - 1;
                       const variant = blockIndex % 3;
 
                       if (variant === 0) {
                         const offset = blockIndex * 8;
                         return (
-                          <BrandShowcase
-                            brands={brands.slice(offset, offset + 8)}
-                          />
+                          <BrandShowcase brands={brands.slice(offset, offset + 8)} />
                         );
                       }
 
                       if (variant === 1) {
-                        const prevList =
-                          randomShowcaseStoresRef.current[blockIndex];
+                        const prevList = randomShowcaseStoresRef.current[blockIndex];
                         const needFill =
                           sortedFilteredStores.length > 0 &&
                           (!Array.isArray(prevList) || prevList.length === 0);
                         if (needFill) {
-                          const shuffled = [...sortedFilteredStores].sort(
-                            () => Math.random() - 0.5,
-                          );
-                          randomShowcaseStoresRef.current[blockIndex] =
-                            shuffled.slice(0, 20);
+                          const shuffled = [...sortedFilteredStores].sort(() => Math.random() - 0.5);
+                          randomShowcaseStoresRef.current[blockIndex] = shuffled.slice(0, 20);
                         }
-
                         return (
-                          <StoreShowcase
-                            stores={
-                              randomShowcaseStoresRef.current[blockIndex] ?? []
-                            }
-                          />
+                          <StoreShowcase stores={randomShowcaseStoresRef.current[blockIndex] ?? []} />
                         );
                       }
 
@@ -2395,668 +2002,19 @@ const MainPage = () => {
 
               return (
                 <React.Fragment key={store._id}>
-                  <Card
-                    sx={{
-                      mb: { xs: 0, sm: 2 },
-                      mt: { xs: 0, sm: 0 },
-                      borderRadius: { xs: 2, md: 3 },
-                      overflow: "hidden",
-                      background:
-                        theme.palette.mode === "dark"
-                          ? "linear-gradient(135deg, var(--brand-primary-blue) 0%, var(--brand-secondary-blue) 100%)"
-                          : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-                      border: `1px solid ${
-                        theme.palette.mode === "dark"
-                          ? "rgba(255,255,255,0.18)"
-                          : "#e9ecef"
-                      }`,
-                      boxShadow:
-                        theme.palette.mode === "dark"
-                          ? "0 8px 32px rgba(0,0,0,0.3)"
-                          : "0 8px 32px rgba(0,0,0,0.1)",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      "&:hover": {
-                        // transform: "translateY(-4px)",
-                        boxShadow:
-                          theme.palette.mode === "dark"
-                            ? "0 16px 64px rgba(0,0,0,0.4)"
-                            : "0 16px 64px rgba(0,0,0,0.15)",
-                      },
-                    }}
-                  >
-                    {/* Store Header with Gradient Overlay */}
-                    <Box
-                      sx={{
-                        background:
-                          theme.palette.mode === "dark"
-                            ? "var(--brand-secondary-blue)"
-                            : "var(--brand-primary-blue)",
-                        p: { xs: 1, sm: 2, md: 3, lg: 1 }, // Reduced padding on xs
-                        color: "white",
-                        position: "relative",
-                        overflow: "hidden",
-                        "&::before": {
-                          content: '""',
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background:
-                            'url(\'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>\') repeat',
-                          opacity: 0.1,
-                        },
-                      }}
-                    >
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        position="relative"
-                        zIndex={1}
-                        sx={{
-                          flexDirection: "row",
-                          gap: { xs: 2, sm: 3 },
-                        }}
-                      >
-                        <Link
-                          to={`/stores/${store._id}`}
-                          style={{ textDecoration: "none", flexShrink: 0 }}
-                        >
-                          <Box
-                            sx={{
-                              position: "relative",
-                              display: "inline-block",
-                            }}
-                          >
-                            {store.logo ? (
-                              <Box
-                                sx={{
-                                  width: { xs: 50, sm: 80, md: 150 },
-                                  height: { xs: 50, sm: 80, md: 150 },
-                                  borderRadius: 2,
-                                  overflow: "hidden",
-                                  border: "3px solid rgba(255,255,255,0.2)",
-                                  background: "rgba(255,255,255,0.1)",
-                                  backdropFilter: "blur(10px)",
-                                  cursor: "pointer",
-                                  transition: "opacity 0.2s",
-                                  "&:hover": { opacity: 0.9 },
-                                }}
-                              >
-                                <CardMedia
-                                  component="img"
-                                  sx={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                  }}
-                                  image={resolveMediaUrl(store.logo)}
-                                  alt={locName(store)}
-                                />
-                              </Box>
-                            ) : (
-                              <Box
-                                sx={{
-                                  width: { xs: 60, sm: 80 },
-                                  height: { xs: 60, sm: 80 },
-                                  borderRadius: 2,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  background: "rgba(255,255,255,0.1)",
-                                  backdropFilter: "blur(10px)",
-                                  border: "3px solid rgba(255,255,255,0.2)",
-                                  cursor: "pointer",
-                                  transition: "opacity 0.2s",
-                                  "&:hover": { opacity: 0.9 },
-                                }}
-                              >
-                                <BusinessIcon
-                                  sx={{
-                                    fontSize: { xs: 30, sm: 40 },
-                                    color: "rgba(255,255,255,0.8)",
-                                  }}
-                                />
-                              </Box>
-                            )}
-                          </Box>
-                        </Link>
-
-                        <Box flexGrow={1} sx={{ textAlign: "left" }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <Typography
-                              variant="h4"
-                              sx={{
-                                textDecoration: "none",
-                                color: "white",
-                                fontWeight: 700,
-                                fontSize: {
-                                  xs: "1.1rem",
-                                  sm: "1.5rem",
-                                  md: "2rem",
-                                },
-                                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                                transition: "all 0.2s ease",
-                                "&:hover": {
-                                  textShadow: "0 4px 8px rgba(0,0,0,0.4)",
-                                  // transform: "translateX(4px)",
-                                },
-                              }}
-                            >
-                              {locName(store)}
-                            </Typography>
-                            <IconButton
-                              onClick={(e) => handleFollowClick(store._id, e)}
-                              disabled={followLoading[store._id]}
-                              size="small"
-                              sx={{
-                                color: "white",
-                                bgcolor: isStoreFollowed(store._id)
-                                  ? "rgba(76, 175, 80, 0.9)"
-                                  : "rgba(255,255,255,0.2)",
-                                "&:hover": {
-                                  bgcolor: isStoreFollowed(store._id)
-                                    ? "rgba(76, 175, 80, 1)"
-                                    : "rgba(255,255,255,0.35)",
-                                },
-                              }}
-                              title={
-                                isStoreFollowed(store._id)
-                                  ? t("Unfollow")
-                                  : t("Follow")
-                              }
-                            >
-                              {isStoreFollowed(store._id) ? (
-                                <PersonAddDisabledIcon
-                                  sx={{ fontSize: { xs: 18, sm: 20 } }}
-                                />
-                              ) : (
-                                <PersonAddIcon
-                                  sx={{ fontSize: { xs: 18, sm: 20 } }}
-                                />
-                              )}
-                            </IconButton>
-                            {store.isVip && (
-                              <Box
-                                alt={t("sponsor")}
-                                sx={{
-                                  position: "absolute",
-                                  top: { xs: 2, md: 2 },
-                                  left: { xs: -2, md: -2 },
-                                  zIndex: { xs: 2, md: 2 },
-                                  backgroundColor: "white",
-                                  borderRadius: "50%",
-                                  width: { xs: 20, sm: 40 },
-                                  height: { xs: 20, sm: 40 },
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                                  "&::before": {
-                                    content: '"👑"',
-                                    fontSize: { xs: "16px", sm: "25px" },
-                                  },
-                                }}
-                              />
-                            )}
-                          </Box>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              width: { xs: "250px", md: "800px" },
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              color: "rgba(255,255,255,0.9)",
-                              mt: 0.5,
-                              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                              fontSize: {
-                                xs: "0.7rem",
-                                sm: "0.875rem",
-                                md: "1rem",
-                              },
-                              textAlign: "left",
-                            }}
-                          >
-                            {locAddress(store)}
-                          </Typography>
-                          <Chip
-                            label={`${totalDiscountedInStore} ${t(
-                              "Discounted Products",
-                            )}`}
-                            sx={{
-                              mt: 1,
-                              backgroundColor: "rgba(255,255,255,0.2)",
-                              color: "white",
-                              fontWeight: 600,
-                              backdropFilter: "blur(10px)",
-                              fontSize: { xs: "0.65rem", sm: "0.8rem" },
-                              height: { xs: "22px", sm: "28px" },
-                            }}
-                          />
-
-                          {store.isHasDelivery && (
-                            <Link
-                              to={`/stores/${store._id}`}
-                              style={{ textDecoration: "none", flexShrink: 0 }}
-                            >
-                              {" "}
-                              <Chip
-                                icon={<LocalShippingIcon />}
-                                label={t("Delivery")}
-                                size="small"
-                                sx={{
-                                  mt: 1,
-                                  ml: 1,
-                                  bgcolor: "rgba(255, 7, 7, 0.65)",
-                                  color: "white",
-                                  zIndex: 1,
-                                  "& .MuiChip-icon": { color: "white" },
-                                }}
-                              />
-                            </Link>
-                          )}
-                        </Box>
-                      </Box>
-                    </Box>
-
-                    {/* Products Grid - 2 rows when more than 2 products, scroll together */}
-                    <Box
-                      sx={{
-                        p: { xs: 0.4, sm: 0.7, md: 3 }, // Reduced padding on xs and sm
-                        width: { xs: "100%", md: "100%" },
-                        height:
-                          productRows.length > 1
-                            ? { xs: "530px", sm: "680px", md: "auto" } // Increased to fully show 2 rows
-                            : { xs: "auto", sm: "300px", md: "auto" },
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          ...(productRows.length > 1 && {
-                            overflowX: "auto",
-                            overflowY: "hidden",
-                            "&::-webkit-scrollbar": {
-                              height: 8,
-                            },
-                            "&::-webkit-scrollbar-track": {
-                              backgroundColor:
-                                theme.palette.mode === "dark"
-                                  ? "#4a5568"
-                                  : "#f1f1f1",
-                              borderRadius: 4,
-                            },
-                            "&::-webkit-scrollbar-thumb": {
-                              backgroundColor:
-                                theme.palette.mode === "dark"
-                                  ? "#4A90E2"
-                                  : "#1E6FD9",
-                              borderRadius: 4,
-                              "&:hover": {
-                                backgroundColor: "#45a049",
-                              },
-                            },
-                          }),
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection:
-                              productRows.length > 1 ? "column" : "row",
-                            gap:
-                              productRows.length > 1
-                                ? { xs: 0.5, md: 1 } // Small gap between rows
-                                : { xs: 0.5, md: 3 },
-                            pb: 2,
-                            ...(productRows.length > 1 && {
-                              minWidth: "max-content",
-                            }),
-                            ...(productRows.length === 1 && {
-                              overflowX: "auto",
-                              "&::-webkit-scrollbar": {
-                                height: 8,
-                              },
-                              "&::-webkit-scrollbar-track": {
-                                backgroundColor:
-                                  theme.palette.mode === "dark"
-                                    ? "#4a5568"
-                                    : "#f1f1f1",
-                                borderRadius: 4,
-                              },
-                              "&::-webkit-scrollbar-thumb": {
-                                backgroundColor:
-                                  theme.palette.mode === "dark"
-                                    ? "#4A90E2"
-                                    : "#1E6FD9",
-                                borderRadius: 4,
-                                "&:hover": {
-                                  backgroundColor: "#45a049",
-                                },
-                              },
-                            }),
-                          }}
-                        >
-                          {productRows.map((rowProducts, rowIndex) => (
-                            <Box
-                              key={rowIndex}
-                              sx={{
-                                display: "flex",
-                                gap: { xs: 0.5, md: 3 },
-                                pb: productRows.length === 1 ? 1 : 0,
-                                mb:
-                                  productRows.length > 1 &&
-                                  rowIndex < productRows.length - 1
-                                    ? 0.2
-                                    : 0,
-                                flexShrink: 0,
-                                minHeight:
-                                  productRows.length > 1
-                                    ? { xs: "250px", sm: "330px" }
-                                    : "auto",
-                                alignItems: "stretch",
-                              }}
-                            >
-                              {rowProducts.map((product) => {
-                                const discount = calculateDiscount(
-                                  product.previousPrice,
-                                  product.newPrice,
-                                );
-                                const hasPreviousPrice =
-                                  product.previousPrice &&
-                                  product.newPrice &&
-                                  product.previousPrice > product.newPrice;
-                                return (
-                                  <Card
-                                    key={product._id}
-                                    sx={{
-                                      cursor: "pointer",
-                                      height: { xs: "250px", sm: "330px" }, // taller for 2-row visibility
-                                      minHeight: { xs: "250px", sm: "330px" },
-                                      width: {
-                                        xs: "140px",
-                                        sm: "200px",
-                                        md: "280px",
-                                      }, // Reduced width on xs
-                                      maxWidth: {
-                                        xs: "140px",
-                                        sm: "200px",
-                                        md: "280px",
-                                      }, // Reduced width on xs
-
-                                      borderRadius: 2,
-                                      overflow: "hidden",
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      flexShrink: 0,
-                                      background: "white",
-                                      border: "1px solid #e2e8f0",
-                                      transition:
-                                        "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                      "&:hover": {
-                                        // transform: "translateY(-4px)",
-                                        boxShadow:
-                                          "0 12px 24px rgba(0,0,0,0.15)",
-                                      },
-                                    }}
-                                  >
-                                    {/* Product Image */}
-                                    <Box
-                                      sx={{
-                                        position: "relative",
-                                        overflow: "hidden",
-                                        height: { xs: "160px", sm: "200px" }, // Reduced height on xs
-                                        flexShrink: 0,
-                                        backgroundColor: "#f8f9fa",
-                                      }}
-                                      onClick={() =>
-                                        handleProductClick(product)
-                                      }
-                                    >
-                                      {product.image ? (
-                                        <CardMedia
-                                          component="img"
-                                          height="160"
-                                          image={resolveMediaUrl(product.image)}
-                                          alt={locName(product)}
-                                          sx={{
-                                            objectFit: "contain",
-                                            width: "100%",
-                                            height: {
-                                              xs: "160px", // Reduced height
-                                              sm: "200px", // Reduced height
-                                              md: "250px",
-                                            },
-                                            transition: "transform 0.3s ease",
-                                            // "&:hover": {
-                                            //   transform: "scale(1.05)",
-                                            // },
-                                          }}
-                                        />
-                                      ) : (
-                                        <Box
-                                          sx={{
-                                            height: {
-                                              xs: "150px",
-                                              sm: "200px",
-                                              md: "250px",
-                                            },
-                                            width: "100%",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            background: "#f8f9fa",
-                                          }}
-                                        >
-                                          <StorefrontIcon
-                                            sx={{
-                                              fontSize: 60,
-                                              color: "#a0aec0",
-                                            }}
-                                          />
-                                        </Box>
-                                      )}
-                                      <Box
-                                        sx={{
-                                          position: "absolute",
-                                          top: 8,
-                                          right: 8,
-                                          display: "flex",
-                                          gap: 5,
-                                          justifyContent: "space-between",
-                                        }}
-                                      >
-                                        {hasPreviousPrice && (
-                                          <Chip
-                                            icon={
-                                              <LocalOfferIcon
-                                                sx={{ fontSize: 14 }}
-                                              />
-                                            }
-                                            label={`-${discount}%`}
-                                            color="error"
-                                            size="small"
-                                            sx={{
-                                              fontSize: "0.7rem",
-                                              height: 24,
-                                              "& .MuiChip-label": { px: 0.7 },
-                                            }}
-                                          />
-                                        )}
-                                        <IconButton
-                                          onClick={(e) =>
-                                            handleLikeClick(product._id, e)
-                                          }
-                                          disabled={likeLoading[product._id]}
-                                          sx={{
-                                            bgcolor: "white",
-                                            color:
-                                              likeStates[product._id] ||
-                                              isProductLiked(product._id)
-                                                ? "#e53e3e"
-                                                : "#666",
-                                            "&:hover": {
-                                              color: "#e53e3e",
-                                              transform: "scale(1.1)",
-                                            },
-                                            transition: "all 0.2s ease",
-                                            p: 0.5,
-                                          }}
-                                          size="small"
-                                        >
-                                          {likeStates[product._id] ||
-                                          isProductLiked(product._id) ? (
-                                            <FavoriteIcon
-                                              sx={{ fontSize: "1.2rem" }}
-                                            />
-                                          ) : (
-                                            <FavoriteBorderIcon
-                                              sx={{ fontSize: "1.2rem" }}
-                                            />
-                                          )}
-                                        </IconButton>
-                                      </Box>
-                                      {(() => {
-                                        const info = getExpiryRemainingInfo(
-                                          product.expireDate,
-                                        );
-                                        if (!shouldShowExpiryChip(info))
-                                          return null;
-                                        return (
-                                          <Chip
-                                            label={formatExpiryChipLabel(
-                                              info,
-                                              t,
-                                            )}
-                                            size="small"
-                                            sx={{
-                                              position: "absolute",
-                                              bottom: 8,
-                                              left: 8,
-                                              maxWidth: "calc(100% - 16px)",
-                                              backgroundColor:
-                                                expiryChipBg(info),
-                                              color: "white",
-                                              fontWeight: 600,
-                                              fontSize: "0.7rem",
-                                              height: 24,
-                                              "& .MuiChip-label": {
-                                                px: 0.75,
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                              },
-                                            }}
-                                          />
-                                        );
-                                      })()}
-                                      {/* View Count Badge - Top Right */}
-                                      {/* {product.viewCount > 0 && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                top: 8,
-                                right: 8,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.5,
-                                backgroundColor: "rgba(0, 0, 0, 0.7)",
-                                color: "white",
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1,
-                                fontSize: "0.7rem",
-                              }}
-                            >
-                              <VisibilityIcon sx={{ fontSize: "0.8rem" }} />
-                              {product.viewCount}
-                            </Box>
-                          )} */}
-                                    </Box>
-
-                                    {/* Product Content */}
-                                    <CardContent
-                                      sx={{
-                                        p: { xs: 0, md: 2 },
-                                        flex: { xs: "0 0 auto", sm: 1 },
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        position: "relative",
-                                      }}
-                                    >
-                                      {/* Product Name */}
-                                      <Typography
-                                        variant="h6"
-                                        sx={{
-                                          color: "black",
-                                          fontWeight: 600,
-                                          fontSize: {
-                                            xs: "0.8rem",
-                                            sm: "1rem",
-                                          },
-                                          textAlign: "center",
-                                          mt: 0.5,
-                                          mb: 0.5,
-                                          lineHeight: 1.3,
-                                          pt: 1,
-                                          minHeight: "2.6em",
-                                          display: "-webkit-box",
-                                          WebkitLineClamp: 2,
-                                          WebkitBoxOrient: "vertical",
-                                          overflow: "hidden",
-                                        }}
-                                      >
-                                        {locName(product)}
-                                      </Typography>
-
-                                      {/* Pricing Section */}
-                                      <Box
-                                        sx={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          alignItems: "center",
-                                          mb: 0,
-                                          minHeight: { xs: "56px", sm: "78px" },
-                                        }}
-                                      >
-                                        <Typography
-                                          variant="h6"
-                                          sx={{
-                                            color: "var(--color-secondary)",
-                                            // backgroundColor:
-                                            //   "var(--brand-accent-orange)",
-                                            borderBottom:
-                                              "1px solid var(--brand-accent-orange)",
-                                            borderRadius: "8px",
-                                            padding: "2px 4px",
-                                            boxShadow:
-                                              "0 2px 4px rgba(0, 0, 0, 0.1)",
-                                            fontWeight: 900,
-                                            fontSize: {
-                                              xs: "1.3rem",
-                                              sm: "1.4rem",
-                                            },
-                                          }}
-                                        >
-                                          {formatPrice(product.newPrice)}
-                                        </Typography>
-                                      </Box>
-                                    </CardContent>
-                                  </Card>
-                                );
-                              })}
-                            </Box>
-                          ))}
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Card>
+                  <StoreGroupSection
+                    store={store}
+                    products={productsForCard}
+                    onProductOpen={handleProductClick}
+                    isStoreFollowed={isStoreFollowed}
+                    onFollowClick={handleFollowClick}
+                    followLoading={followLoading[store._id]}
+                    likeStates={likeStates}
+                    isProductLiked={isProductLiked}
+                    onLikeClick={handleLikeClick}
+                    likeLoading={likeLoading}
+                    formatPrice={formatPrice}
+                  />
                   {rotatingShowcase}
                 </React.Fragment>
               );
@@ -3068,9 +2026,7 @@ const MainPage = () => {
           </Box>
         ) : followedStores.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
-            <PersonAddDisabledIcon
-              sx={{ fontSize: 80, color: "grey.400", mb: 2 }}
-            />
+            <PersonAddDisabledIcon sx={{ fontSize: 80, color: "grey.400", mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               {t("No followed stores yet")}
             </Typography>
@@ -3081,13 +2037,11 @@ const MainPage = () => {
         ) : filteredFollowedStoresWithProducts.length === 0 ? (
           <>
             <br />
-
             <Alert
               severity="info"
               sx={{
                 borderRadius: 2,
-                backgroundColor:
-                  theme.palette.mode === "dark" ? "#FFA94D" : "#e3f2fd",
+                backgroundColor: theme.palette.mode === "dark" ? "#FFA94D" : "#e3f2fd",
                 border: `1px solid ${theme.palette.mode === "dark" ? "#FF7A1A" : "#bbdefb"}`,
               }}
             >
@@ -3095,625 +2049,27 @@ const MainPage = () => {
             </Alert>
           </>
         ) : (
-          filteredFollowedStoresWithProducts.map(
-            ({ store, products: storeProducts }) => {
-              const discountedCount = storeProducts.filter(
-                (p) =>
-                  p.isDiscount ||
-                  (p.previousPrice &&
-                    p.newPrice &&
-                    p.previousPrice > p.newPrice),
-              ).length;
-              const productsForCard = storeProducts;
-              const productRows =
-                productsForCard.length > 2
-                  ? [
-                      productsForCard.slice(
-                        0,
-                        Math.ceil(productsForCard.length / 2),
-                      ),
-                      productsForCard.slice(
-                        Math.ceil(productsForCard.length / 2),
-                      ),
-                    ]
-                  : [productsForCard];
-
-              return (
-                <Card
-                  key={store._id}
-                  sx={{
-                    mb: { xs: 0, sm: 2 },
-                    mt: { xs: 0, sm: 0 },
-                    borderRadius: { xs: 2, md: 3 },
-                    overflow: "hidden",
-                    background:
-                      theme.palette.mode === "dark"
-                        ? "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)"
-                        : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-                    border: `1px solid ${theme.palette.mode === "dark" ? "#1E6FD9" : "#e9ecef"}`,
-                    boxShadow:
-                      theme.palette.mode === "dark"
-                        ? "0 8px 32px rgba(0,0,0,0.3)"
-                        : "0 8px 32px rgba(0,0,0,0.1)",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    "&:hover": {
-                      boxShadow:
-                        theme.palette.mode === "dark"
-                          ? "0 16px 64px rgba(0,0,0,0.4)"
-                          : "0 16px 64px rgba(0,0,0,0.15)",
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      background:
-                        theme.palette.mode === "dark"
-                          ? "#4A90E2"
-                          : theme.palette.primary.main,
-                      p: { xs: 1, sm: 2, md: 3, lg: 1 },
-                      color: "white",
-                      position: "relative",
-                      overflow: "hidden",
-                      "&::before": {
-                        content: '""',
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background:
-                          'url(\'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>\') repeat',
-                        opacity: 0.1,
-                      },
-                    }}
-                  >
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      gap={2}
-                      sx={{
-                        flexDirection: "row",
-                        position: "relative",
-                        zIndex: 1,
-                      }}
-                    >
-                      <Link
-                        to={`/stores/${store._id}`}
-                        style={{ textDecoration: "none", flexShrink: 0 }}
-                      >
-                        <Box
-                          sx={{ position: "relative", display: "inline-block" }}
-                        >
-                          {store.logo ? (
-                            <Box
-                              sx={{
-                                width: { xs: 50, sm: 80, md: 150 },
-                                height: { xs: 50, sm: 80, md: 150 },
-                                borderRadius: 2,
-                                overflow: "hidden",
-                                border: "3px solid rgba(255,255,255,0.2)",
-                                background: "rgba(255,255,255,0.1)",
-                                backdropFilter: "blur(10px)",
-                                cursor: "pointer",
-                                transition: "opacity 0.2s",
-                                "&:hover": { opacity: 0.9 },
-                              }}
-                            >
-                              <CardMedia
-                                component="img"
-                                sx={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                }}
-                                image={resolveMediaUrl(store.logo)}
-                                alt={locName(store)}
-                              />
-                            </Box>
-                          ) : (
-                            <Box
-                              sx={{
-                                width: { xs: 60, sm: 80 },
-                                height: { xs: 60, sm: 80 },
-                                borderRadius: 2,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                background: "rgba(255,255,255,0.1)",
-                                border: "3px solid rgba(255,255,255,0.2)",
-                                backdropFilter: "blur(10px)",
-                                cursor: "pointer",
-                                transition: "opacity 0.2s",
-                                "&:hover": { opacity: 0.9 },
-                              }}
-                            >
-                              <BusinessIcon
-                                sx={{
-                                  fontSize: { xs: 30, sm: 40 },
-                                  color: "rgba(255,255,255,0.8)",
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
-                      </Link>
-                      {store.isVip && (
-                        <Box
-                          alt={t("sponsor")}
-                          sx={{
-                            position: "absolute",
-                            top: { xs: 2, md: 2 },
-                            left: { xs: -2, md: -2 },
-                            zIndex: 2,
-                            backgroundColor: "white",
-                            borderRadius: "50%",
-                            width: { xs: 20, sm: 40 },
-                            height: { xs: 20, sm: 40 },
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                            "&::before": {
-                              content: '"👑"',
-                              fontSize: { xs: "16px", sm: "25px" },
-                            },
-                          }}
-                        />
-                      )}
-                      <Box flexGrow={1} sx={{ textAlign: "left" }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            flexWrap: "wrap",
-                            position: "relative",
-                          }}
-                        >
-                          <Typography
-                            variant="h4"
-                            sx={{
-                              textDecoration: "none",
-                              color: "white",
-                              fontWeight: 700,
-                              fontSize: {
-                                xs: "1.1rem",
-                                sm: "1.5rem",
-                                md: "2rem",
-                              },
-                              textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                              transition: "all 0.2s ease",
-                              "&:hover": {
-                                textShadow: "0 4px 8px rgba(0,0,0,0.4)",
-                              },
-                            }}
-                          >
-                            {locName(store)}
-                          </Typography>
-                          <IconButton
-                            onClick={(e) => handleFollowClick(store._id, e)}
-                            disabled={followLoading[store._id]}
-                            size="small"
-                            sx={{
-                              color: "white",
-                              bgcolor: isStoreFollowed(store._id)
-                                ? "rgba(76, 175, 80, 0.9)"
-                                : "rgba(255,255,255,0.2)",
-                              "&:hover": {
-                                bgcolor: isStoreFollowed(store._id)
-                                  ? "rgba(76, 175, 80, 1)"
-                                  : "rgba(255,255,255,0.35)",
-                              },
-                            }}
-                            title={
-                              isStoreFollowed(store._id)
-                                ? t("Unfollow")
-                                : t("Follow")
-                            }
-                          >
-                            {isStoreFollowed(store._id) ? (
-                              <PersonAddDisabledIcon
-                                sx={{ fontSize: { xs: 18, sm: 20 } }}
-                              />
-                            ) : (
-                              <PersonAddIcon
-                                sx={{ fontSize: { xs: 18, sm: 20 } }}
-                              />
-                            )}
-                          </IconButton>
-                        </Box>
-                        {locAddress(store) && (
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              width: { xs: "250px", md: "800px" },
-                              color: "rgba(255,255,255,0.9)",
-                              mt: 0.5,
-                              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                              fontSize: {
-                                xs: "0.7rem",
-                                sm: "0.875rem",
-                                md: "1rem",
-                              },
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              textAlign: "left",
-                            }}
-                          >
-                            {locAddress(store)}
-                          </Typography>
-                        )}
-                        <Chip
-                          label={`${discountedCount} ${t("Discounted Products")}`}
-                          sx={{
-                            mt: 1,
-                            backgroundColor: "rgba(255,255,255,0.2)",
-                            color: "white",
-                            fontWeight: 600,
-                            backdropFilter: "blur(10px)",
-                            fontSize: { xs: "0.65rem", sm: "0.8rem" },
-                          }}
-                        />
-                        {store.isHasDelivery && (
-                          <Link
-                            to={`/stores/${store._id}`}
-                            style={{ textDecoration: "none", flexShrink: 0 }}
-                          >
-                            {" "}
-                            <Chip
-                              icon={<LocalShippingIcon />}
-                              label={t("Delivery")}
-                              size="small"
-                              sx={{
-                                mt: 1,
-                                ml: 1,
-                                bgcolor: "rgba(255, 7, 7, 0.65)",
-                                color: "white",
-                                zIndex: 1,
-                                "& .MuiChip-icon": { color: "white" },
-                              }}
-                            />
-                          </Link>
-                        )}
-                      </Box>
-                    </Box>
-                  </Box>
-                  <Box
-                    sx={{
-                      p: { xs: 0.5, sm: 0.7, md: 3 },
-                      width: { xs: "100%", md: "100%" },
-                      height:
-                        productRows.length > 1
-                          ? { xs: "530px", sm: "680px", md: "auto" }
-                          : { xs: "auto", sm: "300px", md: "auto" },
-                      ...(productRows.length > 1 && {
-                        overflowX: "auto",
-                        overflowY: "hidden",
-                        "&::-webkit-scrollbar": { height: 8 },
-                        "&::-webkit-scrollbar-track": {
-                          backgroundColor:
-                            theme.palette.mode === "dark"
-                              ? "#4a5568"
-                              : "#f1f1f1",
-                          borderRadius: 4,
-                        },
-                        "&::-webkit-scrollbar-thumb": {
-                          backgroundColor:
-                            theme.palette.mode === "dark"
-                              ? "#4A90E2"
-                              : "#1E6FD9",
-                          borderRadius: 4,
-                          "&:hover": {
-                            backgroundColor: "#45a049",
-                          },
-                        },
-                      }),
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection:
-                          productRows.length > 1 ? "column" : "row",
-                        gap:
-                          productRows.length > 1
-                            ? { xs: 0.5, md: 1 }
-                            : { xs: 0.5, md: 3 },
-                        pb: 2,
-                        ...(productRows.length > 1 && {
-                          minWidth: "max-content",
-                        }),
-                        ...(productRows.length === 1 && {
-                          overflowX: "auto",
-                          "&::-webkit-scrollbar": { height: 8 },
-                        }),
-                      }}
-                    >
-                      {productRows.map((row, rowIdx) => (
-                        <Box
-                          key={rowIdx}
-                          sx={{
-                            display: "flex",
-                            gap: { xs: 0.5, md: 3 },
-                            pb: productRows.length === 1 ? 2 : 0,
-                            mb:
-                              productRows.length > 1 &&
-                              rowIdx < productRows.length - 1
-                                ? 0.2
-                                : 0,
-                            flexShrink: 0,
-                            minHeight:
-                              productRows.length > 1
-                                ? { xs: "250px", sm: "330px" }
-                                : "auto",
-                            alignItems: "stretch",
-                          }}
-                        >
-                          {row.map((product) => {
-                            const discount = calculateDiscount(
-                              product.previousPrice,
-                              product.newPrice,
-                            );
-                            const hasPreviousPrice =
-                              product.previousPrice &&
-                              product.newPrice &&
-                              product.previousPrice > product.newPrice;
-                            return (
-                              <Card
-                                key={product._id}
-                                sx={{
-                                  cursor: "pointer",
-                                  height: { xs: "250px", sm: "330px" },
-                                  minHeight: { xs: "250px", sm: "330px" },
-                                  width: {
-                                    xs: "140px",
-                                    sm: "200px",
-                                    md: "280px",
-                                  },
-                                  maxWidth: {
-                                    xs: "140px",
-                                    sm: "200px",
-                                    md: "280px",
-                                  },
-                                  minWidth: {
-                                    xs: "140px",
-                                    sm: "200px",
-                                    md: "280px",
-                                  },
-                                  borderRadius: 2,
-                                  overflow: "hidden",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  flexShrink: 0,
-                                  background: "white",
-                                  border: "1px solid #e2e8f0",
-                                  transition:
-                                    "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                  "&:hover": {
-                                    boxShadow: "0 12px 24px rgba(0,0,0,0.15)",
-                                  },
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    position: "relative",
-                                    overflow: "hidden",
-                                    height: { xs: "160px", sm: "200px" },
-                                    flexShrink: 0,
-                                    backgroundColor: "#f8f9fa",
-                                  }}
-                                  onClick={() => handleProductClick(product)}
-                                >
-                                  {product.image ? (
-                                    <CardMedia
-                                      component="img"
-                                      image={resolveMediaUrl(product.image)}
-                                      alt={locName(product)}
-                                      height="160"
-                                      sx={{
-                                        objectFit: "contain",
-                                        width: "100%",
-                                        height: {
-                                          xs: "160px",
-                                          sm: "200px",
-                                          md: "250px",
-                                        },
-                                        transition: "transform 0.3s ease",
-                                      }}
-                                    />
-                                  ) : (
-                                    <Box
-                                      sx={{
-                                        height: {
-                                          xs: "160px",
-                                          sm: "200px",
-                                          md: "250px",
-                                        },
-                                        width: "100%",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        background: "#f8f9fa",
-                                      }}
-                                    >
-                                      <StorefrontIcon
-                                        sx={{
-                                          fontSize: 60,
-                                          color: "#a0aec0",
-                                        }}
-                                      />
-                                    </Box>
-                                  )}
-                                  <Box
-                                    sx={{
-                                      position: "absolute",
-                                      top: 8,
-                                      right: 8,
-                                      display: "flex",
-                                      gap: 5,
-                                      justifyContent: "space-between",
-                                    }}
-                                  >
-                                    {hasPreviousPrice && (
-                                      <Chip
-                                        icon={
-                                          <LocalOfferIcon
-                                            sx={{ fontSize: 14 }}
-                                          />
-                                        }
-                                        label={`-${discount}%`}
-                                        color="error"
-                                        size="small"
-                                        sx={{
-                                          fontSize: "0.7rem",
-                                          height: 24,
-                                          "& .MuiChip-label": { px: 0.7 },
-                                        }}
-                                      />
-                                    )}
-                                    <IconButton
-                                      onClick={(e) =>
-                                        handleLikeClick(product._id, e)
-                                      }
-                                      disabled={likeLoading[product._id]}
-                                      sx={{
-                                        bgcolor: "white",
-                                        color:
-                                          likeStates[product._id] ||
-                                          isProductLiked(product._id)
-                                            ? "#e53e3e"
-                                            : "#666",
-                                        "&:hover": {
-                                          color: "#e53e3e",
-                                          transform: "scale(1.1)",
-                                        },
-                                        transition: "all 0.2s ease",
-                                        p: 0.5,
-                                      }}
-                                      size="small"
-                                    >
-                                      {likeStates[product._id] ||
-                                      isProductLiked(product._id) ? (
-                                        <FavoriteIcon
-                                          sx={{ fontSize: "1.2rem" }}
-                                        />
-                                      ) : (
-                                        <FavoriteBorderIcon
-                                          sx={{ fontSize: "1.2rem" }}
-                                        />
-                                      )}
-                                    </IconButton>
-                                  </Box>
-                                  {(() => {
-                                    const info = getExpiryRemainingInfo(
-                                      product.expireDate,
-                                    );
-                                    if (!shouldShowExpiryChip(info))
-                                      return null;
-                                    return (
-                                      <Chip
-                                        label={formatExpiryChipLabel(info, t)}
-                                        size="small"
-                                        sx={{
-                                          position: "absolute",
-                                          bottom: 8,
-                                          left: 8,
-                                          maxWidth: "calc(100% - 16px)",
-                                          backgroundColor: expiryChipBg(info),
-                                          color: "white",
-                                          fontWeight: 600,
-                                          fontSize: "0.7rem",
-                                          height: 24,
-                                          "& .MuiChip-label": {
-                                            px: 0.75,
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                          },
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                </Box>
-                                <CardContent
-                                  sx={{
-                                    p: { xs: 0, md: 2 },
-                                    flex: { xs: "0 0 auto", sm: 1 },
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    position: "relative",
-                                  }}
-                                >
-                                  <Typography
-                                    variant="h6"
-                                    sx={{
-                                      mt: 0.5,
-                                      color: "#000000",
-                                      fontWeight: 600,
-                                      fontSize: {
-                                        xs: "0.8rem",
-                                        sm: "1rem",
-                                      },
-                                      textAlign: "center",
-                                      pt: 1,
-                                      mb: 0.5,
-                                      lineHeight: 1.3,
-                                      minHeight: "2.6em",
-                                      display: "-webkit-box",
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: "vertical",
-                                      overflow: "hidden",
-                                    }}
-                                  >
-                                    {locName(product)}
-                                  </Typography>
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      alignItems: "center",
-                                      mb: 0,
-                                      minHeight: { xs: "56px", sm: "78px" },
-                                    }}
-                                  >
-                                    <Typography
-                                      variant="h6"
-                                      sx={{
-                                        color: "var(--color-secondary)",
-                                        // backgroundColor:
-                                        //   "var(--brand-accent-orange)",
-                                        borderBottom:
-                                          "1px solid var(--brand-accent-orange)",
-                                        borderRadius: "8px",
-                                        padding: "2px 4px",
-                                        boxShadow:
-                                          "0 2px 4px rgba(0, 0, 0, 0.1)",
-                                        fontWeight: 900,
-                                        fontSize: {
-                                          xs: "1.3rem",
-                                          sm: "1.4rem",
-                                        },
-                                      }}
-                                    >
-                                      {formatPrice(product.newPrice)}
-                                    </Typography>
-                                  </Box>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                </Card>
-              );
-            },
-          )
+          filteredFollowedStoresWithProducts.map(({ store, products: storeProducts }) => (
+            <StoreGroupSection
+              key={store._id}
+              store={store}
+              products={storeProducts}
+              onProductOpen={handleProductClick}
+              isStoreFollowed={isStoreFollowed}
+              onFollowClick={handleFollowClick}
+              followLoading={followLoading[store._id]}
+              likeStates={likeStates}
+              isProductLiked={isProductLiked}
+              onLikeClick={handleLikeClick}
+              likeLoading={likeLoading}
+              formatPrice={formatPrice}
+            />
+          ))
         )}
       </Box>
 
-      {/* Infinite scroll sentinel — loads more stores as user scrolls near bottom */}
+
+      {/* --- */}
       {mainPageTab === 0 && hasMoreStores && (
         <Box
           ref={loadMoreSentinelRef}
@@ -3729,24 +2085,17 @@ const MainPage = () => {
       )}
 
       {mainPageTab === 0 && finalFilteredStores.length === 0 && !loading && (
-        <>
-          <br />
-          <br />
-
-          <Alert
-            severity="info"
-            sx={{
-              borderRadius: 2,
-              backgroundColor:
-                theme.palette.mode === "dark" ? "#FFA94D" : "#e3f2fd",
-              border: `1px solid ${
-                theme.palette.mode === "dark" ? "#FF7A1A" : "#bbdefb"
-              }`,
-            }}
-          >
-            {t("No stores match the current filters.")}
-          </Alert>
-        </>
+        <Alert
+          severity="info"
+          sx={{
+            borderRadius: "14px",
+            mt: 2,
+            backgroundColor: theme.palette.mode === "dark" ? "rgba(255,169,77,0.15)" : "#e3f2fd",
+            border: `1px solid ${theme.palette.mode === "dark" ? "#FF7A1A" : "#bbdefb"}`,
+          }}
+        >
+          {t("No stores match the current filters.")}
+        </Alert>
       )}
 
       {/* Product Detail Dialog - styled like ProductDetail page */}

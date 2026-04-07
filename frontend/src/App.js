@@ -61,6 +61,10 @@ import {
   ActiveThemeProvider,
   useActiveTheme,
 } from "./context/ActiveThemeContext";
+import {
+  DarkModeProvider,
+  useDarkMode,
+} from "./context/DarkModeContext";
 
 // Footer component remains the same
 const Footer = () => (
@@ -87,7 +91,7 @@ const Footer = () => (
 
 function AppContent() {
   const location = useLocation();
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, setDarkMode } = useDarkMode();
   const { t, i18n } = useTranslation();
   const { refreshKey } = useContentRefresh();
   const [lang, setLang] = useState(i18n.language || "en");
@@ -321,22 +325,24 @@ const App = () => (
 // Root component remains the same
 const Root = () => (
   <ErrorBoundary>
-    <AuthProvider>
-      <CityFilterProvider>
-        <DataLanguageProvider>
-          <AppSettingsProvider>
-            <ActiveThemeProvider>
-              <NotificationProvider>
-                <Router>
-                  <ScrollToTop />
-                  <App />
-                </Router>
-              </NotificationProvider>
-            </ActiveThemeProvider>
-          </AppSettingsProvider>
-        </DataLanguageProvider>
-      </CityFilterProvider>
-    </AuthProvider>
+    <DarkModeProvider>
+      <AuthProvider>
+        <CityFilterProvider>
+          <DataLanguageProvider>
+            <AppSettingsProvider>
+              <ActiveThemeProvider>
+                <NotificationProvider>
+                  <Router>
+                    <ScrollToTop />
+                    <App />
+                  </Router>
+                </NotificationProvider>
+              </ActiveThemeProvider>
+            </AppSettingsProvider>
+          </DataLanguageProvider>
+        </CityFilterProvider>
+      </AuthProvider>
+    </DarkModeProvider>
   </ErrorBoundary>
 );
 

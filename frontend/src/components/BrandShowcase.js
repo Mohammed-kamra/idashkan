@@ -1,7 +1,8 @@
 import React from "react";
 import { Box, Typography, Avatar, Paper, Button } from "@mui/material";
 import { Link } from "react-router-dom";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import DiamondIcon from "@mui/icons-material/Diamond";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { useTheme } from "@mui/material/styles";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -14,149 +15,198 @@ const BrandShowcase = ({ brands }) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
+  const isDark = theme.palette.mode === "dark";
 
-  if (!brands || brands.length === 0) {
-    return null;
-  }
+  if (!brands || brands.length === 0) return null;
 
   const vipBrands = brands.filter((b) => Boolean(b?.isVip));
   const displayBrands = vipBrands.length > 0 ? vipBrands : brands;
+  const isVipMode = vipBrands.length > 0;
 
   const slideCount = displayBrands.length;
-  const clamp = (maxVisible) => Math.max(1, Math.min(maxVisible, slideCount));
-  const desktopShow = clamp(5);
-  // slidesToShow > slideCount breaks slick layout (slides stack vertically).
+  const clamp = (max) => Math.max(1, Math.min(max, slideCount));
+  const desktopShow = clamp(6);
+
   const settings = {
     dots: false,
     infinite: slideCount > desktopShow,
-    speed: 5000,
+    speed: 4500,
     autoplay: slideCount > desktopShow,
-    autoplaySpeed: 1000,
+    autoplaySpeed: 800,
     cssEase: "linear",
     slidesToShow: desktopShow,
     slidesToScroll: 1,
     arrows: false,
     responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: clamp(4),
-        },
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          slidesToShow: clamp(3),
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: clamp(2),
-        },
-      },
+      { breakpoint: 1024, settings: { slidesToShow: clamp(5) } },
+      { breakpoint: 768, settings: { slidesToShow: clamp(4) } },
+      { breakpoint: 600, settings: { slidesToShow: clamp(3) } },
+      { breakpoint: 400, settings: { slidesToShow: clamp(2) } },
     ],
   };
 
   return (
-    <Paper
-      elevation={4}
+    <Box
       sx={{
-        my: 2,
-        p: 2,
-        borderRadius: 4,
-        background:
-          theme.palette.mode === "dark"
-            ? "linear-gradient(145deg, #1E6FD9, #4A90E2)"
-            : "linear-gradient(145deg, #e6e6e6, #ffffff)",
-        boxShadow:
-          theme.palette.mode === "dark"
-            ? "10px 10px 20px #253444, -10px -10px 20px #3d4a60"
-            : "10px 10px 20px #d4d4d4, -10px -10px 20px #ffffff",
+        borderRadius: "20px",
+        overflow: "hidden",
+        background: isDark
+          ? "linear-gradient(145deg, #1a2236 0%, #1c2640 100%)"
+          : "#ffffff",
+        border: isDark
+          ? "1px solid rgba(255,255,255,0.07)"
+          : "1px solid #eef0f4",
+        boxShadow: isDark
+          ? "0 4px 20px rgba(0,0,0,0.35)"
+          : "0 2px 16px rgba(0,0,0,0.06)",
+        my: { xs: 1.5, sm: 2 },
       }}
     >
+      {/* Header */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          mb: 2,
-          gap: 1,
-          flexWrap: "wrap",
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 1.2, sm: 1.4 },
+          borderBottom: isDark
+            ? "1px solid rgba(255,255,255,0.07)"
+            : "1px solid #f3f4f6",
         }}
       >
-        <Typography
-          variant="h5"
-          gutterBottom
-          textAlign="left"
-          sx={{
-            fontWeight: 700,
-            color: theme.palette.text.primary,
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            mb: 0,
-          }}
-        >
-          {t(vipBrands.length > 0 ? "VIP Brands" : "Featured Brands")}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "10px",
+              background: isVipMode
+                ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: isVipMode
+                ? "0 3px 8px rgba(245,158,11,0.4)"
+                : "0 3px 8px rgba(99,102,241,0.4)",
+            }}
+          >
+            <DiamondIcon sx={{ fontSize: 16, color: "white" }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                color: isDark ? "rgba(255,255,255,0.95)" : "#111827",
+                lineHeight: 1.2,
+              }}
+            >
+              {t(isVipMode ? "VIP Brands" : "Featured Brands")}
+            </Typography>
+            {isVipMode && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isDark ? "rgba(245,158,11,0.8)" : "#b45309",
+                  display: "block",
+                  lineHeight: 1,
+                  fontSize: "0.68rem",
+                }}
+              >
+                {t("Premium Partners")}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+
         <Button
           component={Link}
           to="/brands"
           size="small"
-          variant="outlined"
-          sx={{ textTransform: "none" }}
+          endIcon={
+            <ArrowForwardIosIcon
+              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
+            />
+          }
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.8rem",
+            color: "var(--color-primary, #1E6FD9)",
+            px: 1,
+            py: 0.5,
+            borderRadius: 2,
+            "&:hover": {
+              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(30,111,217,0.06)",
+            },
+          }}
         >
-          {t("See All")}{" "}
-          <ArrowForwardIcon
-            sx={{ transform: "rotate(180deg)", fontSize: "1rem" }}
-          />
+          {t("See All")}
         </Button>
       </Box>
-      <Slider {...settings}>
-        {displayBrands.map((brand) => (
-          <Box
-            key={brand._id}
-            component={Link}
-            to={`/brands/${brand._id}`}
-            sx={{
-              textAlign: "center",
-              textDecoration: "none",
-              "&:hover .brand-avatar": {
-                transform: "scale(1.1)",
-                boxShadow: `0 0 15px ${theme.palette.primary.main}`,
-              },
-            }}
-          >
-            <Avatar
-              src={resolveMediaUrl(brand.logo)}
-              alt={locName(brand)}
-              className="brand-avatar"
+
+      {/* Carousel */}
+      <Box sx={{ px: { xs: 1, sm: 1.5 }, py: { xs: 1.5, sm: 2 } }}>
+        <Slider {...settings}>
+          {displayBrands.map((brand) => (
+            <Box
+              key={brand._id}
+              component={Link}
+              to={`/brands/${brand._id}`}
               sx={{
-                width: 80,
-                height: 80,
-                m: "auto",
-                bgcolor: "background.paper",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                transition:
-                  "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
-                border: `2px solid ${theme.palette.divider}`,
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                mt: 1,
-                display: "block",
-                fontWeight: 500,
-                color: theme.palette.text.secondary,
+                textAlign: "center",
+                textDecoration: "none",
+                outline: "none",
+                px: 0.5,
+                "&:hover .brand-avatar": {
+                  transform: "scale(1.1)",
+                  boxShadow: isVipMode
+                    ? "0 0 16px rgba(245,158,11,0.5)"
+                    : `0 0 16px ${theme.palette.primary.main}40`,
+                },
               }}
             >
-              {locName(brand)}
-            </Typography>
-          </Box>
-        ))}
-      </Slider>
-    </Paper>
+              <Avatar
+                src={resolveMediaUrl(brand.logo)}
+                alt={locName(brand)}
+                className="brand-avatar"
+                sx={{
+                  width: { xs: 64, sm: 72, md: 80 },
+                  height: { xs: 64, sm: 72, md: 80 },
+                  m: "0 auto 6px",
+                  bgcolor: isDark ? "rgba(255,255,255,0.08)" : "#f9fafb",
+                  border: isDark
+                    ? "2px solid rgba(255,255,255,0.1)"
+                    : "2px solid #e5e7eb",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  borderRadius: "16px",
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  fontWeight: 600,
+                  fontSize: "0.68rem",
+                  color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  px: 0.5,
+                  lineHeight: 1.3,
+                }}
+              >
+                {locName(brand)}
+              </Typography>
+            </Box>
+          ))}
+        </Slider>
+      </Box>
+    </Box>
   );
 };
 
