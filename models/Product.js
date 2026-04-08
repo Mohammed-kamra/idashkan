@@ -35,6 +35,11 @@ const productSchema = new mongoose.Schema(
       ref: "Brand",
       required: false,
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: false,
+    },
     storeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Store",

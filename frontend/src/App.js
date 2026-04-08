@@ -235,6 +235,8 @@ function AppContent() {
                 <Route path="/categories" element={<ProductCategory />} />
                 <Route path="/brands" element={<BrandList />} />
                 <Route path="/brands/:id" element={<BrandProfile />} />
+                <Route path="/companies" element={<BrandList />} />
+                <Route path="/companies/:id" element={<BrandProfile />} />
                 <Route path="/gifts" element={<Gifts />} />
                 <Route path="/favourites" element={<FavouritesPage />} />
                 <Route

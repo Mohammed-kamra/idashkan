@@ -75,6 +75,7 @@ const SearchPage = () => {
     products: [],
     stores: [],
     brands: [],
+    companies: [],
     categories: [],
     categoryTypes: [],
   });
@@ -120,6 +121,7 @@ const SearchPage = () => {
           products: [],
           stores: [],
           brands: [],
+          companies: [],
           categories: [],
           categoryTypes: [],
         });
@@ -131,6 +133,7 @@ const SearchPage = () => {
           products: [],
           stores: [],
           brands: [],
+          companies: [],
           categories: [],
           categoryTypes: [],
         });
@@ -152,6 +155,7 @@ const SearchPage = () => {
           products: visibleProducts,
           stores: data.stores || [],
           brands: data.brands || [],
+          companies: data.companies || [],
           categories: data.categories || [],
           categoryTypes: data.categoryTypes || [],
         });
@@ -163,6 +167,7 @@ const SearchPage = () => {
           products: [],
           stores: [],
           brands: [],
+          companies: [],
           categories: [],
           categoryTypes: [],
         });
@@ -181,6 +186,7 @@ const SearchPage = () => {
         products: [],
         stores: [],
         brands: [],
+        companies: [],
         categories: [],
         categoryTypes: [],
       });
@@ -228,6 +234,9 @@ const SearchPage = () => {
   };
   const handleBrandClick = (id) => {
     navigate(`/brands/${id}`);
+  };
+  const handleCompanyClick = (id) => {
+    navigate(`/companies/${id}`);
   };
 
   const handleCategoryClick = (cat) => {
@@ -290,6 +299,9 @@ const SearchPage = () => {
     : [];
   const searchStores = Array.isArray(results.stores) ? results.stores : [];
   const searchBrands = Array.isArray(results.brands) ? results.brands : [];
+  const searchCompanies = Array.isArray(results.companies)
+    ? results.companies
+    : [];
   const searchCategories = Array.isArray(results.categories)
     ? results.categories
     : [];
@@ -301,6 +313,7 @@ const SearchPage = () => {
     searchProducts.length > 0 ||
     searchStores.length > 0 ||
     searchBrands.length > 0 ||
+    searchCompanies.length > 0 ||
     searchCategories.length > 0 ||
     searchCategoryTypes.length > 0;
 
@@ -374,7 +387,7 @@ const SearchPage = () => {
             fullWidth
             autoFocus
             placeholder={t(
-              "Search products, stores, brands, categories — any language",
+              "Search products, stores, brands, companies, categories — any language",
             )}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -858,6 +871,69 @@ const SearchPage = () => {
                               "name",
                               dataLanguage,
                             ) || t(b.brandTypeId.name)
+                          : undefined
+                      }
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </>
+          )}
+
+          {searchCompanies.length > 0 && (
+            <>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  bgcolor: "action.hover",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <BusinessIcon fontSize="small" color="primary" />
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {t("Companies")}
+                </Typography>
+              </Box>
+              <List disablePadding>
+                {searchCompanies.map((c) => (
+                  <ListItemButton
+                    key={c._id}
+                    onClick={() => handleCompanyClick(c._id)}
+                    sx={{
+                      py: 1.5,
+                      "&:hover": {
+                        bgcolor: "action.hover",
+                      },
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar
+                        variant="rounded"
+                        src={c.logo ? resolveMediaUrl(c.logo) : undefined}
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          bgcolor: "grey.200",
+                        }}
+                      >
+                        {!c.logo && <BusinessIcon sx={{ color: "grey.600" }} />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        getLocalizedField(c, "name", dataLanguage) || c.name
+                      }
+                      secondary={
+                        c.brandTypeId?.name
+                          ? getLocalizedField(
+                              c.brandTypeId,
+                              "name",
+                              dataLanguage,
+                            ) || t(c.brandTypeId.name)
                           : undefined
                       }
                       primaryTypographyProps={{ fontWeight: 500 }}

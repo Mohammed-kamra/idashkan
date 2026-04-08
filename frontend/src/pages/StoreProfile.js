@@ -20,6 +20,7 @@ import {
   Chip,
   Alert,
   useTheme,
+  useMediaQuery,
   Paper,
   Divider,
   IconButton,
@@ -44,6 +45,11 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
+import CloseIcon from "@mui/icons-material/Close";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CategoryIcon from "@mui/icons-material/Category";
+import BusinessIcon from "@mui/icons-material/Business";
+import StarIcon from "@mui/icons-material/Star";
 import {
   storeAPI,
   productAPI,
@@ -78,7 +84,9 @@ import {
   shouldShowExpiryChip,
   expiryChipBg,
   expiryGiftCardBg,
+  formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
+import FullScreenImageModal from "../components/FullScreenImageModal";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 /** Cart/localStorage snapshot: include name* so `locName` respects data language. */
@@ -103,6 +111,7 @@ const StoreProfile = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { t } = useTranslation();
   const { locName, locDescription, locTitle, locAddress } =
     useLocalizedContent();
@@ -150,6 +159,11 @@ const StoreProfile = () => {
 
   // Notification dialog state
   const [loginNotificationOpen, setLoginNotificationOpen] = useState(false);
+
+  // Product detail dialog state
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [productImageFullscreen, setProductImageFullscreen] = useState(null);
 
   // Like functionality states
   const [likeCounts, setLikeCounts] = useState({});
@@ -716,41 +730,74 @@ const StoreProfile = () => {
     return (
       <Card
         key={gift._id}
-        onClick={() => { setSelectedGift(gift); setDialogOpen(true); }}
+        onClick={() => {
+          setSelectedGift(gift);
+          setDialogOpen(true);
+        }}
         sx={{
           display: "flex",
           height: { xs: 140, sm: 200 },
           width: "100%",
           borderRadius: "16px",
           overflow: "hidden",
-          background: isDark ? "linear-gradient(145deg, #1e2a3a, #243040)" : "#fff",
-          border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #f0f2f5",
-          boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.35)" : "0 2px 12px rgba(0,0,0,0.06)",
+          background: isDark
+            ? "linear-gradient(145deg, #1e2a3a, #243040)"
+            : "#fff",
+          border: isDark
+            ? "1px solid rgba(255,255,255,0.07)"
+            : "1px solid #f0f2f5",
+          boxShadow: isDark
+            ? "0 4px 16px rgba(0,0,0,0.35)"
+            : "0 2px 12px rgba(0,0,0,0.06)",
           cursor: "pointer",
           transition: "all 0.25s ease",
           "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: isDark ? "0 8px 28px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.1)",
+            boxShadow: isDark
+              ? "0 8px 28px rgba(0,0,0,0.5)"
+              : "0 8px 24px rgba(0,0,0,0.1)",
           },
         }}
       >
         {/* Gift Image */}
-        <Box sx={{ width: { xs: 120, sm: 180 }, flexShrink: 0, position: "relative", overflow: "hidden" }}>
+        <Box
+          sx={{
+            width: { xs: 120, sm: 180 },
+            flexShrink: 0,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
           <CardMedia
             component="img"
             image={resolveMediaUrl(gift.image)}
             alt={gift.description}
             sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
-          <Box sx={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to right, rgba(0,0,0,0) 60%, " + (isDark ? "rgba(30,42,58,0.8)" : "rgba(255,255,255,0.6)") + " 100%)",
-            pointerEvents: "none",
-          }} />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to right, rgba(0,0,0,0) 60%, " +
+                (isDark ? "rgba(30,42,58,0.8)" : "rgba(255,255,255,0.6)") +
+                " 100%)",
+              pointerEvents: "none",
+            }}
+          />
         </Box>
 
         {/* Gift Content */}
-        <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", p: { xs: "12px !important", sm: "16px !important" }, minWidth: 0 }}>
+        <CardContent
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            p: { xs: "12px !important", sm: "16px !important" },
+            minWidth: 0,
+          }}
+        >
           <Typography
             variant="body2"
             sx={{
@@ -770,11 +817,34 @@ const StoreProfile = () => {
 
           {gift.brandId && (
             <Box
-              sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.8, cursor: "pointer" }}
-              onClick={(e) => { e.stopPropagation(); navigate(`/brands/${gift.brandId._id}?tab=gifts`); }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                mb: 0.8,
+                cursor: "pointer",
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/brands/${gift.brandId._id}?tab=gifts`);
+              }}
             >
-              <Business sx={{ fontSize: 14, color: "var(--brand-accent-orange, #ff8c00)" }} />
-              <Typography variant="caption" sx={{ color: "var(--brand-accent-orange, #ff8c00)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <Business
+                sx={{
+                  fontSize: 14,
+                  color: "var(--brand-accent-orange, #ff8c00)",
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "var(--brand-accent-orange, #ff8c00)",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {locName(gift.brandId)}
               </Typography>
             </Box>
@@ -785,10 +855,27 @@ const StoreProfile = () => {
               <Chip
                 label={formatExpiryExpiresPrefixedLabel(giftExp, t)}
                 size="small"
-                sx={{ height: 22, fontSize: "0.7rem", fontWeight: 600, bgcolor: expiryGiftCardBg(giftExp), color: "white", "& .MuiChip-label": { px: 0.8 } }}
+                sx={{
+                  height: 22,
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  bgcolor: expiryGiftCardBg(giftExp),
+                  color: "white",
+                  "& .MuiChip-label": { px: 0.8 },
+                }}
               />
             ) : (
-              <Chip label={t("No expiry")} size="small" sx={{ height: 22, fontSize: "0.7rem", bgcolor: isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb", color: isDark ? "white" : "#374151", "& .MuiChip-label": { px: 0.8 } }} />
+              <Chip
+                label={t("No expiry")}
+                size="small"
+                sx={{
+                  height: 22,
+                  fontSize: "0.7rem",
+                  bgcolor: isDark ? "rgba(255,255,255,0.15)" : "#e5e7eb",
+                  color: isDark ? "white" : "#374151",
+                  "& .MuiChip-label": { px: 0.8 },
+                }}
+              />
             )}
           </Box>
         </CardContent>
@@ -799,7 +886,10 @@ const StoreProfile = () => {
   // Render product card — modern premium card
   const renderProductCard = (product, index, showPrice = true) => {
     const discount = calculateDiscount(product.previousPrice, product.newPrice);
-    const hasPreviousPrice = product.previousPrice && product.newPrice && product.previousPrice > product.newPrice;
+    const hasPreviousPrice =
+      product.previousPrice &&
+      product.newPrice &&
+      product.previousPrice > product.newPrice;
     const isDark = theme.palette.mode === "dark";
     const expInfo = getExpiryRemainingInfo(product.expireDate);
 
@@ -812,6 +902,7 @@ const StoreProfile = () => {
       >
         <Fade in={true} timeout={300 + index * 50}>
           <Card
+            onClick={() => { setSelectedProduct(product); setProductDialogOpen(true); }}
             sx={{
               width: { xs: 155, sm: 190, md: 230 },
               minWidth: { xs: 155, sm: 190, md: 230 },
@@ -821,13 +912,22 @@ const StoreProfile = () => {
               display: "flex",
               flexDirection: "column",
               flexShrink: 0,
-              background: isDark ? "linear-gradient(145deg, #1e2a3a, #243040)" : "#ffffff",
-              border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #f0f2f5",
-              boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.06)",
+              cursor: "pointer",
+              background: isDark
+                ? "linear-gradient(145deg, #1e2a3a, #243040)"
+                : "#ffffff",
+              border: isDark
+                ? "1px solid rgba(255,255,255,0.07)"
+                : "1px solid #f0f2f5",
+              boxShadow: isDark
+                ? "0 4px 16px rgba(0,0,0,0.3)"
+                : "0 2px 12px rgba(0,0,0,0.06)",
               transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
               "&:hover": {
                 transform: "translateY(-3px)",
-                boxShadow: isDark ? "0 8px 28px rgba(0,0,0,0.45)" : "0 8px 28px rgba(30,111,217,0.12)",
+                boxShadow: isDark
+                  ? "0 8px 28px rgba(0,0,0,0.45)"
+                  : "0 8px 28px rgba(30,111,217,0.12)",
                 borderColor: isDark ? "rgba(255,255,255,0.14)" : "#dce8ff",
               },
               "&:active": { transform: "translateY(0)" },
@@ -835,14 +935,14 @@ const StoreProfile = () => {
           >
             {/* Product Image */}
             <Box
-              component={Link}
-              to={`/products/${product._id}`}
+              onClick={() => { setSelectedProduct(product); setProductDialogOpen(true); }}
               sx={{
                 position: "relative",
                 overflow: "hidden",
                 height: { xs: 140, sm: 160 },
                 flexShrink: 0,
                 backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#f8f9fb",
+                cursor: "pointer",
               }}
             >
               {product.image ? (
@@ -859,49 +959,111 @@ const StoreProfile = () => {
                   }}
                 />
               ) : (
-                <Box sx={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <StorefrontIcon sx={{ fontSize: 44, color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db" }} />
+                <Box
+                  sx={{
+                    height: "100%",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <StorefrontIcon
+                    sx={{
+                      fontSize: 44,
+                      color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db",
+                    }}
+                  />
                 </Box>
               )}
 
               {/* Top-left: discount badge; top-right: like */}
-              <Box sx={{ position: "absolute", top: 7, left: 7, right: 7, display: "flex", justifyContent: "space-between", alignItems: "flex-start", zIndex: 2 }}>
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 7,
+                  left: 7,
+                  right: 7,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  zIndex: 2,
+                }}
+              >
                 {hasPreviousPrice ? (
                   <Chip
-                    icon={<LocalOfferIcon sx={{ fontSize: "11px !important" }} />}
+                    icon={
+                      <LocalOfferIcon sx={{ fontSize: "11px !important" }} />
+                    }
                     label={`-${discount}%`}
                     size="small"
                     sx={{
-                      height: 22, fontSize: "0.68rem", fontWeight: 700,
+                      height: 22,
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
                       background: "linear-gradient(135deg,#ef4444,#dc2626)",
-                      color: "white", border: "none",
+                      color: "white",
+                      border: "none",
                       boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
                       "& .MuiChip-label": { px: 0.6 },
-                      "& .MuiChip-icon": { color: "white !important", ml: "4px !important" },
+                      "& .MuiChip-icon": {
+                        color: "white !important",
+                        ml: "4px !important",
+                      },
                     }}
                   />
-                ) : <Box />}
+                ) : (
+                  <Box />
+                )}
                 <IconButton
                   size="small"
                   onClick={(e) => handleLikeClick(product._id, e)}
                   disabled={likeLoading[product._id]}
                   sx={{
-                    width: 28, height: 28,
-                    bgcolor: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
-                    color: likeStates[product._id] || isProductLiked(product._id) ? "#ef4444" : "#9ca3af",
+                    width: 28,
+                    height: 28,
+                    bgcolor: "rgba(255,255,255,0.92)",
+                    backdropFilter: "blur(8px)",
+                    color:
+                      likeStates[product._id] || isProductLiked(product._id)
+                        ? "#ef4444"
+                        : "#9ca3af",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                    transition: "all 0.2s ease", p: 0,
-                    "&:hover": { bgcolor: "white", color: "#ef4444", transform: "scale(1.15)" },
+                    transition: "all 0.2s ease",
+                    p: 0,
+                    "&:hover": {
+                      bgcolor: "white",
+                      color: "#ef4444",
+                      transform: "scale(1.15)",
+                    },
                   }}
                 >
-                  {likeStates[product._id] || isProductLiked(product._id)
-                    ? <FavoriteIcon sx={{ fontSize: "0.95rem" }} />
-                    : <FavoriteBorderIcon sx={{ fontSize: "0.95rem" }} />}
+                  {likeStates[product._id] || isProductLiked(product._id) ? (
+                    <FavoriteIcon sx={{ fontSize: "0.95rem" }} />
+                  ) : (
+                    <FavoriteBorderIcon sx={{ fontSize: "0.95rem" }} />
+                  )}
                 </IconButton>
               </Box>
               {/* View count badge */}
               {product.viewCount > 0 && (
-                <Box sx={{ position: "absolute", bottom: 7, right: 7, display: "flex", alignItems: "center", gap: 0.4, bgcolor: "rgba(0,0,0,0.6)", color: "white", px: 0.8, py: 0.3, borderRadius: 1, fontSize: "0.65rem", backdropFilter: "blur(4px)" }}>
+                <Box
+                  sx={{
+                    position: "absolute",
+                    bottom: 7,
+                    right: 7,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.4,
+                    bgcolor: "rgba(0,0,0,0.6)",
+                    color: "white",
+                    px: 0.8,
+                    py: 0.3,
+                    borderRadius: 1,
+                    fontSize: "0.65rem",
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
                   <VisibilityIcon sx={{ fontSize: "0.75rem" }} />
                   {product.viewCount}
                 </Box>
@@ -911,19 +1073,44 @@ const StoreProfile = () => {
                 <Chip
                   label={formatExpiryChipLabel(expInfo, t)}
                   size="small"
-                  sx={{ position: "absolute", bottom: 7, left: 7, zIndex: 2, pointerEvents: "none", bgcolor: expiryChipBg(expInfo), color: "white", fontWeight: 700, fontSize: "0.62rem", height: 20, "& .MuiChip-label": { px: 0.6 } }}
+                  sx={{
+                    position: "absolute",
+                    bottom: 7,
+                    left: 7,
+                    zIndex: 2,
+                    pointerEvents: "none",
+                    bgcolor: expiryChipBg(expInfo),
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "0.62rem",
+                    height: 20,
+                    "& .MuiChip-label": { px: 0.6 },
+                  }}
                 />
               )}
             </Box>
 
             {/* Product Content */}
-            <CardContent sx={{ p: "10px 10px 10px !important", flex: 1, display: "flex", flexDirection: "column", gap: 0.4 }}>
+            <CardContent
+              sx={{
+                p: "10px 10px 10px !important",
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.4,
+              }}
+            >
               <Typography
                 variant="body2"
                 sx={{
-                  fontWeight: 600, fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                  lineHeight: 1.35, color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
-                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                  fontWeight: 600,
+                  fontSize: { xs: "0.8rem", sm: "0.85rem" },
+                  lineHeight: 1.35,
+                  color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
                   minHeight: "2.7em",
                 }}
               >
@@ -933,11 +1120,28 @@ const StoreProfile = () => {
               {showPrice && (
                 <Box sx={{ mt: "auto", pt: 0.5 }}>
                   {hasPreviousPrice && (
-                    <Typography variant="caption" sx={{ display: "block", textDecoration: "line-through", color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af", fontSize: "0.7rem", lineHeight: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        textDecoration: "line-through",
+                        color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af",
+                        fontSize: "0.7rem",
+                        lineHeight: 1,
+                      }}
+                    >
                       {formatPrice(product.previousPrice)}
                     </Typography>
                   )}
-                  <Typography variant="body2" sx={{ fontWeight: 800, fontSize: { xs: "0.9rem", sm: "0.95rem" }, color: "var(--color-secondary, #1E6FD9)", lineHeight: 1.2 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                      color: "var(--color-secondary, #1E6FD9)",
+                      lineHeight: 1.2,
+                    }}
+                  >
                     {formatPrice(product.newPrice)}
                   </Typography>
                 </Box>
@@ -949,13 +1153,20 @@ const StoreProfile = () => {
                     onClick={(e) => addToCart(product, e)}
                     size="small"
                     sx={{
-                      width: 32, height: 32, p: 0,
+                      width: 32,
+                      height: 32,
+                      p: 0,
                       bgcolor: "linear-gradient(135deg, #f59e0b, #d97706)",
-                      background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                      color: "white", borderRadius: "10px",
+                      background:
+                        "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                      color: "white",
+                      borderRadius: "10px",
                       boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
                       transition: "all 0.2s ease",
-                      "&:hover": { transform: "scale(1.1)", boxShadow: "0 4px 12px rgba(245,158,11,0.5)" },
+                      "&:hover": {
+                        transform: "scale(1.1)",
+                        boxShadow: "0 4px 12px rgba(245,158,11,0.5)",
+                      },
                     }}
                     aria-label="Add to cart"
                   >
@@ -981,7 +1192,8 @@ const StoreProfile = () => {
       const displayProducts = isExpanded
         ? typeProducts.slice(0, currentDisplayCount)
         : typeProducts.slice(0, 20);
-      const hasMore = typeProducts.length > (isExpanded ? currentDisplayCount : 20);
+      const hasMore =
+        typeProducts.length > (isExpanded ? currentDisplayCount : 20);
 
       return (
         <Box
@@ -990,65 +1202,134 @@ const StoreProfile = () => {
             mb: 2,
             borderRadius: "18px",
             overflow: "hidden",
-            background: isDark ? "linear-gradient(145deg,#1a2236,#1e2a40)" : "#fff",
-            border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #eef0f4",
-            boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.3)" : "0 2px 14px rgba(0,0,0,0.05)",
+            background: isDark
+              ? "linear-gradient(145deg,#1a2236,#1e2a40)"
+              : "#fff",
+            border: isDark
+              ? "1px solid rgba(255,255,255,0.07)"
+              : "1px solid #eef0f4",
+            boxShadow: isDark
+              ? "0 4px 20px rgba(0,0,0,0.3)"
+              : "0 2px 14px rgba(0,0,0,0.05)",
           }}
         >
           {/* Category header */}
-          <Box sx={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            px: { xs: 1.5, sm: 2 }, py: { xs: 1.2, sm: 1.4 },
-            borderBottom: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid #f3f4f6",
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              px: { xs: 1.5, sm: 2 },
+              py: { xs: 1.2, sm: 1.4 },
+              borderBottom: isDark
+                ? "1px solid rgba(255,255,255,0.07)"
+                : "1px solid #f3f4f6",
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box sx={{
-                width: 30, height: 30, borderRadius: "9px",
-                background: "linear-gradient(135deg,var(--brand-accent-orange,#ff8c00),#d97706)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(255,140,0,0.35)",
-              }}>
+              <Box
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "9px",
+                  background:
+                    "linear-gradient(135deg,var(--brand-accent-orange,#ff8c00),#d97706)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(255,140,0,0.35)",
+                }}
+              >
                 <StorefrontIcon sx={{ fontSize: 16, color: "white" }} />
               </Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, fontSize: { xs: "0.9rem", sm: "1rem" }, color: isDark ? "rgba(255,255,255,0.92)" : "#111827", lineHeight: 1.2 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 800,
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
+                  lineHeight: 1.2,
+                }}
+              >
                 {t(type)}
               </Typography>
               <Chip
                 label={`${typeProducts.length}`}
                 size="small"
-                sx={{ height: 20, fontSize: "0.68rem", fontWeight: 700, bgcolor: isDark ? "rgba(255,140,0,0.2)" : "rgba(255,140,0,0.1)", color: "var(--brand-accent-orange,#ff8c00)", "& .MuiChip-label": { px: 0.8 } }}
+                sx={{
+                  height: 20,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  bgcolor: isDark
+                    ? "rgba(255,140,0,0.2)"
+                    : "rgba(255,140,0,0.1)",
+                  color: "var(--brand-accent-orange,#ff8c00)",
+                  "& .MuiChip-label": { px: 0.8 },
+                }}
               />
             </Box>
           </Box>
 
           {/* Products horizontal scroll */}
-          <Box sx={{
-            px: { xs: 1, sm: 1.5 }, py: { xs: 1.2, sm: 1.5 },
-            display: "flex", gap: { xs: 1, sm: 1.2 },
-            overflowX: "auto", overflowY: "hidden",
-            scrollbarWidth: "thin",
-            scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
-            "&::-webkit-scrollbar": { height: 4 },
-            "&::-webkit-scrollbar-track": { background: "transparent" },
-            "&::-webkit-scrollbar-thumb": { background: isDark ? "#4a5568" : "#d1d5db", borderRadius: 4 },
-          }}>
+          <Box
+            sx={{
+              px: { xs: 1, sm: 1.5 },
+              py: { xs: 1.2, sm: 1.5 },
+              display: "flex",
+              gap: { xs: 1, sm: 1.2 },
+              overflowX: "auto",
+              overflowY: "hidden",
+              scrollbarWidth: "thin",
+              scrollbarColor: isDark
+                ? "#4a5568 transparent"
+                : "#d1d5db transparent",
+              "&::-webkit-scrollbar": { height: 4 },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": {
+                background: isDark ? "#4a5568" : "#d1d5db",
+                borderRadius: 4,
+              },
+            }}
+          >
             {displayProducts.map((product, index) =>
               renderProductCard(product, index, showPrice),
             )}
             {hasMore && (
               <Box
-                onClick={() => isExpanded ? loadMoreProducts(type) : toggleExpanded(type)}
+                onClick={() =>
+                  isExpanded ? loadMoreProducts(type) : toggleExpanded(type)
+                }
                 sx={{
-                  flexShrink: 0, width: { xs: 80, sm: 100 },
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-                  borderRadius: "16px", cursor: "pointer",
-                  border: isDark ? "1px dashed rgba(255,255,255,0.15)" : "1px dashed #d1d5db",
+                  flexShrink: 0,
+                  width: { xs: 80, sm: 100 },
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 1,
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  border: isDark
+                    ? "1px dashed rgba(255,255,255,0.15)"
+                    : "1px dashed #d1d5db",
                   color: isDark ? "rgba(255,255,255,0.5)" : "#6b7280",
                   transition: "all 0.2s ease",
-                  "&:hover": { borderColor: "var(--brand-accent-orange,#ff8c00)", color: "var(--brand-accent-orange,#ff8c00)", background: "rgba(255,140,0,0.05)" },
+                  "&:hover": {
+                    borderColor: "var(--brand-accent-orange,#ff8c00)",
+                    color: "var(--brand-accent-orange,#ff8c00)",
+                    background: "rgba(255,140,0,0.05)",
+                  },
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.7rem", textAlign: "center", lineHeight: 1.3 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    textAlign: "center",
+                    lineHeight: 1.3,
+                  }}
+                >
                   +{typeProducts.length - displayProducts.length} {t("more")}
                 </Typography>
               </Box>
@@ -1121,13 +1402,32 @@ const StoreProfile = () => {
     return (
       <Box sx={{ py: { xs: 8, sm: 4 }, px: { xs: 1, sm: 2 } }}>
         {/* Back button skeleton */}
-        <Skeleton variant="rounded" width={80} height={36} sx={{ mb: 2, borderRadius: "999px" }} />
+        <Skeleton
+          variant="rounded"
+          width={80}
+          height={36}
+          sx={{ mb: 2, borderRadius: "999px" }}
+        />
         {/* Hero header skeleton */}
-        <Skeleton variant="rounded" sx={{ width: "100%", height: { xs: 200, sm: 240 }, borderRadius: "20px", mb: 3 }} />
+        <Skeleton
+          variant="rounded"
+          sx={{
+            width: "100%",
+            height: { xs: 200, sm: 240 },
+            borderRadius: "20px",
+            mb: 3,
+          }}
+        />
         {/* Tab bar skeleton */}
         <Box sx={{ display: "flex", gap: 1, mb: 3 }}>
           {[100, 120, 90, 80].map((w, i) => (
-            <Skeleton key={i} variant="rounded" width={w} height={38} sx={{ borderRadius: "999px" }} />
+            <Skeleton
+              key={i}
+              variant="rounded"
+              width={w}
+              height={38}
+              sx={{ borderRadius: "999px" }}
+            />
           ))}
         </Box>
         {/* Product rows skeleton */}
@@ -1137,8 +1437,18 @@ const StoreProfile = () => {
             <Box sx={{ display: "flex", gap: 1.5 }}>
               {[1, 2, 3, 4].map((c) => (
                 <Box key={c}>
-                  <Skeleton variant="rounded" width={148} height={150} sx={{ borderRadius: "12px 12px 0 0" }} />
-                  <Skeleton variant="rounded" width={148} height={68} sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }} />
+                  <Skeleton
+                    variant="rounded"
+                    width={148}
+                    height={150}
+                    sx={{ borderRadius: "12px 12px 0 0" }}
+                  />
+                  <Skeleton
+                    variant="rounded"
+                    width={148}
+                    height={68}
+                    sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }}
+                  />
                 </Box>
               ))}
             </Box>
@@ -1246,13 +1556,14 @@ const StoreProfile = () => {
       sx={{
         display: "flex",
         alignItems: "center",
+        justifyContent: "center",
         gap: 1,
         flexWrap: "nowrap",
         overflowX: "auto",
       }}
     >
-      <Phone sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
-      <Typography
+      {/* <Phone sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} /> */}
+      {/* <Typography
         variant={displayPhone ? "h6" : "body2"}
         sx={{
           fontSize: { xs: "0.875rem", md: "1.125rem" },
@@ -1263,7 +1574,7 @@ const StoreProfile = () => {
         }}
       >
         {displayPhone || t("phone not provided")}
-      </Typography>
+      </Typography> */}
       {socialLinks
         .filter((item) => Boolean(item.value))
         .map((item) => {
@@ -1314,7 +1625,13 @@ const StoreProfile = () => {
   const isDark = theme.palette.mode === "dark";
 
   return (
-    <Box sx={{ py: { xs: 8, sm: 4 }, px: { xs: 1, sm: 1.5, md: 3 }, pb: { xs: 10, sm: 4 } }}>
+    <Box
+      sx={{
+        py: { xs: 8, sm: 4 },
+        px: { xs: 1, sm: 1.5, md: 3 },
+        pb: { xs: 10, sm: 4 },
+      }}
+    >
       {store?.isHasDelivery && (
         <Box
           sx={{
@@ -1375,12 +1692,18 @@ const StoreProfile = () => {
         onClick={() => navigate(-1)}
         size="small"
         sx={{
-          mb: 2, borderRadius: "999px", textTransform: "none",
-          fontWeight: 600, fontSize: "0.85rem",
+          mb: 2,
+          borderRadius: "999px",
+          textTransform: "none",
+          fontWeight: 600,
+          fontSize: "0.85rem",
           color: isDark ? "rgba(255,255,255,0.7)" : "#374151",
           bgcolor: isDark ? "rgba(255,255,255,0.07)" : "#f3f4f6",
-          border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e5e7eb",
-          px: 2, py: 0.6,
+          border: isDark
+            ? "1px solid rgba(255,255,255,0.1)"
+            : "1px solid #e5e7eb",
+          px: 2,
+          py: 0.6,
           "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.12)" : "#e9ecf0" },
         }}
       >
@@ -1392,60 +1715,136 @@ const StoreProfile = () => {
           mb: 3,
           borderRadius: "20px",
           overflow: "hidden",
-          background: "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 60%, #5ba4f5 100%)",
+          background:
+            "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 60%, #5ba4f5 100%)",
           boxShadow: isDark
             ? "0 8px 32px rgba(0,0,0,0.45)"
             : "0 8px 32px rgba(30,111,217,0.28)",
           position: "relative",
           "&::before": {
-            content: '""', position: "absolute",
-            top: "-40%", right: "-10%",
-            width: 280, height: 280, borderRadius: "50%",
-            background: "rgba(255,255,255,0.06)", pointerEvents: "none",
+            content: '""',
+            position: "absolute",
+            top: "-40%",
+            right: "-10%",
+            width: 280,
+            height: 280,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.06)",
+            pointerEvents: "none",
           },
         }}
       >
-        <Box sx={{ p: { xs: "18px 16px", sm: "24px 28px", md: "28px 36px" }, position: "relative", zIndex: 1 }}>
+        <Box
+          sx={{
+            p: { xs: "18px 16px", sm: "24px 28px", md: "28px 36px" },
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           {/* Logo + Name + Follow row */}
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: { xs: 1.5, sm: 2.5 }, mb: 1.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: { xs: 1.5, sm: 2.5 },
+              mb: 1.5,
+            }}
+          >
             <Avatar
               src={store.logo ? resolveMediaUrl(store.logo) : undefined}
               alt={locName(store)}
               sx={{
-                width: { xs: 64, sm: 88, md: 110 }, height: { xs: 64, sm: 88, md: 110 },
+                width: { xs: 64, sm: 88, md: 110 },
+                height: { xs: 64, sm: 88, md: 110 },
                 border: "3px solid rgba(255,255,255,0.3)",
                 boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
                 bgcolor: "rgba(255,255,255,0.15)",
-                borderRadius: "18px", flexShrink: 0,
+                borderRadius: "18px",
+                flexShrink: 0,
               }}
             >
-              {!store.logo && <Business sx={{ fontSize: { xs: 32, sm: 44 }, color: "rgba(255,255,255,0.85)" }} />}
+              {!store.logo && (
+                <Business
+                  sx={{
+                    fontSize: { xs: 32, sm: 44 },
+                    color: "rgba(255,255,255,0.85)",
+                  }}
+                />
+              )}
             </Avatar>
 
             <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.8 }}>
-                <Typography variant="h5" sx={{ fontWeight: 800, fontSize: { xs: "1.15rem", sm: "1.5rem", md: "1.8rem" }, color: "white", textShadow: "0 2px 6px rgba(0,0,0,0.25)", lineHeight: 1.2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexWrap: "wrap",
+                  mb: 0.8,
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: { xs: "1.15rem", sm: "1.5rem", md: "1.8rem" },
+                    color: "white",
+                    textShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                    lineHeight: 1.2,
+                  }}
+                >
                   {locName(store)}
                 </Typography>
                 {store.isVip && (
                   <Chip
                     label={t("VIP")}
                     size="small"
-                    sx={{ height: 22, fontSize: "0.65rem", fontWeight: 800, bgcolor: "#f59e0b", color: "white", border: "none", boxShadow: "0 2px 6px rgba(245,158,11,0.5)", "& .MuiChip-label": { px: 0.8 } }}
+                    sx={{
+                      height: 22,
+                      fontSize: "0.65rem",
+                      fontWeight: 800,
+                      bgcolor: "#f59e0b",
+                      color: "white",
+                      border: "none",
+                      boxShadow: "0 2px 6px rgba(245,158,11,0.5)",
+                      "& .MuiChip-label": { px: 0.8 },
+                    }}
                   />
                 )}
                 {store.isHasDelivery && (
                   <Chip
                     label={t("Delivery")}
                     size="small"
-                    sx={{ height: 22, fontSize: "0.65rem", fontWeight: 700, bgcolor: "rgba(239,68,68,0.75)", color: "white", border: "none", "& .MuiChip-label": { px: 0.8 } }}
+                    sx={{
+                      height: 22,
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      bgcolor: "rgba(239,68,68,0.75)",
+                      color: "white",
+                      border: "none",
+                      "& .MuiChip-label": { px: 0.8 },
+                    }}
                   />
                 )}
               </Box>
 
               {/* Followers + Follow button */}
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
-                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.85)", fontWeight: 600, fontSize: "0.82rem" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "rgba(255,255,255,0.85)",
+                    fontWeight: 600,
+                    fontSize: "0.82rem",
+                  }}
+                >
                   {followerCount} {t("Followers")}
                 </Typography>
                 <Button
@@ -1456,17 +1855,45 @@ const StoreProfile = () => {
                     try {
                       const result = await toggleFollowStore(store._id);
                       if (result?.success && result?.data != null) {
-                        setFollowerCount(Math.max(0, result.data.followerCount ?? followerCount));
+                        setFollowerCount(
+                          Math.max(
+                            0,
+                            result.data.followerCount ?? followerCount,
+                          ),
+                        );
                       }
-                    } finally { setFollowLoading(false); }
+                    } finally {
+                      setFollowLoading(false);
+                    }
                   }}
-                  startIcon={isStoreFollowed(store._id) ? <PersonAddDisabledIcon sx={{ fontSize: "0.9rem !important" }} /> : <PersonAddIcon sx={{ fontSize: "0.9rem !important" }} />}
+                  startIcon={
+                    isStoreFollowed(store._id) ? (
+                      <PersonAddDisabledIcon
+                        sx={{ fontSize: "0.9rem !important" }}
+                      />
+                    ) : (
+                      <PersonAddIcon sx={{ fontSize: "0.9rem !important" }} />
+                    )
+                  }
                   sx={{
-                    textTransform: "none", fontWeight: 700, borderRadius: "999px", px: 1.5, py: 0.4,
-                    fontSize: "0.8rem", lineHeight: 1.5,
+                    textTransform: "none",
+                    fontWeight: 700,
+                    borderRadius: "999px",
+                    px: 1.5,
+                    py: 0.4,
+                    fontSize: "0.8rem",
+                    lineHeight: 1.5,
                     ...(isStoreFollowed(store._id)
-                      ? { bgcolor: "rgba(239,68,68,0.8)", color: "white", "&:hover": { bgcolor: "rgba(239,68,68,1)" } }
-                      : { bgcolor: "rgba(34,197,94,0.85)", color: "white", "&:hover": { bgcolor: "rgba(34,197,94,1)" } }),
+                      ? {
+                          bgcolor: "rgba(239,68,68,0.8)",
+                          color: "white",
+                          "&:hover": { bgcolor: "rgba(239,68,68,1)" },
+                        }
+                      : {
+                          bgcolor: "rgba(34,197,94,0.85)",
+                          color: "white",
+                          "&:hover": { bgcolor: "rgba(34,197,94,1)" },
+                        }),
                   }}
                 >
                   {isStoreFollowed(store._id) ? t("Unfollow") : t("Follow")}
@@ -1479,18 +1906,48 @@ const StoreProfile = () => {
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.8 }}>
             {locAddress(store) && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                <LocationOn sx={{ fontSize: { xs: 16, md: 18 }, color: "rgba(255,255,255,0.8)" }} />
-                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.85)", fontSize: { xs: "0.78rem", sm: "0.875rem" }, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: { xs: 220, sm: 450 } }}>
+                <LocationOn
+                  sx={{
+                    fontSize: { xs: 16, md: 18 },
+                    color: "rgba(255,255,255,0.8)",
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "rgba(255,255,255,0.85)",
+                    fontSize: { xs: "0.78rem", sm: "0.875rem" },
+                    textOverflow: "ellipsis",
+                    maxWidth: { xs: 280, sm: 450 },
+                  }}
+                >
                   {locAddress(store)}
                 </Typography>
               </Box>
             )}
             {(locationLinks.length > 0 || displayPhone) && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexWrap: "wrap",
+                }}
+              >
                 {displayPhone && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Phone sx={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }} />
-                    <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.85)", fontFamily: "monospace", fontWeight: 600, fontSize: "0.8rem" }}>
+                    <Phone
+                      sx={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "rgba(255,255,255,0.85)",
+                        fontFamily: "monospace",
+                        fontWeight: 600,
+                        fontSize: "0.8rem",
+                      }}
+                    >
                       {displayPhone}
                     </Typography>
                   </Box>
@@ -1500,7 +1957,16 @@ const StoreProfile = () => {
             )}
             <Box>{renderContactRow()}</Box>
             {store.description && (
-              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", fontSize: "0.8rem", lineHeight: 1.5, mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  textAlign: "center",
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: "0.8rem",
+                  lineHeight: 1.5,
+                  mt: 0.5,
+                }}
+              >
                 {store.description}
               </Typography>
             )}
@@ -1556,25 +2022,41 @@ const StoreProfile = () => {
               return (
                 <Chip
                   key={tab.key}
-                  icon={React.cloneElement(tab.icon, { sx: { fontSize: "0.9rem !important" } })}
+                  icon={React.cloneElement(tab.icon, {
+                    sx: { fontSize: "0.9rem !important" },
+                  })}
                   label={tab.label}
                   onClick={() => handleTabChange(null, idx)}
                   sx={{
-                    height: 36, fontSize: "0.78rem", fontWeight: isActive ? 700 : 500,
+                    height: 36,
+                    fontSize: "0.78rem",
+                    fontWeight: isActive ? 700 : 500,
                     flexShrink: 0,
                     transition: "all 0.2s ease",
                     ...(isActive
                       ? {
-                          background: "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)",
-                          color: "white", border: "none",
+                          background:
+                            "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)",
+                          color: "white",
+                          border: "none",
                           boxShadow: "0 3px 10px rgba(30,111,217,0.4)",
-                          "& .MuiChip-icon": { color: "rgba(255,255,255,0.9) !important" },
+                          "& .MuiChip-icon": {
+                            color: "rgba(255,255,255,0.9) !important",
+                          },
                         }
                       : {
-                          background: isDark ? "rgba(255,255,255,0.07)" : "#f3f4f6",
+                          background: isDark
+                            ? "rgba(255,255,255,0.07)"
+                            : "#f3f4f6",
                           color: isDark ? "rgba(255,255,255,0.7)" : "#374151",
-                          border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e5e7eb",
-                          "&:hover": { background: isDark ? "rgba(255,255,255,0.12)" : "#e9ecf0" },
+                          border: isDark
+                            ? "1px solid rgba(255,255,255,0.1)"
+                            : "1px solid #e5e7eb",
+                          "&:hover": {
+                            background: isDark
+                              ? "rgba(255,255,255,0.12)"
+                              : "#e9ecf0",
+                          },
                         }),
                   }}
                 />
@@ -1746,6 +2228,411 @@ const StoreProfile = () => {
           </Typography>
         </DialogContent>
       </Dialog>
+      {/* Product Detail Dialog */}
+      <Dialog
+        open={productDialogOpen}
+        onClose={() => setProductDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: isMobile ? 0 : 4,
+            overflow: "hidden",
+            backgroundColor:
+              theme.palette.mode === "dark" ? "rgba(22,28,44,1)" : "#fff",
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            px: 2,
+            py: 1.5,
+            borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={() => setProductDialogOpen(false)}
+            sx={{
+              mr: 1.5,
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.07)"
+                  : "rgba(0,0,0,0.05)",
+              borderRadius: 2,
+            }}
+          >
+            <CloseIcon sx={{ fontSize: "1.1rem" }} />
+          </IconButton>
+          <Typography sx={{ fontWeight: 700, fontSize: "1rem", flex: 1 }}>
+            {t("Product Details")}
+          </Typography>
+        </Box>
+
+        <DialogContent sx={{ p: 0, overflowX: "hidden" }}>
+          {selectedProduct &&
+            (() => {
+              const isDark = theme.palette.mode === "dark";
+              const pid = selectedProduct._id;
+              const liked = likeStates[pid] ?? isProductLiked(pid);
+              const likeCount =
+                likeCounts[pid] ?? selectedProduct.likeCount ?? 0;
+              const viewCount = selectedProduct.viewCount ?? 0;
+              const isLikeLoading = likeLoading[pid];
+              const discountPct = calculateDiscount(
+                selectedProduct.previousPrice,
+                selectedProduct.newPrice,
+              );
+              const hasDiscount = isDiscountValid(selectedProduct);
+              const discountLabel =
+                discountPct !== null ? `-${discountPct}%` : t("Discount");
+
+              const categoryId =
+                selectedProduct.categoryId?._id || selectedProduct.categoryId;
+              const related = products.filter(
+                (p) =>
+                  p._id !== pid &&
+                  (p.categoryId?._id || p.categoryId) === categoryId &&
+                  isExpiryStillValid(p.expireDate || null) !== false &&
+                  isDiscountValid(p),
+              );
+
+              return (
+                <Box>
+                  {selectedProduct.image ? (
+                    <Box
+                      sx={{
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.03)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 220,
+                        cursor: "pointer",
+                      }}
+                      onClick={() =>
+                        setProductImageFullscreen({
+                          url: resolveMediaUrl(selectedProduct.image),
+                          alt: locName(selectedProduct),
+                        })
+                      }
+                    >
+                      <CardMedia
+                        component="img"
+                        image={resolveMediaUrl(selectedProduct.image)}
+                        alt={locName(selectedProduct)}
+                        sx={{
+                          maxHeight: 260,
+                          objectFit: "contain",
+                          width: "100%",
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        height: 180,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <ShoppingCartIcon sx={{ fontSize: 64, opacity: 0.2 }} />
+                    </Box>
+                  )}
+
+                  <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1.25 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", lineHeight: 1.35 }}>
+                      {locName(selectedProduct)}
+                    </Typography>
+
+                    {locDescription(selectedProduct) && (
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+                        {locDescription(selectedProduct)}
+                      </Typography>
+                    )}
+
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                      {(selectedProduct.companyId || selectedProduct.brandId) &&
+                        locName(selectedProduct.companyId || selectedProduct.brandId) && (
+                        <Chip
+                          icon={<BusinessIcon sx={{ fontSize: "0.9rem !important" }} />}
+                          label={locName(selectedProduct.companyId || selectedProduct.brandId)}
+                          size="small"
+                          onClick={() => {
+                            const owner =
+                              selectedProduct.companyId || selectedProduct.brandId;
+                            setProductDialogOpen(false);
+                            navigate(
+                              selectedProduct.companyId
+                                ? `/companies/${owner._id}`
+                                : `/brands/${owner._id}`,
+                            );
+                          }}
+                          sx={{
+                            borderRadius: 99,
+                            fontWeight: 600,
+                            fontSize: "0.72rem",
+                            cursor: "pointer",
+                            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(30,111,217,0.08)",
+                            color: "var(--color-primary,#1E6FD9)",
+                          }}
+                        />
+                      )}
+                      {selectedProduct.storeId && locName(selectedProduct.storeId) && (
+                        <Chip
+                          icon={<StorefrontIcon sx={{ fontSize: "0.9rem !important" }} />}
+                          label={locName(selectedProduct.storeId)}
+                          size="small"
+                          onClick={() => {
+                            setProductDialogOpen(false);
+                            navigate(`/stores/${selectedProduct.storeId._id}`);
+                          }}
+                          sx={{
+                            borderRadius: 99,
+                            fontWeight: 600,
+                            fontSize: "0.72rem",
+                            cursor: "pointer",
+                            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(30,111,217,0.08)",
+                            color: "var(--color-primary,#1E6FD9)",
+                          }}
+                        />
+                      )}
+                      {selectedProduct.categoryId && (
+                        <Chip
+                          icon={<CategoryIcon sx={{ fontSize: "0.9rem !important" }} />}
+                          label={locName(selectedProduct.categoryId) || t("Category")}
+                          size="small"
+                          sx={{
+                            borderRadius: 99,
+                            fontWeight: 600,
+                            fontSize: "0.72rem",
+                            backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(30,111,217,0.08)",
+                            color: "var(--color-primary,#1E6FD9)",
+                          }}
+                        />
+                      )}
+                    </Box>
+
+                    {selectedProduct.expireDate &&
+                      (() => {
+                        const info = getExpiryRemainingInfo(selectedProduct.expireDate);
+                        const label = formatExpiryChipLabel(info, t);
+                        const chipColor = expiryChipBg(info);
+                        const dateStr = formatExpiryDateDdMmYyyy(selectedProduct.expireDate);
+                        return (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              px: 1.25,
+                              py: 0.9,
+                              borderRadius: 2.5,
+                              backgroundColor: isDark ? `${chipColor}22` : `${chipColor}18`,
+                              border: `1px solid ${chipColor}55`,
+                            }}
+                          >
+                            <AccessTimeIcon sx={{ fontSize: "1rem", color: chipColor, flexShrink: 0 }} />
+                            <Box sx={{ display: "flex", flexDirection: "column" }}>
+                              <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: chipColor, lineHeight: 1.3 }}>
+                                {info.kind === "expired" ? t("Expired") : label || t("Expires")}
+                              </Typography>
+                              {dateStr && (
+                                <Typography sx={{ fontSize: "0.66rem", fontWeight: 500, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)", lineHeight: 1.2 }}>
+                                  {dateStr}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                      })()}
+
+                    <Box
+                      sx={{
+                        mt: 0.5,
+                        p: 1.75,
+                        borderRadius: 3,
+                        backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.025)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.25,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {t("Price")}
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        {hasDiscount && selectedProduct.previousPrice && Number(selectedProduct.previousPrice) > Number(selectedProduct.newPrice) && (
+                          <Typography sx={{ textDecoration: "line-through", color: "text.disabled", fontSize: "0.9rem" }}>
+                            {formatPrice(selectedProduct.previousPrice)}
+                          </Typography>
+                        )}
+                        <Typography sx={{ fontWeight: 900, fontSize: "1.65rem", color: "var(--color-secondary,#0d47a1)", lineHeight: 1 }}>
+                          {formatPrice(selectedProduct.newPrice)}
+                        </Typography>
+                        {hasDiscount && (
+                          <Chip
+                            label={discountLabel}
+                            size="small"
+                            sx={{ height: 22, fontSize: "0.72rem", fontWeight: 800, backgroundColor: "#e53e3e", color: "#fff", borderRadius: 99 }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        mt: 0.25,
+                        px: 1.5,
+                        py: 1,
+                        borderRadius: 3,
+                        backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.025)",
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"}`,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          cursor: isLikeLoading ? "default" : "pointer",
+                          userSelect: "none",
+                          px: 1.25,
+                          py: 0.6,
+                          borderRadius: 99,
+                          transition: "background 0.15s",
+                          backgroundColor: liked ? "rgba(229,62,62,0.12)" : "transparent",
+                          "&:active": { transform: "scale(0.93)" },
+                        }}
+                        onClick={(e) => !isLikeLoading && handleLikeClick(pid, e)}
+                      >
+                        {liked ? (
+                          <FavoriteIcon sx={{ fontSize: "1.2rem", color: "#e53e3e", transform: "scale(1.15)", transition: "transform 0.15s" }} />
+                        ) : (
+                          <FavoriteBorderIcon sx={{ fontSize: "1.2rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)" }} />
+                        )}
+                        <Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: liked ? "#e53e3e" : isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)", minWidth: 14 }}>
+                          {likeCount > 0 ? likeCount : ""}
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ width: "1px", height: 20, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <VisibilityIcon sx={{ fontSize: "1.1rem", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)" }} />
+                        <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }}>
+                          {viewCount > 0 ? viewCount.toLocaleString() : "0"}
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ width: "1px", height: 20, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <FavoriteIcon sx={{ fontSize: "1rem", color: isDark ? "rgba(255,100,100,0.45)" : "rgba(229,62,62,0.4)" }} />
+                        <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }}>
+                          {likeCount > 0 ? likeCount.toLocaleString() : "0"}
+                        </Typography>
+                      </Box>
+
+                      {selectedProduct.averageRating > 0 && (
+                        <>
+                          <Box sx={{ width: "1px", height: 20, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <StarIcon sx={{ fontSize: "1rem", color: "#ffc107" }} />
+                            <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }}>
+                              {selectedProduct.averageRating.toFixed(1)}
+                            </Typography>
+                          </Box>
+                        </>
+                      )}
+                    </Box>
+
+                    {related.length > 0 && (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Box sx={{ pb: 0.75, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: "0.88rem", color: isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.6)" }}>
+                            {t("Related Products")}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "var(--color-primary,#1E6FD9)", fontWeight: 600 }}>
+                            {related.length}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: "flex", gap: 1.25, overflowX: "auto", pb: 1, mx: -2.5, px: 2.5, "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}>
+                          {related.map((rel) => {
+                            const relDiscount = calculateDiscount(rel.previousPrice, rel.newPrice);
+                            const relHasDiscount = isDiscountValid(rel);
+                            const relDiscountLabel = relDiscount !== null ? `-${relDiscount}%` : t("Discount");
+                            return (
+                              <Box
+                                key={rel._id}
+                                onClick={(e) => { e.stopPropagation(); setSelectedProduct(rel); }}
+                                sx={{
+                                  flexShrink: 0,
+                                  width: 120,
+                                  borderRadius: 2.5,
+                                  overflow: "hidden",
+                                  backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                                  border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+                                  cursor: "pointer",
+                                  "&:active": { transform: "scale(0.95)" },
+                                }}
+                              >
+                                <Box sx={{ position: "relative" }}>
+                                  {rel.image ? (
+                                    <Box component="img" src={resolveMediaUrl(rel.image)} alt={locName(rel) || ""} sx={{ width: "100%", height: 90, objectFit: "contain", backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", display: "block" }} />
+                                  ) : (
+                                    <Box sx={{ width: "100%", height: 90, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}>
+                                      <ShoppingCartIcon sx={{ fontSize: 28, opacity: 0.2 }} />
+                                    </Box>
+                                  )}
+                                  {relHasDiscount && (
+                                    <Box sx={{ position: "absolute", top: 5, left: 5, background: "linear-gradient(135deg,#e53e3e,#c53030)", color: "#fff", fontSize: "0.58rem", fontWeight: 800, px: 0.6, py: 0.2, borderRadius: 0.75, pointerEvents: "none" }}>
+                                      {relDiscountLabel}
+                                    </Box>
+                                  )}
+                                </Box>
+                                <Box sx={{ px: 0.75, py: 0.75 }}>
+                                  <Typography sx={{ fontSize: "0.68rem", fontWeight: 600, lineHeight: 1.3, color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", mb: 0.4 }}>
+                                    {locName(rel) || "\u00A0"}
+                                  </Typography>
+                                  {rel.newPrice && (
+                                    <Typography sx={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--color-secondary,#0d47a1)", lineHeight: 1 }}>
+                                      {formatPrice(rel.newPrice)}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
+
+      <FullScreenImageModal
+        open={Boolean(productImageFullscreen)}
+        onClose={() => setProductImageFullscreen(null)}
+        imageUrl={productImageFullscreen?.url}
+        alt={productImageFullscreen?.alt || ""}
+      />
+
       {/* Gift Details Dialog */}
       <Dialog
         open={dialogOpen}

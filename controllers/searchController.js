@@ -1,10 +1,12 @@
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Brand = require("../models/Brand");
+const Company = require("../models/Company");
 const Category = require("../models/Category");
 const {
   storeList,
   brandList,
+  companyList,
   categoryList,
   storeTypeList,
 } = require("../utils/refPopulate");
@@ -55,6 +57,7 @@ const search = async (req, res) => {
           products: [],
           stores: [],
           brands: [],
+          companies: [],
           categories: [],
           categoryTypes: [],
         },
@@ -161,6 +164,7 @@ const search = async (req, res) => {
       visibleStoreIdsDocs,
       productsRaw,
       brandsAll,
+      companiesAll,
     ] = await Promise.all([
       Store.find(storeQuery)
         .populate("storeTypeId", storeTypeList)
@@ -188,6 +192,13 @@ const search = async (req, res) => {
         .populate("brandTypeId", "name nameEn nameAr nameKu icon")
         .limit(limit)
         .lean(),
+      Company.find({
+        statusAll: { $ne: "off" },
+        ...nameLangOr(regex),
+      })
+        .populate("brandTypeId", "name nameEn nameAr nameKu icon")
+        .limit(limit)
+        .lean(),
     ]);
 
     const storeIdsInCity = (storeIdsInCityDocs || []).map((s) => s._id);
@@ -197,6 +208,7 @@ const search = async (req, res) => {
 
     let products;
     let brands;
+    let companies;
 
     if (city) {
       const productDocs = await Product.find({
@@ -210,6 +222,7 @@ const search = async (req, res) => {
         .lean();
       products = productDocs;
       brands = brandsAll;
+      companies = companiesAll;
     } else {
       products = (productsRaw || []).filter((p) => {
         const storeId = p.storeId && (p.storeId._id || p.storeId);
@@ -217,6 +230,7 @@ const search = async (req, res) => {
         return storeOk;
       });
       brands = brandsAll;
+      companies = companiesAll;
     }
 
     res.json({
@@ -225,6 +239,7 @@ const search = async (req, res) => {
         products,
         stores,
         brands,
+        companies,
         categories: catsByTopName,
         categoryTypes: categoryTypeHits,
       },

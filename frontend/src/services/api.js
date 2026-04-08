@@ -79,6 +79,16 @@ export const brandAPI = {
   delete: (id) => api.delete(`/brands/${id}`),
 };
 
+// Company API calls
+export const companyAPI = {
+  getAll: () => api.get("/companies"),
+  getAllIncludingHidden: () => api.get("/companies/all"),
+  getById: (id) => api.get(`/companies/${id}`),
+  create: (data) => api.post("/companies", data),
+  update: (id, data) => api.put(`/companies/${id}`, data),
+  delete: (id) => api.delete(`/companies/${id}`),
+};
+
 // Category API calls
 export const categoryAPI = {
   getAll: () => api.get("/categories"),
@@ -111,6 +121,7 @@ export const productAPI = {
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   getByBrand: (brandId) => api.get(`/products/brand/${brandId}`),
+  getByCompany: (companyId) => api.get(`/products/company/${companyId}`),
   getByStore: (storeId) => api.get(`/products/store/${storeId}`),
   getByCategory: (category) => api.get(`/products/category/${category}`),
   getCategories: () => api.get("/products/categories"),

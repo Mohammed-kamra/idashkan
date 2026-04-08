@@ -19,6 +19,11 @@ const jobSchema = new mongoose.Schema(
     image: { type: String, default: "", trim: true },
     storeId: { type: mongoose.Schema.Types.ObjectId, ref: "Store", default: null },
     brandId: { type: mongoose.Schema.Types.ObjectId, ref: "Brand", default: null },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      default: null,
+    },
     expireDate: { type: Date, default: null },
     active: { type: Boolean, default: true },
   },
@@ -28,8 +33,14 @@ const jobSchema = new mongoose.Schema(
 jobSchema.pre("validate", function (next) {
   const hasStore = Boolean(this.storeId);
   const hasBrand = Boolean(this.brandId);
-  if (hasStore === hasBrand) {
-    return next(new Error("Job must have exactly one owner: storeId XOR brandId"));
+  const hasCompany = Boolean(this.companyId);
+  const ownerCount = [hasStore, hasBrand, hasCompany].filter(Boolean).length;
+  if (ownerCount !== 1) {
+    return next(
+      new Error(
+        "Job must have exactly one owner: one of storeId, brandId, companyId",
+      ),
+    );
   }
   next();
 });

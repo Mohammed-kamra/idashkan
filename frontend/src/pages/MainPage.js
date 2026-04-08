@@ -30,8 +30,8 @@ import {
   Tab,
   Skeleton,
 } from "@mui/material";
-
-import { Link, useNavigate } from "react-router-dom";
+import CloseIcon from "@mui/icons-material/Close";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   storeAPI,
   productAPI,
@@ -39,6 +39,7 @@ import {
   adAPI,
   storeTypeAPI,
   brandAPI,
+  companyAPI,
   giftAPI,
   jobAPI,
 } from "../services/api";
@@ -61,6 +62,7 @@ import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import Loader from "../components/Loader";
 import BrandShowcase from "../components/BrandShowcase";
+import CompanyShowcase from "../components/CompanyShowcase";
 import StoreShowcase from "../components/StoreShowcase";
 import GiftShowcase from "../components/GiftShowcase";
 import FindJobShowcase from "../components/FindJobShowcase";
@@ -81,6 +83,7 @@ import {
   formatExpiryChipLabel,
   shouldShowExpiryChip,
   expiryChipBg,
+  formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useContentRefresh } from "../context/ContentRefreshContext";
@@ -90,9 +93,13 @@ import {
   buildMainPagePayload,
 } from "../utils/mainPageCache";
 
+const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
+const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
+
 const MainPage = () => {
   const theme = useTheme();
   const isMobile = useIsMobileLayout();
+  const location = useLocation();
   const navigate = useNavigate();
   const { locName, locDescription, locAddress } = useLocalizedContent();
   const [stores, setStores] = useState([]);
@@ -110,6 +117,7 @@ const MainPage = () => {
   const [showOnlyDiscount, setShowOnlyDiscount] = useState(true); // Default to showing only discounted products
   const [allCategories, setAllCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [gifts, setGifts] = useState([]);
   const [jobs, setJobs] = useState([]);
 
@@ -138,6 +146,7 @@ const MainPage = () => {
   const [sortByNearMe, setSortByNearMe] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [productLayout, setProductLayout] = useState("row");
 
   // Cache random store selections for rotating showcases (stable during renders).
   const randomShowcaseStoresRef = useRef({});
@@ -169,6 +178,23 @@ const MainPage = () => {
   const [followedStores, setFollowedStores] = useState([]);
   const [productsByFollowedStore, setProductsByFollowedStore] = useState({});
   const [followLoadingTab, setFollowLoadingTab] = useState(false);
+  const mainPageScrollRestoredRef = useRef(false);
+  const mainPageTabRef = useRef(0);
+  const displayedStoresCountRef = useRef(0);
+
+  useEffect(() => {
+    mainPageTabRef.current = mainPageTab;
+  }, [mainPageTab]);
+
+  useEffect(() => {
+    displayedStoresCountRef.current = displayedStores.length;
+  }, [displayedStores.length]);
+
+  useEffect(() => {
+    if (location.pathname === "/") {
+      mainPageScrollRestoredRef.current = false;
+    }
+  }, [location.pathname]);
 
   // Handle like button click (works for both logged-in and guest/device users)
   const handleLikeClick = async (productId, e) => {
@@ -285,6 +311,7 @@ const MainPage = () => {
     setAllProducts(payload.allProducts);
     setStoreTypes(payload.storeTypes);
     setBrands(payload.brands);
+    setCompanies(payload.companies || []);
     setGifts(payload.gifts);
     setJobs(payload.jobs);
     setProductsByStore(payload.productsByStore);
@@ -305,6 +332,7 @@ const MainPage = () => {
           adsResponse,
           storeTypesResponse,
           brandsResponse,
+          companiesResponse,
           giftsResponse,
           jobsResponse,
         ] = await Promise.all([
@@ -314,6 +342,7 @@ const MainPage = () => {
           adAPI.getAll({ page: "home" }),
           storeTypeAPI.getAll(),
           brandAPI.getAll(),
+          companyAPI.getAll(),
           giftAPI.getAll().catch(() => ({ data: { data: [] } })),
           jobAPI.getAll().catch(() => ({ data: [] })),
         ]);
@@ -323,6 +352,7 @@ const MainPage = () => {
         const productsData = productsResponse.data;
         const adsData = adsResponse.data || [];
         const brandsData = brandsResponse.data || [];
+        const companiesData = companiesResponse.data || [];
         const giftsData = Array.isArray(giftsResponse.data?.data)
           ? giftsResponse.data.data
           : Array.isArray(giftsResponse.data)
@@ -339,6 +369,7 @@ const MainPage = () => {
           adsData,
           storeTypesData: storeTypesResponse?.data || [],
           brandsData,
+          companiesData,
           giftsData,
           jobsData,
         });
@@ -369,12 +400,150 @@ const MainPage = () => {
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
-    if (cached) {
-      fetchData({ silent: true });
-    } else {
+    if (!cached) {
       fetchData();
     }
   }, [refreshKey, fetchData]);
+
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      const y = window.scrollY || window.pageYOffset || 0;
+      try {
+        sessionStorage.setItem(MAIN_PAGE_SCROLL_KEY, String(y));
+        sessionStorage.setItem(
+          MAIN_PAGE_SCROLL_STATE_KEY,
+          JSON.stringify({
+            y,
+            tab: mainPageTabRef.current,
+            displayedCount: displayedStoresCountRef.current,
+          }),
+        );
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener("scroll", saveScrollPosition, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", saveScrollPosition);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loading || mainPageScrollRestoredRef.current) return;
+
+    let attempts = 0;
+    let cancelled = false;
+
+    const restoreScroll = () => {
+      if (cancelled) return;
+
+      let targetY = 0;
+      let targetTab = 0;
+      let targetDisplayedCount = 0;
+      try {
+        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+        if (rawState) {
+          const parsedState = JSON.parse(rawState);
+          const parsedY = Number(parsedState?.y);
+          const parsedTab = Number(parsedState?.tab);
+          const parsedDisplayedCount = Number(parsedState?.displayedCount);
+          if (Number.isFinite(parsedY) && parsedY > 0) {
+            targetY = parsedY;
+          }
+          if (Number.isFinite(parsedTab) && parsedTab >= 0) {
+            targetTab = parsedTab;
+          }
+          if (
+            Number.isFinite(parsedDisplayedCount) &&
+            parsedDisplayedCount > 0
+          ) {
+            targetDisplayedCount = parsedDisplayedCount;
+          }
+        }
+
+        // Backward compatibility with old key (plain number).
+        if (targetY <= 0) {
+          const raw = sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY);
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            targetY = parsed;
+          }
+        }
+      } catch {
+        targetY = 0;
+        targetTab = 0;
+        targetDisplayedCount = 0;
+      }
+
+      if (mainPageTab !== targetTab) {
+        setMainPageTab(targetTab);
+      }
+
+      const countReady =
+        targetDisplayedCount <= 0 ||
+        displayedStores.length >= targetDisplayedCount;
+      if (!countReady && hasMoreStores) {
+        loadMoreStoresRef.current?.();
+        attempts += 1;
+        if (attempts >= 40) {
+          mainPageScrollRestoredRef.current = true;
+          return;
+        }
+        window.setTimeout(restoreScroll, 120);
+        return;
+      }
+
+      if (targetY <= 0) {
+        mainPageScrollRestoredRef.current = true;
+        return;
+      }
+
+      const scrollHeight =
+        document.documentElement?.scrollHeight ||
+        document.body?.scrollHeight ||
+        0;
+      const viewportHeight = window.innerHeight || 0;
+      const maxReachableY = Math.max(0, scrollHeight - viewportHeight);
+      const pageTallEnough = maxReachableY >= targetY - 8;
+
+      // If the page is still too short to reach the old position, keep loading
+      // more store blocks before attempting the final restoration.
+      if (!pageTallEnough && hasMoreStores) {
+        loadMoreStoresRef.current?.();
+        attempts += 1;
+        if (attempts >= 40) {
+          mainPageScrollRestoredRef.current = true;
+          return;
+        }
+        window.setTimeout(restoreScroll, 120);
+        return;
+      }
+
+      window.scrollTo(0, targetY);
+
+      const currentY = window.scrollY || window.pageYOffset || 0;
+      const reached = Math.abs(currentY - targetY) <= 2;
+      attempts += 1;
+
+      if (reached || attempts >= 40 || (!hasMoreStores && !pageTallEnough)) {
+        mainPageScrollRestoredRef.current = true;
+        return;
+      }
+
+      window.setTimeout(restoreScroll, 120);
+    };
+
+    try {
+      restoreScroll();
+    } catch {
+      mainPageScrollRestoredRef.current = true;
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, hasMoreStores, displayedStores.length, mainPageTab]);
 
   // Handle scroll to show/hide scroll to top button
   useEffect(() => {
@@ -905,12 +1074,25 @@ const MainPage = () => {
         return false;
       }
 
-      // Filter by Search (product name)
-      if (
-        search &&
-        !product.name?.toLowerCase().includes(search.toLowerCase())
-      ) {
-        return false;
+      // Filter by Search:
+      // - direct product-name match, OR
+      // - parent store-name match (so searching a store still shows its products)
+      if (search) {
+        const searchQuery = search.trim().toLowerCase();
+        const parentStore =
+          storeById[String(getID(product.storeId))] || product.storeId;
+        const productNameMatch = String(locName(product) || product.name || "")
+          .toLowerCase()
+          .includes(searchQuery);
+        const storeNameMatch = String(
+          locName(parentStore) || parentStore?.name || "",
+        )
+          .toLowerCase()
+          .includes(searchQuery);
+
+        if (!productNameMatch && !storeNameMatch) {
+          return false;
+        }
       }
 
       return true;
@@ -924,6 +1106,7 @@ const MainPage = () => {
     search,
     priceRange,
     showOnlyDiscount,
+    locName,
   ]);
 
   // 2. Memoize the final list of stores to display
@@ -1285,7 +1468,13 @@ const MainPage = () => {
         {/* Filter chips skeleton */}
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           {[80, 100, 90, 110, 80].map((w, i) => (
-            <Skeleton key={i} variant="rounded" width={w} height={34} sx={{ borderRadius: "999px" }} />
+            <Skeleton
+              key={i}
+              variant="rounded"
+              width={w}
+              height={34}
+              sx={{ borderRadius: "999px" }}
+            />
           ))}
         </Box>
         {/* Store group skeletons */}
@@ -1307,18 +1496,34 @@ const MainPage = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                background: theme.palette.mode === "dark"
-                  ? "rgba(30,111,217,0.1)"
-                  : "rgba(30,111,217,0.06)",
+                background:
+                  theme.palette.mode === "dark"
+                    ? "rgba(30,111,217,0.1)"
+                    : "rgba(30,111,217,0.06)",
               }}
             >
-              <Skeleton variant="rounded" width={52} height={52} sx={{ borderRadius: "14px", flexShrink: 0 }} />
+              <Skeleton
+                variant="rounded"
+                width={52}
+                height={52}
+                sx={{ borderRadius: "14px", flexShrink: 0 }}
+              />
               <Box sx={{ flex: 1 }}>
                 <Skeleton variant="text" width="45%" height={24} />
                 <Skeleton variant="text" width="70%" height={18} />
                 <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
-                  <Skeleton variant="rounded" width={100} height={22} sx={{ borderRadius: "999px" }} />
-                  <Skeleton variant="rounded" width={80} height={22} sx={{ borderRadius: "999px" }} />
+                  <Skeleton
+                    variant="rounded"
+                    width={100}
+                    height={22}
+                    sx={{ borderRadius: "999px" }}
+                  />
+                  <Skeleton
+                    variant="rounded"
+                    width={80}
+                    height={22}
+                    sx={{ borderRadius: "999px" }}
+                  />
                 </Box>
               </Box>
             </Box>
@@ -1326,8 +1531,18 @@ const MainPage = () => {
             <Box sx={{ p: "12px 14px", display: "flex", gap: 1 }}>
               {[1, 2, 3, 4].map((c) => (
                 <Box key={c} sx={{ flexShrink: 0 }}>
-                  <Skeleton variant="rounded" width={148} height={150} sx={{ borderRadius: "12px 12px 0 0" }} />
-                  <Skeleton variant="rounded" width={148} height={68} sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }} />
+                  <Skeleton
+                    variant="rounded"
+                    width={148}
+                    height={150}
+                    sx={{ borderRadius: "12px 12px 0 0" }}
+                  />
+                  <Skeleton
+                    variant="rounded"
+                    width={148}
+                    height={68}
+                    sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }}
+                  />
                 </Box>
               ))}
             </Box>
@@ -1360,12 +1575,14 @@ const MainPage = () => {
           alignItems: "center",
           margin: "0 auto",
           backdropFilter: "blur(12px)",
-          background: theme.palette.mode === "dark"
-            ? "rgba(15,23,42,0.85)"
-            : "rgba(255,255,255,0.9)",
-          boxShadow: theme.palette.mode === "dark"
-            ? "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
-            : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+          background:
+            theme.palette.mode === "dark"
+              ? "rgba(15,23,42,0.85)"
+              : "rgba(255,255,255,0.9)",
+          boxShadow:
+            theme.palette.mode === "dark"
+              ? "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
+              : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
           transform: !isMobile
             ? "translateY(0)"
             : showMainTabs
@@ -1377,7 +1594,9 @@ const MainPage = () => {
       >
         <Tabs
           value={mainPageTab}
-          TabIndicatorProps={{ children: <span className="MuiTabs-indicatorSpan" /> }}
+          TabIndicatorProps={{
+            children: <span className="MuiTabs-indicatorSpan" />,
+          }}
           onChange={(_, v) => {
             setMainPageTab(v);
             if (v === 1) setFollowLoadingTab(true);
@@ -1400,7 +1619,10 @@ const MainPage = () => {
             "& .MuiTab-root": {
               fontWeight: 700,
               textTransform: "none",
-              color: theme.palette.mode === "dark" ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)",
+              color:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.55)"
+                  : "rgba(0,0,0,0.45)",
               minHeight: 44,
               minWidth: "auto",
               px: 2,
@@ -1449,12 +1671,17 @@ const MainPage = () => {
           onToggleNearMe={() => {
             setSortByNearMe((prev) => {
               const next = !prev;
-              if (next) { setSortByNewestDiscount(false); requestUserLocation(); }
+              if (next) {
+                setSortByNewestDiscount(false);
+                requestUserLocation();
+              }
               return next;
             });
           }}
           geoLoading={geoLoading}
           onClearAll={clearAllFilters}
+          productLayout={productLayout}
+          onLayoutChange={setProductLayout}
         />
         {/* legacy filter content â€” hidden, kept for price-range state wiring */}
         <Box sx={{ display: "none" }}>
@@ -1933,7 +2160,8 @@ const MainPage = () => {
               {t("Clear All Filters")}
             </Button>
           </Box>
-        </Box>{/* end legacy hidden */}
+        </Box>
+        {/* end legacy hidden */}
       </Box>
 
       {/* --- */}
@@ -1962,37 +2190,55 @@ const MainPage = () => {
             {/* Find Job */}
             <FindJobShowcase jobs={showcaseEligibleJobs} />
 
-
             {displayedStores.map((store, index) => {
               const productsForCard = filteredProducts.filter(
                 (p) => getID(p.storeId) === getID(store._id),
               );
 
-              // Every 8 store cards: Brand (8) â†’ Store (random 20) â†’ Gift (last 5) (repeat).
+              // Every 8 store cards: Brand (8) → Company (8) → Store (random 20) → Gift (last 5) (repeat).
               const rotatingShowcase =
                 (index + 1) % 8 === 0
                   ? (() => {
                       const blockIndex = (index + 1) / 8 - 1;
-                      const variant = blockIndex % 3;
+                      const variant = blockIndex % 4;
 
                       if (variant === 0) {
                         const offset = blockIndex * 8;
                         return (
-                          <BrandShowcase brands={brands.slice(offset, offset + 8)} />
+                          <BrandShowcase
+                            brands={brands.slice(offset, offset + 8)}
+                          />
                         );
                       }
 
                       if (variant === 1) {
-                        const prevList = randomShowcaseStoresRef.current[blockIndex];
+                        const offset = blockIndex * 8;
+                        return (
+                          <CompanyShowcase
+                            companies={companies.slice(offset, offset + 8)}
+                          />
+                        );
+                      }
+
+                      if (variant === 2) {
+                        const prevList =
+                          randomShowcaseStoresRef.current[blockIndex];
                         const needFill =
                           sortedFilteredStores.length > 0 &&
                           (!Array.isArray(prevList) || prevList.length === 0);
                         if (needFill) {
-                          const shuffled = [...sortedFilteredStores].sort(() => Math.random() - 0.5);
-                          randomShowcaseStoresRef.current[blockIndex] = shuffled.slice(0, 20);
+                          const shuffled = [...sortedFilteredStores].sort(
+                            () => Math.random() - 0.5,
+                          );
+                          randomShowcaseStoresRef.current[blockIndex] =
+                            shuffled.slice(0, 20);
                         }
                         return (
-                          <StoreShowcase stores={randomShowcaseStoresRef.current[blockIndex] ?? []} />
+                          <StoreShowcase
+                            stores={
+                              randomShowcaseStoresRef.current[blockIndex] ?? []
+                            }
+                          />
                         );
                       }
 
@@ -2014,6 +2260,7 @@ const MainPage = () => {
                     onLikeClick={handleLikeClick}
                     likeLoading={likeLoading}
                     formatPrice={formatPrice}
+                    productLayout={productLayout}
                   />
                   {rotatingShowcase}
                 </React.Fragment>
@@ -2026,7 +2273,9 @@ const MainPage = () => {
           </Box>
         ) : followedStores.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 8, px: 2 }}>
-            <PersonAddDisabledIcon sx={{ fontSize: 80, color: "grey.400", mb: 2 }} />
+            <PersonAddDisabledIcon
+              sx={{ fontSize: 80, color: "grey.400", mb: 2 }}
+            />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               {t("No followed stores yet")}
             </Typography>
@@ -2041,7 +2290,8 @@ const MainPage = () => {
               severity="info"
               sx={{
                 borderRadius: 2,
-                backgroundColor: theme.palette.mode === "dark" ? "#FFA94D" : "#e3f2fd",
+                backgroundColor:
+                  theme.palette.mode === "dark" ? "#FFA94D" : "#e3f2fd",
                 border: `1px solid ${theme.palette.mode === "dark" ? "#FF7A1A" : "#bbdefb"}`,
               }}
             >
@@ -2049,25 +2299,27 @@ const MainPage = () => {
             </Alert>
           </>
         ) : (
-          filteredFollowedStoresWithProducts.map(({ store, products: storeProducts }) => (
-            <StoreGroupSection
-              key={store._id}
-              store={store}
-              products={storeProducts}
-              onProductOpen={handleProductClick}
-              isStoreFollowed={isStoreFollowed}
-              onFollowClick={handleFollowClick}
-              followLoading={followLoading[store._id]}
-              likeStates={likeStates}
-              isProductLiked={isProductLiked}
-              onLikeClick={handleLikeClick}
-              likeLoading={likeLoading}
-              formatPrice={formatPrice}
-            />
-          ))
+          filteredFollowedStoresWithProducts.map(
+            ({ store, products: storeProducts }) => (
+              <StoreGroupSection
+                key={store._id}
+                store={store}
+                products={storeProducts}
+                onProductOpen={handleProductClick}
+                isStoreFollowed={isStoreFollowed}
+                onFollowClick={handleFollowClick}
+                followLoading={followLoading[store._id]}
+                likeStates={likeStates}
+                isProductLiked={isProductLiked}
+                onLikeClick={handleLikeClick}
+                likeLoading={likeLoading}
+                formatPrice={formatPrice}
+                productLayout={productLayout}
+              />
+            ),
+          )
         )}
       </Box>
-
 
       {/* --- */}
       {mainPageTab === 0 && hasMoreStores && (
@@ -2090,7 +2342,10 @@ const MainPage = () => {
           sx={{
             borderRadius: "14px",
             mt: 2,
-            backgroundColor: theme.palette.mode === "dark" ? "rgba(255,169,77,0.15)" : "#e3f2fd",
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? "rgba(255,169,77,0.15)"
+                : "#e3f2fd",
             border: `1px solid ${theme.palette.mode === "dark" ? "#FF7A1A" : "#bbdefb"}`,
           }}
         >
@@ -2098,515 +2353,748 @@ const MainPage = () => {
         </Alert>
       )}
 
-      {/* Product Detail Dialog - styled like ProductDetail page */}
+      {/* Product Detail Dialog */}
       <Dialog
         open={productDialogOpen}
         onClose={() => setProductDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: isMobile ? 0 : 4,
             overflow: "hidden",
+            backgroundColor:
+              theme.palette.mode === "dark" ? "rgba(22,28,44,1)" : "#fff",
+            backgroundImage: "none",
           },
         }}
       >
-        <DialogContent sx={{ p: 0 }}>
-          {selectedProduct && (
-            <Paper elevation={0} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-              <Grid container spacing={3}>
-                {/* Product Image */}
-                <Grid size={{ xs: 12, md: 6 }} alignContent="center">
+        {/* Header */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            px: 2,
+            py: 1.5,
+            borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+          }}
+        >
+          <IconButton
+            size="small"
+            onClick={() => setProductDialogOpen(false)}
+            sx={{
+              mr: 1.5,
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.07)"
+                  : "rgba(0,0,0,0.05)",
+              borderRadius: 2,
+            }}
+          >
+            <CloseIcon sx={{ fontSize: "1.1rem" }} />
+          </IconButton>
+          <Typography sx={{ fontWeight: 700, fontSize: "1rem", flex: 1 }}>
+            {t("Product Details")}
+          </Typography>
+        </Box>
+
+        <DialogContent sx={{ p: 0, overflowX: "hidden" }}>
+          {selectedProduct &&
+            (() => {
+              const isDark = theme.palette.mode === "dark";
+              const pid = selectedProduct._id;
+              const liked = likeStates[pid] ?? isProductLiked(pid);
+              const likeCount =
+                likeCounts[pid] ?? selectedProduct.likeCount ?? 0;
+              const viewCount = selectedProduct.viewCount ?? 0;
+              const isLikeLoading = likeLoading[pid];
+              const discountPct = calculateDiscount(
+                selectedProduct.previousPrice,
+                selectedProduct.newPrice,
+              );
+              const hasDiscount = isDiscountValid(selectedProduct);
+              const discountLabel =
+                discountPct !== null ? `-${discountPct}%` : t("Discount");
+              const ownerBrandOrCompany =
+                selectedProduct.companyId || selectedProduct.brandId;
+
+              // related discounted products from same category
+              const categoryId =
+                selectedProduct.categoryId?._id || selectedProduct.categoryId;
+              const related = allProducts.filter(
+                (p) =>
+                  p._id !== pid &&
+                  (p.categoryId?._id || p.categoryId) === categoryId &&
+                  isExpiryStillValid(p.expireDate || null) !== false &&
+                  isDiscountValid(p),
+              );
+
+              return (
+                <Box>
+                  {/* Image */}
                   {selectedProduct.image ? (
-                    <CardMedia
-                      component="img"
-                      image={resolveMediaUrl(selectedProduct.image)}
-                      alt={locName(selectedProduct)}
+                    <Box
+                      sx={{
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.03)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 220,
+                        cursor: "pointer",
+                      }}
                       onClick={() =>
                         setProductImageFullscreen({
                           url: resolveMediaUrl(selectedProduct.image),
                           alt: locName(selectedProduct),
                         })
                       }
-                      role="presentation"
-                      sx={{
-                        height: { xs: 200, sm: 280, md: 320 },
-                        objectFit: "contain",
-                        borderRadius: 2,
-                        cursor: "pointer",
-                        "&:focus-visible": {
-                          outline: "2px solid",
-                          outlineOffset: 4,
-                        },
-                      }}
-                    />
+                    >
+                      <CardMedia
+                        component="img"
+                        image={resolveMediaUrl(selectedProduct.image)}
+                        alt={locName(selectedProduct)}
+                        sx={{
+                          maxHeight: 260,
+                          objectFit: "contain",
+                          width: "100%",
+                        }}
+                      />
+                    </Box>
                   ) : (
                     <Box
                       sx={{
-                        height: { xs: 200, sm: 280, md: 320 },
-                        bgcolor: "grey.100",
+                        height: 180,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        borderRadius: 2,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.03)",
                       }}
                     >
-                      <ShoppingCartIcon
-                        sx={{
-                          fontSize: { xs: 50, sm: 70, md: 80 },
-                          color:
-                            theme.palette.mode === "dark"
-                              ? "white"
-                              : "grey.400",
-                        }}
-                      />
+                      <ShoppingCartIcon sx={{ fontSize: 64, opacity: 0.2 }} />
                     </Box>
                   )}
-                </Grid>
 
-                {/* Product Details */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Box>
-                    <Box display="flex" alignItems="center" mb={2}>
-                      <ShoppingCartIcon
-                        sx={{
-                          fontSize: { xs: 24, sm: 28 },
-                          mr: { xs: 1, md: 2 },
-                          color:
-                            theme.palette.mode === "dark"
-                              ? "white"
-                              : "text.secondary",
-                        }}
-                      />
+                  {/* Details */}
+                  <Box
+                    sx={{
+                      px: 2.5,
+                      py: 2,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.25,
+                    }}
+                  >
+                    {/* Title */}
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: "1.15rem",
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {locName(selectedProduct)}
+                    </Typography>
+
+                    {/* Description */}
+                    {locDescription(selectedProduct) && (
                       <Typography
-                        variant="h4"
-                        component="h1"
-                        sx={{
-                          color:
-                            theme.palette.mode === "dark" ? "white" : "black",
-                          fontSize: { xs: "1rem", sm: "1.5rem", md: "1.75rem" },
-                          lineHeight: 1.3,
-                        }}
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.55 }}
                       >
-                        {locName(selectedProduct)}
+                        {locDescription(selectedProduct)}
                       </Typography>
+                    )}
+
+                    {/* Brand / Store / Category chips */}
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                      {ownerBrandOrCompany && locName(ownerBrandOrCompany) && (
+                        <Chip
+                          icon={
+                            <BusinessIcon
+                              sx={{ fontSize: "0.9rem !important" }}
+                            />
+                          }
+                          label={locName(ownerBrandOrCompany)}
+                          size="small"
+                          onClick={() => {
+                            setProductDialogOpen(false);
+                            navigate(
+                              selectedProduct.companyId
+                                ? `/companies/${ownerBrandOrCompany._id}`
+                                : `/brands/${ownerBrandOrCompany._id}`,
+                            );
+                          }}
+                          sx={{
+                            borderRadius: 99,
+                            fontWeight: 600,
+                            fontSize: "0.72rem",
+                            cursor: "pointer",
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(30,111,217,0.08)",
+                            color: "var(--color-primary,#1E6FD9)",
+                          }}
+                        />
+                      )}
+                      {selectedProduct.storeId &&
+                        locName(selectedProduct.storeId) && (
+                          <Chip
+                            icon={
+                              <StorefrontIcon
+                                sx={{ fontSize: "0.9rem !important" }}
+                              />
+                            }
+                            label={locName(selectedProduct.storeId)}
+                            size="small"
+                            onClick={() => {
+                              setProductDialogOpen(false);
+                              navigate(
+                                `/stores/${selectedProduct.storeId._id}`,
+                              );
+                            }}
+                            sx={{
+                              borderRadius: 99,
+                              fontWeight: 600,
+                              fontSize: "0.72rem",
+                              cursor: "pointer",
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.08)"
+                                : "rgba(30,111,217,0.08)",
+                              color: "var(--color-primary,#1E6FD9)",
+                            }}
+                          />
+                        )}
+                      {selectedProduct.categoryId && (
+                        <Chip
+                          icon={
+                            <CategoryIcon
+                              sx={{ fontSize: "0.9rem !important" }}
+                            />
+                          }
+                          label={
+                            locName(selectedProduct.categoryId) || t("Category")
+                          }
+                          size="small"
+                          component={Link}
+                          to="/categories"
+                          state={{
+                            category:
+                              selectedProduct.categoryId?.name ||
+                              "All Categories",
+                            categoryType: getCategoryTypeName(
+                              selectedProduct.categoryTypeId,
+                              selectedProduct.categoryId?._id ||
+                                selectedProduct.categoryId,
+                            ),
+                          }}
+                          onClick={() => setProductDialogOpen(false)}
+                          sx={{
+                            borderRadius: 99,
+                            fontWeight: 600,
+                            fontSize: "0.72rem",
+                            cursor: "pointer",
+                            backgroundColor: isDark
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(30,111,217,0.08)",
+                            color: "var(--color-primary,#1E6FD9)",
+                            textDecoration: "none",
+                          }}
+                        />
+                      )}
                     </Box>
 
-                    {/* Category Type Chip */}
-                    {/* <Chip
-                      label={getCategoryTypeName(
-                        selectedProduct.categoryTypeId,
-                        selectedProduct.categoryId?._id ||
-                          selectedProduct.categoryId,
-                      )}
-                      color="primary"
-                      sx={{
-                        mb: 2,
-                        fontSize: { xs: "0.7rem", sm: "0.875rem" },
-                        height: { xs: "28px", sm: "32px" },
-                      }}
-                      icon={
-                        <CategoryIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                      }
-                    /> */}
-
-                    {/* Category */}
-                    {selectedProduct.categoryId && (
-                      <Box
-                        component={Link}
-                        to="/categories"
-                        state={{
-                          category:
-                            selectedProduct.categoryId?.name ||
-                            "All Categories",
-                          categoryType: getCategoryTypeName(
-                            selectedProduct.categoryTypeId,
-                            selectedProduct.categoryId?._id ||
-                              selectedProduct.categoryId,
-                          ),
-                        }}
-                        display="flex"
-                        alignItems="center"
-                        mb={1.5}
-                        sx={{
-                          textDecoration: "none",
-                          color:
-                            theme.palette.mode === "dark"
-                              ? "white"
-                              : "primary.main",
-                          cursor: "pointer",
-                          "&:hover": { opacity: 0.8 },
-                        }}
-                        onClick={() => setProductDialogOpen(false)}
-                      >
-                        <CategoryIcon
-                          sx={{
-                            fontSize: { xs: 16, sm: 18 },
-                            mr: 0.5,
-                            color:
-                              theme.palette.mode === "dark"
-                                ? "white"
-                                : "text.secondary",
-                          }}
-                        />
-                        <Typography
-                          variant="body1"
-                          color={
-                            theme.palette.mode === "dark" ? "white" : "black"
-                          }
-                          sx={{
-                            fontWeight: "bold",
-                            fontSize: { xs: "0.875rem", sm: "1rem" },
-                          }}
-                        >
-                          {t("Category")}:{" "}
-                          {locName(selectedProduct.categoryId) || "N/A"}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Brand */}
-                    {/* {selectedProduct.brandId && (
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        mb={1.5}
-                        onClick={() => {
-                          setProductDialogOpen(false);
-                          navigate(`/brands/${selectedProduct.brandId._id}`);
-                        }}
-                        sx={{ cursor: "pointer" }}
-                      >
-                        <BusinessIcon
-                          sx={{
-                            fontSize: { xs: 16, sm: 18 },
-                            mr: 0.5,
-                            color: "text.secondary",
-                          }}
-                        />
-                        <Typography
-                          variant="body1"
-                          color="black"
-                          sx={{
-                            fontWeight: "bold",
-                            fontSize: { xs: "0.875rem", sm: "1rem" },
-                          }}
-                        >
-                          {t("Brand")}: {locName(selectedProduct.brandId)}
-                        </Typography>
-                      </Box>
-                    )} */}
-
-                    {/* Store */}
-                    {selectedProduct.storeId && (
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        mb={1.5}
-                        onClick={() => {
-                          setProductDialogOpen(false);
-                          navigate(`/stores/${selectedProduct.storeId._id}`);
-                        }}
-                        sx={{ cursor: "pointer" }}
-                      >
-                        <StorefrontIcon
-                          sx={{
-                            fontSize: { xs: 16, sm: 18 },
-                            mr: 0.5,
-                            color:
-                              theme.palette.mode === "dark"
-                                ? "white"
-                                : "text.secondary",
-                          }}
-                        />
-                        <Typography
-                          variant="body1"
-                          color={
-                            theme.palette.mode === "dark" ? "white" : "black"
-                          }
-                          sx={{
-                            fontWeight: "bold",
-                            fontSize: { xs: "0.875rem", sm: "1rem" },
-                          }}
-                        >
-                          {t("store")}: {locName(selectedProduct.storeId)}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Expire Date */}
-                    {selectedProduct.expireDate && (
-                      <Box display="flex" alignItems="center" mb={2}>
-                        <AccessTimeIcon
-                          sx={{
-                            fontSize: { xs: 16, sm: 18 },
-                            mr: 0.5,
-                            color:
-                              theme.palette.mode === "dark"
-                                ? "white"
-                                : "text.secondary",
-                          }}
-                        />
-                        <Typography
-                          variant="body1"
-                          color={
-                            theme.palette.mode === "dark" ? "white" : "black"
-                          }
-                          sx={{
-                            fontWeight: "bold",
-                            fontSize: { xs: "0.875rem", sm: "1rem" },
-                          }}
-                        >
-                          {t("Expire Date")}:{" "}
-                          {new Date(
-                            selectedProduct.expireDate,
-                          ).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    <Divider sx={{ my: 2 }} />
-
-                    {/* Price Section */}
-                    <Box sx={{ mb: 2 }}>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                            color:
-                              theme.palette.mode === "dark"
-                                ? "white"
-                                : theme.palette.text.primary,
-                          }}
-                        >
-                          {t("Price")}:{" "}
-                          <span
-                            style={{
-                              color: "var(--color-secondary)",
-                              fontWeight: 900,
+                    {/* Expiry */}
+                    {selectedProduct.expireDate &&
+                      (() => {
+                        const info = getExpiryRemainingInfo(
+                          selectedProduct.expireDate,
+                        );
+                        const label = formatExpiryChipLabel(info, t);
+                        const chipColor = expiryChipBg(info);
+                        const dateStr = formatExpiryDateDdMmYyyy(
+                          selectedProduct.expireDate,
+                        );
+                        return (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              px: 1.25,
+                              py: 0.9,
+                              borderRadius: 2.5,
+                              backgroundColor: isDark
+                                ? `${chipColor}22`
+                                : `${chipColor}18`,
+                              border: `1px solid ${chipColor}55`,
                             }}
                           >
-                            {formatPrice(selectedProduct.newPrice)}
-                          </span>
-                        </Typography>
-                      </Box>
-                      {selectedProduct.previousPrice &&
-                        selectedProduct.previousPrice >
-                          selectedProduct.newPrice && (
-                          <Box
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                            mb={1}
-                          >
+                            <AccessTimeIcon
+                              sx={{
+                                fontSize: "1rem",
+                                color: chipColor,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Box
+                              sx={{ display: "flex", flexDirection: "column" }}
+                            >
+                              <Typography
+                                sx={{
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  color: chipColor,
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {info.kind === "expired"
+                                  ? t("Expired")
+                                  : label || t("Expires")}
+                              </Typography>
+                              {dateStr && (
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.66rem",
+                                    fontWeight: 500,
+                                    color: isDark
+                                      ? "rgba(255,255,255,0.5)"
+                                      : "rgba(0,0,0,0.45)",
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {dateStr}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                      })()}
+
+                    {/* Price block */}
+                    <Box
+                      sx={{
+                        mt: 0.5,
+                        p: 1.75,
+                        borderRadius: 3,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.05)"
+                          : "rgba(0,0,0,0.025)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.25,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {t("Price")}
+                      </Typography>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
+                      >
+                        {hasDiscount &&
+                          selectedProduct.previousPrice &&
+                          Number(selectedProduct.previousPrice) >
+                            Number(selectedProduct.newPrice) && (
                             <Typography
-                              variant="body1"
                               sx={{
                                 textDecoration: "line-through",
-                                color:
-                                  theme.palette.mode === "dark"
-                                    ? "white"
-                                    : "red",
-                                fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                                fontWeight: 500,
+                                color: "text.disabled",
+                                fontSize: "0.9rem",
                               }}
                             >
                               {formatPrice(selectedProduct.previousPrice)}
                             </Typography>
-                            <Chip
-                              icon={<LocalOfferIcon sx={{ fontSize: 16 }} />}
-                              label={`-${calculateDiscount(
-                                selectedProduct.previousPrice,
-                                selectedProduct.newPrice,
-                              )}%`}
-                              color="error"
-                              size="small"
-                              sx={{
-                                fontSize: { xs: "0.7rem", sm: "0.8rem" },
-                                height: 28,
-                              }}
-                            />
-                          </Box>
+                          )}
+                        <Typography
+                          sx={{
+                            fontWeight: 900,
+                            fontSize: "1.65rem",
+                            color: "var(--color-secondary,#0d47a1)",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {formatPrice(selectedProduct.newPrice)}
+                        </Typography>
+                        {hasDiscount && (
+                          <Chip
+                            label={discountLabel}
+                            size="small"
+                            sx={{
+                              height: 22,
+                              fontSize: "0.72rem",
+                              fontWeight: 800,
+                              backgroundColor: "#e53e3e",
+                              color: "#fff",
+                              borderRadius: 99,
+                            }}
+                          />
                         )}
+                      </Box>
                     </Box>
 
-                    {/* Like Button + Stats */}
+                    {/* Like / view / like-count stats bar */}
                     <Box
                       sx={{
                         display: "flex",
                         alignItems: "center",
-                        gap: { xs: 1, sm: 2 },
-                        flexWrap: "wrap",
-                        mb: 2,
+                        gap: 1.5,
+                        mt: 0.25,
+                        px: 1.5,
+                        py: 1,
+                        borderRadius: 3,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.025)",
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"}`,
                       }}
                     >
-                      <IconButton
-                        onClick={(e) => handleLikeClick(selectedProduct._id, e)}
-                        disabled={likeLoading[selectedProduct._id]}
+                      {/* Like button */}
+                      <Box
                         sx={{
-                          backgroundColor: likeStates[selectedProduct._id]
-                            ? "rgba(229, 62, 62, 0.1)"
-                            : "rgba(0, 0, 0, 0.04)",
-                          color: likeStates[selectedProduct._id]
-                            ? "#e53e3e"
-                            : "#666",
-                          "&:hover": {
-                            backgroundColor: likeStates[selectedProduct._id]
-                              ? "rgba(229, 62, 62, 0.2)"
-                              : "rgba(0, 0, 0, 0.08)",
-                            transform: "scale(1.05)",
-                          },
-                          width: 44,
-                          height: 44,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          cursor: isLikeLoading ? "default" : "pointer",
+                          userSelect: "none",
+                          px: 1.25,
+                          py: 0.6,
+                          borderRadius: 99,
+                          transition: "background 0.15s",
+                          backgroundColor: liked
+                            ? "rgba(229,62,62,0.12)"
+                            : "transparent",
+                          "&:active": { transform: "scale(0.93)" },
                         }}
+                        onClick={(e) =>
+                          !isLikeLoading && handleLikeClick(pid, e)
+                        }
                       >
-                        {likeStates[selectedProduct._id] ? (
-                          <FavoriteIcon sx={{ fontSize: "1.25rem" }} />
+                        {liked ? (
+                          <FavoriteIcon
+                            sx={{
+                              fontSize: "1.2rem",
+                              color: "#e53e3e",
+                              transform: "scale(1.15)",
+                              transition: "transform 0.15s",
+                            }}
+                          />
                         ) : (
-                          <FavoriteBorderIcon sx={{ fontSize: "1.25rem" }} />
+                          <FavoriteBorderIcon
+                            sx={{
+                              fontSize: "1.2rem",
+                              color: isDark
+                                ? "rgba(255,255,255,0.5)"
+                                : "rgba(0,0,0,0.4)",
+                            }}
+                          />
                         )}
-                      </IconButton>
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        gap={0.5}
-                        sx={{
-                          backgroundColor: "rgba(0, 0, 0, 0.04)",
-                          borderRadius: 1,
-                          px: 1.5,
-                          py: 0.5,
-                        }}
-                      >
-                        <VisibilityIcon
-                          sx={{ color: "text.secondary", fontSize: "1rem" }}
-                        />
                         <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: "0.875rem" }}
-                        >
-                          {selectedProduct.viewCount || 0}
-                        </Typography>
-                      </Box>
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        gap={0.5}
-                        sx={{
-                          backgroundColor: "rgba(229, 62, 62, 0.1)",
-                          borderRadius: 1,
-                          px: 1.5,
-                          py: 0.5,
-                        }}
-                      >
-                        <FavoriteIcon
-                          sx={{ color: "#e53e3e", fontSize: "1rem" }}
-                        />
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontSize: "0.875rem" }}
-                        >
-                          {likeCounts[selectedProduct._id] ??
-                            selectedProduct.likeCount ??
-                            0}
-                        </Typography>
-                      </Box>
-                      {selectedProduct.averageRating > 0 && (
-                        <Box
-                          display="flex"
-                          alignItems="center"
-                          gap={0.5}
                           sx={{
-                            backgroundColor: "rgba(255, 193, 7, 0.1)",
-                            borderRadius: 1,
-                            px: 1.5,
-                            py: 0.5,
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            color: liked
+                              ? "#e53e3e"
+                              : isDark
+                                ? "rgba(255,255,255,0.55)"
+                                : "rgba(0,0,0,0.5)",
+                            minWidth: 14,
                           }}
                         >
-                          <StarIcon
-                            sx={{ color: "#ffc107", fontSize: "1rem" }}
+                          {likeCount > 0 ? likeCount : ""}
+                        </Typography>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          width: "1px",
+                          height: 20,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(0,0,0,0.08)",
+                          flexShrink: 0,
+                        }}
+                      />
+
+                      {/* View count */}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        <VisibilityIcon
+                          sx={{
+                            fontSize: "1.1rem",
+                            color: isDark
+                              ? "rgba(255,255,255,0.4)"
+                              : "rgba(0,0,0,0.35)",
+                          }}
+                        />
+                        <Typography
+                          sx={{
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            color: isDark
+                              ? "rgba(255,255,255,0.55)"
+                              : "rgba(0,0,0,0.5)",
+                          }}
+                        >
+                          {viewCount > 0 ? viewCount.toLocaleString() : "0"}
+                        </Typography>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          width: "1px",
+                          height: 20,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.1)"
+                            : "rgba(0,0,0,0.08)",
+                          flexShrink: 0,
+                        }}
+                      />
+
+                      {/* Like count */}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                      >
+                        <FavoriteIcon
+                          sx={{
+                            fontSize: "1rem",
+                            color: isDark
+                              ? "rgba(255,100,100,0.45)"
+                              : "rgba(229,62,62,0.4)",
+                          }}
+                        />
+                        <Typography
+                          sx={{
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            color: isDark
+                              ? "rgba(255,255,255,0.55)"
+                              : "rgba(0,0,0,0.5)",
+                          }}
+                        >
+                          {likeCount > 0 ? likeCount.toLocaleString() : "0"}
+                        </Typography>
+                      </Box>
+
+                      {selectedProduct.averageRating > 0 && (
+                        <>
+                          <Box
+                            sx={{
+                              width: "1px",
+                              height: 20,
+                              backgroundColor: isDark
+                                ? "rgba(255,255,255,0.1)"
+                                : "rgba(0,0,0,0.08)",
+                              flexShrink: 0,
+                            }}
                           />
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ fontSize: "0.875rem" }}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
                           >
-                            {selectedProduct.averageRating.toFixed(1)}
-                          </Typography>
-                        </Box>
+                            <StarIcon
+                              sx={{ fontSize: "1rem", color: "#ffc107" }}
+                            />
+                            <Typography
+                              sx={{
+                                fontSize: "0.8rem",
+                                fontWeight: 600,
+                                color: isDark
+                                  ? "rgba(255,255,255,0.55)"
+                                  : "rgba(0,0,0,0.5)",
+                              }}
+                            >
+                              {selectedProduct.averageRating.toFixed(1)}
+                            </Typography>
+                          </Box>
+                        </>
                       )}
-                      {/* Review feature removed */}
                     </Box>
 
-                    {/* Product Details (barcode, weight, description) */}
-                    {/* <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
-                        {t("Product Details")}
-                      </Typography>
-                      {selectedProduct.barcode && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>{t("Barcode")}:</strong> {selectedProduct.barcode}
-                        </Typography>
-                      )}
-                      {selectedProduct.weight && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>{t("Weight")}:</strong> {selectedProduct.weight}
-                        </Typography>
-                      )}
-                      {selectedProduct.description && (
-                        <Box display="flex" alignItems="flex-start" sx={{ mt: 1 }}>
-                          <DescriptionIcon
-                            sx={{ fontSize: 16, mr: 0.5, mt: 0.25, color: "text.secondary" }}
-                          />
-                          <Typography variant="body2" color="text.secondary">
-                            {selectedProduct.description}
+                    {/* Related products from same store */}
+                    {related.length > 0 && (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Box
+                          sx={{
+                            pb: 0.75,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: "0.88rem",
+                              color: isDark
+                                ? "rgba(255,255,255,0.75)"
+                                : "rgba(0,0,0,0.6)",
+                            }}
+                          >
+                            {t("Related Products")}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "var(--color-primary,#1E6FD9)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {related.length}
                           </Typography>
                         </Box>
-                      )}
-                    </Box> */}
 
-                    {/* View Full Details Button */}
-                    {/* <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={() => {
-                        setProductDialogOpen(false);
-                        navigate(`/products/${selectedProduct._id}`);
-                      }}
-                      sx={{
-                        backgroundColor: "var(--brand-accent-orange)",
-                        "&:hover": { backgroundColor: "var(--brand-light-orange)" },
-                        borderRadius: 2,
-                        py: 1.5,
-                      }}
-                    >
-                      {t("View details")}
-                    </Button> */}
-
-                    {/* Close Button - at end of popup */}
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={() => setProductDialogOpen(false)}
-                      sx={{
-                        mt: 2,
-                        py: 1.5,
-                        borderRadius: 2,
-                      }}
-                    >
-                      {t("Close")}
-                    </Button>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            gap: 1.25,
+                            overflowX: "auto",
+                            pb: 1,
+                            mx: -2.5,
+                            px: 2.5,
+                            "&::-webkit-scrollbar": { display: "none" },
+                            scrollbarWidth: "none",
+                          }}
+                        >
+                          {related.map((rel) => {
+                            const relDiscount = calculateDiscount(
+                              rel.previousPrice,
+                              rel.newPrice,
+                            );
+                            const relHasDiscount = isDiscountValid(rel);
+                            const relDiscountLabel =
+                              relDiscount !== null
+                                ? `-${relDiscount}%`
+                                : t("Discount");
+                            return (
+                              <Box
+                                key={rel._id}
+                                onClick={() => setSelectedProduct(rel)}
+                                sx={{
+                                  flexShrink: 0,
+                                  width: 120,
+                                  borderRadius: 2.5,
+                                  overflow: "hidden",
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.05)"
+                                    : "rgba(0,0,0,0.03)",
+                                  border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+                                  cursor: "pointer",
+                                  "&:active": { transform: "scale(0.95)" },
+                                }}
+                              >
+                                <Box sx={{ position: "relative" }}>
+                                  {rel.image ? (
+                                    <Box
+                                      component="img"
+                                      src={resolveMediaUrl(rel.image)}
+                                      alt={locName(rel) || ""}
+                                      sx={{
+                                        width: "100%",
+                                        height: 90,
+                                        objectFit: "contain",
+                                        backgroundColor: isDark
+                                          ? "rgba(255,255,255,0.03)"
+                                          : "rgba(0,0,0,0.02)",
+                                        display: "block",
+                                      }}
+                                    />
+                                  ) : (
+                                    <Box
+                                      sx={{
+                                        width: "100%",
+                                        height: 90,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: isDark
+                                          ? "rgba(255,255,255,0.03)"
+                                          : "rgba(0,0,0,0.02)",
+                                      }}
+                                    >
+                                      <ShoppingCartIcon
+                                        sx={{ fontSize: 28, opacity: 0.2 }}
+                                      />
+                                    </Box>
+                                  )}
+                                  {relHasDiscount && (
+                                    <Box
+                                      sx={{
+                                        position: "absolute",
+                                        top: 5,
+                                        left: 5,
+                                        background:
+                                          "linear-gradient(135deg,#e53e3e,#c53030)",
+                                        color: "#fff",
+                                        fontSize: "0.58rem",
+                                        fontWeight: 800,
+                                        px: 0.6,
+                                        py: 0.2,
+                                        borderRadius: 0.75,
+                                        pointerEvents: "none",
+                                      }}
+                                    >
+                                      {relDiscountLabel}
+                                    </Box>
+                                  )}
+                                </Box>
+                                <Box sx={{ px: 0.75, py: 0.75 }}>
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.68rem",
+                                      fontWeight: 600,
+                                      lineHeight: 1.3,
+                                      color: isDark
+                                        ? "rgba(255,255,255,0.85)"
+                                        : "rgba(0,0,0,0.8)",
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                      mb: 0.4,
+                                    }}
+                                  >
+                                    {locName(rel) || "\u00A0"}
+                                  </Typography>
+                                  {rel.newPrice && (
+                                    <Typography
+                                      sx={{
+                                        fontSize: "0.72rem",
+                                        fontWeight: 800,
+                                        color: "var(--color-secondary,#0d47a1)",
+                                        lineHeight: 1,
+                                      }}
+                                    >
+                                      {formatPrice(rel.newPrice)}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </Box>
+                    )}
                   </Box>
-                </Grid>
-              </Grid>
-            </Paper>
-          )}
+                </Box>
+              );
+            })()}
         </DialogContent>
       </Dialog>
 

@@ -1,11 +1,12 @@
 import React from "react";
-import { Box, Chip, TextField, InputAdornment, IconButton } from "@mui/material";
+import { Box, Chip, TextField, InputAdornment, IconButton, Tooltip } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import TuneIcon from "@mui/icons-material/Tune";
 import CategoryIcon from "@mui/icons-material/Category";
 import ClearIcon from "@mui/icons-material/Clear";
+import ViewStreamIcon from "@mui/icons-material/ViewStream";
+import GridViewIcon from "@mui/icons-material/GridView";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
@@ -20,11 +21,14 @@ const FilterChips = ({
   selectedCategory,
   onCategorySelect,
   sortByNewest,
+  sortByNarMe,
   sortByNearMe,
   onToggleNewest,
   onToggleNearMe,
   geoLoading,
   onClearAll,
+  productLayout = "row",
+  onLayoutChange,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -56,15 +60,51 @@ const FilterChips = ({
   };
 
   const sortActiveSx = {
-    background: isDark
-      ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
-      : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
     color: "white",
     fontWeight: 700,
     border: "none",
     boxShadow: "0 2px 8px rgba(245,158,11,0.35)",
-    "&.MuiChip-root": { height: 34 },
+    "&.MuiChip-root": { height: 32 },
   };
+
+  const sortInactiveSx = {
+    ...inactivePillSx,
+    "&.MuiChip-root": { height: 32 },
+  };
+
+  const layoutBtnSx = (active) => ({
+    width: 34,
+    height: 34,
+    borderRadius: "10px",
+    border: `1.5px solid ${
+      active
+        ? "var(--brand-primary-blue, #1E6FD9)"
+        : isDark
+          ? "rgba(255,255,255,0.12)"
+          : "#e5e7eb"
+    }`,
+    backgroundColor: active
+      ? isDark
+        ? "rgba(30,111,217,0.2)"
+        : "rgba(30,111,217,0.1)"
+      : isDark
+        ? "rgba(255,255,255,0.05)"
+        : "#f3f4f6",
+    color: active
+      ? "var(--brand-primary-blue, #1E6FD9)"
+      : isDark
+        ? "rgba(255,255,255,0.55)"
+        : "#6b7280",
+    transition: "all 0.2s ease",
+    "&:hover": {
+      borderColor: "var(--brand-primary-blue, #1E6FD9)",
+      color: "var(--brand-primary-blue, #1E6FD9)",
+      backgroundColor: isDark
+        ? "rgba(30,111,217,0.15)"
+        : "rgba(30,111,217,0.07)",
+    },
+  });
 
   return (
     <Box sx={{ mb: 2 }}>
@@ -91,7 +131,7 @@ const FilterChips = ({
           ) : null,
         }}
         sx={{
-          mb: 1.5,
+          mb: 1.25,
           "& .MuiOutlinedInput-root": {
             borderRadius: "14px",
             background: isDark ? "rgba(255,255,255,0.06)" : "#f9fafb",
@@ -148,35 +188,66 @@ const FilterChips = ({
             }
           />
         ))}
+      </Box>
 
-        {/* Sort chips — always visible, right side */}
-        <Box sx={{ flexShrink: 0, ml: "auto", display: "flex", gap: 0.8 }}>
-          <Chip
-            icon={<AccessTimeIcon sx={{ fontSize: "0.95rem !important" }} />}
-            label={t("Newest")}
-            onClick={onToggleNewest}
-            sx={sortByNewest ? sortActiveSx : inactivePillSx}
-          />
-          <Chip
-            icon={<MyLocationIcon sx={{ fontSize: "0.95rem !important" }} />}
-            label={geoLoading ? t("...") : t("Near Me")}
-            onClick={onToggleNearMe}
-            disabled={geoLoading}
-            sx={sortByNearMe ? sortActiveSx : inactivePillSx}
-          />
-          {(search || selectedStoreTypeId !== "all" || sortByNewest || sortByNearMe || selectedCategory) && (
-            <Chip
-              icon={<ClearIcon sx={{ fontSize: "0.9rem !important" }} />}
-              label={t("Clear")}
-              onClick={onClearAll}
+      {/* Sort row: Newest + Near Me on the left, layout toggle on the right */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.75,
+          mt: 1,
+          pb: 0.25,
+        }}
+      >
+        {/* Sort chips */}
+        <Chip
+          icon={<AccessTimeIcon sx={{ fontSize: "0.9rem !important" }} />}
+          label={t("Newest")}
+          onClick={onToggleNewest}
+          sx={sortByNewest ? sortActiveSx : sortInactiveSx}
+        />
+        <Chip
+          icon={<MyLocationIcon sx={{ fontSize: "0.9rem !important" }} />}
+          label={geoLoading ? t("...") : t("Near Me")}
+          onClick={onToggleNearMe}
+          disabled={geoLoading}
+          sx={sortByNearMe ? sortActiveSx : sortInactiveSx}
+        />
+
+        {/* Spacer */}
+        <Box sx={{ flex: 1 }} />
+
+        {/* Layout toggle */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            p: 0.4,
+            borderRadius: "12px",
+            backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+            border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+          }}
+        >
+          <Tooltip title={t("Single row")} placement="top">
+            <IconButton
               size="small"
-              sx={{
-                ...inactivePillSx,
-                color: isDark ? "rgba(255,100,100,0.9)" : "#dc2626",
-                borderColor: isDark ? "rgba(255,100,100,0.25)" : "#fecaca",
-              }}
-            />
-          )}
+              onClick={() => onLayoutChange?.("row")}
+              sx={layoutBtnSx(productLayout === "row")}
+            >
+              <ViewStreamIcon sx={{ fontSize: "1.1rem" }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={t("Two rows")} placement="top">
+            <IconButton
+              size="small"
+              onClick={() => onLayoutChange?.("grid2")}
+              sx={layoutBtnSx(productLayout === "grid2")}
+            >
+              <GridViewIcon sx={{ fontSize: "1.1rem" }} />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Box>
 

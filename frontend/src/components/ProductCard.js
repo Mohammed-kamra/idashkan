@@ -49,6 +49,9 @@ const ProductCard = ({
       )
     : 0;
 
+  const showDiscountBadge =
+    hasPreviousPrice || Boolean(product.isDiscount);
+
   const expiryInfo = getExpiryRemainingInfo(product.expireDate);
   const showExpiry = shouldShowExpiryChip(expiryInfo);
 
@@ -61,7 +64,6 @@ const ProductCard = ({
 
   return (
     <Card
-      onClick={() => onOpen && onOpen(product)}
       sx={{
         cursor: "pointer",
         width: cardWidth,
@@ -93,6 +95,7 @@ const ProductCard = ({
     >
       {/* Image area */}
       <Box
+        onClick={() => onOpen && onOpen(product)}
         sx={{
           position: "relative",
           height: imgHeight,
@@ -145,10 +148,10 @@ const ProductCard = ({
             alignItems: "flex-start",
           }}
         >
-          {hasPreviousPrice ? (
+          {showDiscountBadge ? (
             <Chip
               icon={<LocalOfferIcon sx={{ fontSize: "11px !important" }} />}
-              label={`-${discount}%`}
+              label={hasPreviousPrice ? `-${discount}%` : t("Discount")}
               size="small"
               sx={{
                 height: 22,

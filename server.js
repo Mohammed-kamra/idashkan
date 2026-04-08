@@ -52,6 +52,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/api/stores", require("./routes/store"));
 app.use("/api/brands", require("./routes/brand"));
+app.use("/api/companies", require("./routes/company"));
 app.use("/api/products", require("./routes/product"));
 app.use("/api/categories", require("./routes/category"));
 app.use("/api/gifts", require("./routes/gift"));

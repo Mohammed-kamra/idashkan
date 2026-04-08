@@ -11,8 +11,8 @@ import {
   IconButton,
   Skeleton,
 } from "@mui/material";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { brandAPI, adAPI, brandTypeAPI } from "../services/api";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { brandAPI, companyAPI, adAPI, brandTypeAPI } from "../services/api";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -28,9 +28,11 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const BrandList = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
+  const isCompanyMode = location.pathname.startsWith("/companies");
 
   const [searchParams] = useSearchParams();
   const [Brands, setBrands] = useState([]);
@@ -47,7 +49,7 @@ const BrandList = () => {
     fetchBrands();
     fetchAds();
     fetchBrandTypes();
-  }, []);
+  }, [isCompanyMode]);
 
   useEffect(() => {
     if (Brands.length === 0) {
@@ -76,7 +78,7 @@ const BrandList = () => {
   const fetchBrands = async () => {
     try {
       setLoading(true);
-      const response = await brandAPI.getAll();
+      const response = await (isCompanyMode ? companyAPI.getAll() : brandAPI.getAll());
 
       setBrands(response.data);
     } catch (err) {
@@ -143,7 +145,7 @@ const BrandList = () => {
   );
 
   const handleBrandClick = (brand) => {
-    navigate(`/brands/${brand._id}`);
+    navigate(`${isCompanyMode ? "/companies" : "/brands"}/${brand._id}`);
   };
 
   if (loading)

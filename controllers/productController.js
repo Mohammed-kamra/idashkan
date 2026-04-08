@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Brand = require("../models/Brand");
+const Company = require("../models/Company");
 const Category = require("../models/Category");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
 const {
@@ -10,6 +11,8 @@ const {
   storeDetail,
   brandList,
   brandDetail,
+  companyList,
+  companyDetail,
   storeTypeList,
 } = require("../utils/refPopulate");
 
@@ -75,6 +78,7 @@ const getProducts = async (req, res) => {
 
     const products = await Product.find(finalQuery)
       .populate("brandId", brandList)
+      .populate("companyId", companyList)
       .populate("storeId", storeList)
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
@@ -114,6 +118,7 @@ const getProductById = async (req, res) => {
 
     const product = await Product.findById(req.params.id)
       .populate("brandId", brandDetail)
+      .populate("companyId", companyDetail)
       .populate("storeId", storeDetail)
       .populate("categoryId", categoryDetail)
       .populate("storeTypeId", storeTypeList);
@@ -151,6 +156,7 @@ const createProduct = async (req, res) => {
     isDiscount,
     weight,
     brandId,
+    companyId,
     categoryId,
     description,
     descriptionEn,
@@ -178,6 +184,16 @@ const createProduct = async (req, res) => {
       if (!brand) {
         console.error("[createProduct] Brand not found for brandId:", brandId);
         return res.status(404).json({ msg: "Brand not found" });
+      }
+    }
+    if (companyId) {
+      const company = await Company.findById(companyId);
+      if (!company) {
+        console.error(
+          "[createProduct] Company not found for companyId:",
+          companyId,
+        );
+        return res.status(404).json({ msg: "Company not found" });
       }
     }
 
@@ -241,6 +257,7 @@ const createProduct = async (req, res) => {
       isDiscount,
       weight,
       brandId,
+      companyId,
       storeId,
       storeTypeId: storeTypeIdToUse,
       status: status === "pending" ? "pending" : "published",
@@ -275,6 +292,34 @@ const getProductsByBrand = async (req, res) => {
       )
     )
       .populate("brandId", brandList)
+      .populate("companyId", companyList)
+      .populate("storeId", storeList)
+      .populate("categoryId", categoryList)
+      .populate("storeTypeId", storeTypeList)
+      .sort({ name: 1 });
+    res.json(products);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server Error");
+  }
+};
+
+// @desc    Get products by company
+// @route   GET /api/products/company/:companyId
+// @access  Public
+const getProductsByCompany = async (req, res) => {
+  try {
+    const storeIds = await getPublicStoreIds();
+    const products = await Product.find(
+      applyPublishedOnlyToProductQuery(
+        applyPublicVisibilityToProductQuery(
+          { companyId: req.params.companyId },
+          storeIds,
+        ),
+      ),
+    )
+      .populate("brandId", brandList)
+      .populate("companyId", companyList)
       .populate("storeId", storeList)
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
@@ -306,6 +351,7 @@ const getProductsByStore = async (req, res) => {
       )
     )
       .populate("brandId", brandList)
+      .populate("companyId", companyList)
       .populate("storeId", storeList)
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
@@ -330,6 +376,7 @@ const getProductsByCategory = async (req, res) => {
       )
     )
       .populate("brandId", brandList)
+      .populate("companyId", companyList)
       .populate("storeId", storeList)
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
@@ -377,6 +424,7 @@ const updateProduct = async (req, res) => {
       new: true,
     })
       .populate("brandId", brandList)
+      .populate("companyId", companyList)
       .populate("storeTypeId", storeTypeList);
 
     if (!product) {
@@ -418,6 +466,7 @@ module.exports = {
   updateProduct,
   deleteProduct,
   getProductsByBrand,
+  getProductsByCompany,
   getProductsByStore,
   getProductsByCategory,
   getCategories,

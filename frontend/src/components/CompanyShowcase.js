@@ -1,0 +1,177 @@
+import React from "react";
+import { Box, Typography, Avatar, Button } from "@mui/material";
+import { Link } from "react-router-dom";
+import DiamondIcon from "@mui/icons-material/Diamond";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import { useTheme } from "@mui/material/styles";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import Slider from "react-slick";
+import { useTranslation } from "react-i18next";
+import { resolveMediaUrl } from "../utils/mediaUrl";
+import { useLocalizedContent } from "../hooks/useLocalizedContent";
+
+const CompanyShowcase = ({ companies }) => {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const { locName } = useLocalizedContent();
+  const isDark = theme.palette.mode === "dark";
+
+  if (!companies || companies.length === 0) return null;
+
+  const vipCompanies = companies.filter((c) => Boolean(c?.isVip));
+  const displayCompanies = vipCompanies.length > 0 ? vipCompanies : companies;
+  const isVipMode = vipCompanies.length > 0;
+
+  const slideCount = displayCompanies.length;
+  const clamp = (max) => Math.max(1, Math.min(max, slideCount));
+  const desktopShow = clamp(6);
+
+  const settings = {
+    dots: false,
+    infinite: slideCount > desktopShow,
+    speed: 4500,
+    autoplay: slideCount > desktopShow,
+    autoplaySpeed: 800,
+    cssEase: "linear",
+    slidesToShow: desktopShow,
+    slidesToScroll: 1,
+    arrows: false,
+    responsive: [
+      { breakpoint: 1024, settings: { slidesToShow: clamp(5) } },
+      { breakpoint: 768, settings: { slidesToShow: clamp(4) } },
+      { breakpoint: 600, settings: { slidesToShow: clamp(3) } },
+      { breakpoint: 400, settings: { slidesToShow: clamp(2) } },
+    ],
+  };
+
+  return (
+    <Box
+      sx={{
+        borderRadius: "20px",
+        overflow: "hidden",
+        background: isDark
+          ? "linear-gradient(145deg, #1a2236 0%, #1c2640 100%)"
+          : "#ffffff",
+        border: isDark
+          ? "1px solid rgba(255,255,255,0.07)"
+          : "1px solid #eef0f4",
+        boxShadow: isDark
+          ? "0 4px 20px rgba(0,0,0,0.35)"
+          : "0 2px 16px rgba(0,0,0,0.06)",
+        my: { xs: 1.5, sm: 2 },
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 1.2, sm: 1.4 },
+          borderBottom: isDark
+            ? "1px solid rgba(255,255,255,0.07)"
+            : "1px solid #f3f4f6",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "10px",
+              background: isVipMode
+                ? "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                : "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <DiamondIcon sx={{ fontSize: 16, color: "white" }} />
+          </Box>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 800,
+              fontSize: { xs: "0.95rem", sm: "1.05rem" },
+              color: isDark ? "rgba(255,255,255,0.95)" : "#111827",
+              lineHeight: 1.2,
+            }}
+          >
+            {t(isVipMode ? "VIP Companies" : "Featured Companies")}
+          </Typography>
+        </Box>
+
+        <Button
+          component={Link}
+          to="/companies"
+          size="small"
+          endIcon={
+            <ArrowForwardIosIcon
+              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
+            />
+          }
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.8rem",
+            color: "var(--color-primary, #1E6FD9)",
+          }}
+        >
+          {t("See All")}
+        </Button>
+      </Box>
+
+      <Box sx={{ px: { xs: 1, sm: 1.5 }, py: { xs: 1.5, sm: 2 } }}>
+        <Slider {...settings}>
+          {displayCompanies.map((company) => (
+            <Box
+              key={company._id}
+              component={Link}
+              to={`/companies/${company._id}`}
+              sx={{
+                textAlign: "center",
+                textDecoration: "none",
+                outline: "none",
+                px: 0.5,
+              }}
+            >
+              <Avatar
+                src={resolveMediaUrl(company.logo)}
+                alt={locName(company)}
+                sx={{
+                  width: { xs: 64, sm: 72, md: 80 },
+                  height: { xs: 64, sm: 72, md: 80 },
+                  m: "0 auto 6px",
+                  bgcolor: isDark ? "rgba(255,255,255,0.08)" : "#f9fafb",
+                  border: isDark
+                    ? "2px solid rgba(255,255,255,0.1)"
+                    : "2px solid #e5e7eb",
+                  borderRadius: "16px",
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  fontWeight: 600,
+                  fontSize: "0.68rem",
+                  color: isDark ? "rgba(255,255,255,0.6)" : "#6b7280",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  px: 0.5,
+                }}
+              >
+                {locName(company)}
+              </Typography>
+            </Box>
+          ))}
+        </Slider>
+      </Box>
+    </Box>
+  );
+};
+
+export default CompanyShowcase;

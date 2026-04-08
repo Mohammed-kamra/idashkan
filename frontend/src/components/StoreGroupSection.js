@@ -32,6 +32,7 @@ const StoreGroupSection = ({
   onLikeClick,
   likeLoading,
   formatPrice,
+  productLayout = "row",
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -245,39 +246,78 @@ const StoreGroupSection = ({
         </Box>
       </Box>
 
-      {/* Products horizontal scroll */}
+      {/* Products — single row or 2-row grid */}
       {products.length > 0 ? (
-        <Box
-          sx={{
-            px: { xs: 1, sm: 1.5 },
-            py: { xs: 1.2, sm: 1.5 },
-            display: "flex",
-            gap: { xs: 1, sm: 1.2 },
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollbarWidth: "thin",
-            scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
-            "&::-webkit-scrollbar": { height: 4 },
-            "&::-webkit-scrollbar-track": { background: "transparent" },
-            "&::-webkit-scrollbar-thumb": {
-              background: isDark ? "#4a5568" : "#d1d5db",
-              borderRadius: 4,
-            },
-          }}
-        >
-          {products.map((product) => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              onOpen={onProductOpen}
-              isLiked={likeStates[product._id] || isProductLiked(product._id)}
-              onLike={onLikeClick}
-              likeLoading={likeLoading[product._id]}
-              formatPrice={formatPrice}
-              t={t}
-            />
-          ))}
-        </Box>
+        productLayout === "grid2" && products.length >= 3 ? (
+          /* ── 2-row horizontal grid ── */
+          <Box
+            sx={{
+              px: { xs: 1, sm: 1.5 },
+              py: { xs: 1.2, sm: 1.5 },
+              display: "grid",
+              gridTemplateRows: "1fr 1fr",
+              gridAutoFlow: "column",
+              gridAutoColumns: { xs: "148px", sm: "182px", md: "220px" },
+              gap: { xs: "8px", sm: "10px" },
+              overflowX: "auto",
+              overflowY: "hidden",
+              scrollbarWidth: "thin",
+              scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
+              "&::-webkit-scrollbar": { height: 4 },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": {
+                background: isDark ? "#4a5568" : "#d1d5db",
+                borderRadius: 4,
+              },
+            }}
+          >
+            {products.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onOpen={onProductOpen}
+                isLiked={likeStates[product._id] || isProductLiked(product._id)}
+                onLike={onLikeClick}
+                likeLoading={likeLoading[product._id]}
+                formatPrice={formatPrice}
+                t={t}
+              />
+            ))}
+          </Box>
+        ) : (
+          /* ── single row horizontal scroll ── */
+          <Box
+            sx={{
+              px: { xs: 1, sm: 1.5 },
+              py: { xs: 1.2, sm: 1.5 },
+              display: "flex",
+              gap: { xs: 1, sm: 1.2 },
+              overflowX: "auto",
+              overflowY: "hidden",
+              scrollbarWidth: "thin",
+              scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
+              "&::-webkit-scrollbar": { height: 4 },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": {
+                background: isDark ? "#4a5568" : "#d1d5db",
+                borderRadius: 4,
+              },
+            }}
+          >
+            {products.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                onOpen={onProductOpen}
+                isLiked={likeStates[product._id] || isProductLiked(product._id)}
+                onLike={onLikeClick}
+                likeLoading={likeLoading[product._id]}
+                formatPrice={formatPrice}
+                t={t}
+              />
+            ))}
+          </Box>
+        )
       ) : (
         <Box sx={{ px: 2, py: 2 }}>
           <Typography variant="caption" color="text.secondary">

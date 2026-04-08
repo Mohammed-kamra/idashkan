@@ -6,7 +6,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Box, Button, CircularProgress, IconButton, Typography, Skeleton } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Typography,
+  Skeleton,
+} from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import ShareIcon from "@mui/icons-material/Share";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -22,6 +29,7 @@ import { useCityFilter } from "../context/CityFilterContext";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { useContentRefresh } from "../context/ContentRefreshContext";
 
 const MotionBox = motion.create(Box);
 const MotionIconButton = motion.create(IconButton);
@@ -355,7 +363,7 @@ const ReelCard = memo(function ReelCard({
             {reel.views ?? 0}
           </Typography>
         </Box>
-        <Box sx={{ textAlign: "center" }}>
+        {/* <Box sx={{ textAlign: "center" }}>
           <MotionIconButton
             whileTap={{ scale: 0.9 }}
             onClick={(e) => {
@@ -376,7 +384,7 @@ const ReelCard = memo(function ReelCard({
           >
             {reel.shares ?? 0}
           </Typography>
-        </Box>
+        </Box> */}
       </MotionBox>
 
       {isActive && isPaused && (
@@ -491,10 +499,28 @@ const ReelsPage = () => {
     getFollowedStores,
   } = useUserTracking();
   const { selectedCity } = useCityFilter();
+  const { triggerRefresh } = useContentRefresh();
 
   useEffect(() => {
     isPausedRef.current = isPaused;
   }, [isPaused]);
+
+  useEffect(() => {
+    const handleReelsNavTap = (event) => {
+      const isDoubleTap = Boolean(event?.detail?.doubleTap);
+      const isAtTop = (containerRef.current?.scrollTop || 0) <= 8;
+
+      if (isDoubleTap || isAtTop) {
+        triggerRefresh?.();
+      } else if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+
+    window.addEventListener("app:reels-nav-tap", handleReelsNavTap);
+    return () =>
+      window.removeEventListener("app:reels-nav-tap", handleReelsNavTap);
+  }, [triggerRefresh]);
 
   const handleTabSwitch = useCallback((tabIndex) => {
     if (tabIndex === 1) {
@@ -1100,12 +1126,24 @@ const ReelsPage = () => {
         <Skeleton
           variant="rectangular"
           animation="wave"
-          sx={{ width: "100%", maxWidth: 360, height: 32, borderRadius: 16, mx: "auto" }}
+          sx={{
+            width: "100%",
+            maxWidth: 360,
+            height: 32,
+            borderRadius: 16,
+            mx: "auto",
+          }}
         />
         <Skeleton
           variant="rectangular"
           animation="wave"
-          sx={{ width: "100%", maxWidth: 420, height: "60vh", borderRadius: 2, mx: "auto" }}
+          sx={{
+            width: "100%",
+            maxWidth: 420,
+            height: "60vh",
+            borderRadius: 2,
+            mx: "auto",
+          }}
         />
         <Skeleton
           variant="text"
@@ -1244,7 +1282,7 @@ const ReelsPage = () => {
                 registerSectionRef={registerSectionRef}
                 registerVideoRef={registerVideoRef}
                 onLike={handleLike}
-                onShare={handleShare}
+                // onShare={handleShare}
                 isMobile={isMobile}
                 isPaused={isPaused}
                 onTogglePlayback={togglePlayback}

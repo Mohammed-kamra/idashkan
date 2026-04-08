@@ -18,6 +18,11 @@ const videoSchema = new mongoose.Schema(
       ref: "Brand",
       required: false,
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: false,
+    },
     expireDate: { type: Date, required: false },
     like: { type: Number, default: 0, min: 0 },
     views: { type: Number, default: 0, min: 0 },
@@ -33,10 +38,14 @@ videoSchema.index({ createdAt: -1 });
 videoSchema.pre("validate", function validateOwner(next) {
   const hasStore = !!this.storeId;
   const hasBrand = !!this.brandId;
+  const hasCompany = !!this.companyId;
+  const ownerCount = [hasStore, hasBrand, hasCompany].filter(Boolean).length;
 
-  if (hasStore === hasBrand) {
+  if (ownerCount !== 1) {
     return next(
-      new Error("Video owner must be exactly one of storeId or brandId"),
+      new Error(
+        "Video owner must be exactly one of storeId, brandId, companyId",
+      ),
     );
   }
 

@@ -43,6 +43,7 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const FavouritesPage = () => {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
@@ -259,6 +260,8 @@ const FavouritesPage = () => {
         minWidth: 0,
         overflowX: "hidden",
         boxSizing: "border-box",
+        minHeight: "100vh",
+        backgroundColor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
       }}
     >
       <Button
@@ -286,11 +289,8 @@ const FavouritesPage = () => {
         variant="h4"
         sx={{
           mb: 3,
-          fontWeight: 700,
-          color:
-            theme.palette.mode === "dark"
-              ? "var(--color-primary)"
-              : "var(--color-secondary)",
+          fontWeight: 800,
+          color: isDark ? "#fff" : "#111827",
         }}
       >
         {t("Favourites")}
@@ -302,13 +302,35 @@ const FavouritesPage = () => {
             textAlign: "center",
             py: 8,
             px: 2,
+            borderRadius: 4,
+            backgroundColor: isDark
+              ? "rgba(255,255,255,0.03)"
+              : "rgba(0,0,0,0.02)",
           }}
         >
-          <FavoriteBorderIcon sx={{ fontSize: 80, color: "grey.400", mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <FavoriteBorderIcon
+            sx={{
+              fontSize: 80,
+              mb: 2,
+              color: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+            }}
+          />
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)",
+            }}
+            gutterBottom
+          >
             {t("No favourites yet")}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)",
+            }}
+          >
             {t("Like products to add them to your favourites")}
           </Typography>
         </Box>
@@ -352,9 +374,21 @@ const FavouritesPage = () => {
                     maxWidth: { xs: "160px", sm: "100%" },
                     minWidth: 0,
                     overflow: "hidden",
-                    transition: "box-shadow 0.2s",
+                    borderRadius: 3,
+                    background: isDark
+                      ? "linear-gradient(145deg,#1a2235,#1e2a42)"
+                      : "#ffffff",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+                    boxShadow: isDark
+                      ? "0 2px 12px rgba(0,0,0,0.3)"
+                      : "0 2px 10px rgba(0,0,0,0.05)",
+                    transition: "all 0.2s ease",
                     "&:hover": {
-                      boxShadow: (th) => th.shadows[4],
+                      boxShadow: isDark
+                        ? "0 6px 24px rgba(0,0,0,0.45)"
+                        : "0 6px 20px rgba(30,111,217,0.12)",
+                      borderColor: isDark ? "rgba(74,144,226,0.4)" : "#dce8ff",
+                      transform: "translateY(-2px)",
                     },
                   }}
                 >
@@ -366,9 +400,11 @@ const FavouritesPage = () => {
                         alignItems: "center",
                         gap: 1,
                         p: 1,
-                        borderBottom: 1,
-                        borderColor: "divider",
+                        borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
                         minWidth: 0,
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(0,0,0,0.02)",
                       }}
                     >
                       {market.logo ? (
@@ -401,6 +437,9 @@ const FavouritesPage = () => {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
+                          color: isDark
+                            ? "rgba(255,255,255,0.7)"
+                            : "rgba(0,0,0,0.65)",
                         }}
                       >
                         {market.name}
@@ -414,25 +453,34 @@ const FavouritesPage = () => {
                         image={resolveMediaUrl(product.image)}
                         alt={locName(product)}
                         sx={{
-                          height: 100,
+                          height: 110,
                           width: "100%",
                           maxWidth: "100%",
                           objectFit: "contain",
-                          backgroundColor: theme.palette.grey[100],
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.04)"
+                            : "#f8f9fb",
                         }}
                       />
                     ) : (
                       <Box
                         sx={{
-                          height: 100,
+                          height: 110,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          backgroundColor: theme.palette.grey[100],
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.04)"
+                            : "#f8f9fb",
                         }}
                       >
                         <ShoppingCartIcon
-                          sx={{ fontSize: 48, color: "grey.400" }}
+                          sx={{
+                            fontSize: 48,
+                            color: isDark
+                              ? "rgba(255,255,255,0.15)"
+                              : "rgba(0,0,0,0.12)",
+                          }}
                         />
                       </Box>
                     )}
@@ -498,7 +546,7 @@ const FavouritesPage = () => {
                   <CardContent
                     sx={{
                       flexGrow: 1,
-                      p: 1.5,
+                      p: 1.25,
                       minWidth: 0,
                       width: "100%",
                       boxSizing: "border-box",
@@ -508,8 +556,8 @@ const FavouritesPage = () => {
                       variant="body2"
                       fontWeight={600}
                       sx={{
-                        fontSize: { xs: "0.92rem", sm: "0.95rem" },
-                        lineHeight: 1.25,
+                        fontSize: { xs: "0.82rem", sm: "0.88rem" },
+                        lineHeight: 1.3,
                         display: "-webkit-box",
                         textAlign: "center",
                         WebkitLineClamp: 2,
@@ -517,7 +565,10 @@ const FavouritesPage = () => {
                         overflow: "hidden",
                         overflowWrap: "anywhere",
                         wordBreak: "break-word",
-                        minHeight: "2.5em", // reserve space for 2 lines
+                        minHeight: "2.6em",
+                        color: isDark
+                          ? "rgba(255,255,255,0.9)"
+                          : "rgba(0,0,0,0.85)",
                       }}
                     >
                       {locName(product)}
@@ -526,8 +577,9 @@ const FavouritesPage = () => {
                       sx={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 0.5,
+                        gap: 0.25,
                         mt: 0.5,
+                        alignItems: "center",
                       }}
                     >
                       {(() => {
@@ -544,8 +596,10 @@ const FavouritesPage = () => {
                                 textDecoration: hasPreviousPrice
                                   ? "line-through"
                                   : "none",
-                                color: "red",
-                                fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                                color: isDark
+                                  ? "rgba(255,80,80,0.75)"
+                                  : "#e53e3e",
+                                fontSize: { xs: "0.72rem", sm: "0.78rem" },
                                 fontWeight: 500,
                                 minHeight: "1.2em",
                                 visibility: hasPreviousPrice
@@ -559,12 +613,12 @@ const FavouritesPage = () => {
                             </Typography>
 
                             <Typography
-                              variant="h6"
+                              variant="body1"
                               sx={{
-                                color: "var(--color-secondary)",
+                                color: "var(--color-secondary,#0d47a1)",
                                 textAlign: "center",
-                                fontWeight: 700,
-                                fontSize: { xs: "1.05rem", sm: "1.35rem" },
+                                fontWeight: 800,
+                                fontSize: { xs: "0.95rem", sm: "1.05rem" },
                                 minHeight: "1.4em",
                                 maxWidth: "100%",
                                 overflowWrap: "anywhere",

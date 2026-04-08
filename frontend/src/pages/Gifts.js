@@ -212,7 +212,9 @@ const Gifts = () => {
     filtered.sort((a, b) => {
       const aTs = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bTs = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return (Number.isFinite(bTs) ? bTs : 0) - (Number.isFinite(aTs) ? aTs : 0);
+      return (
+        (Number.isFinite(bTs) ? bTs : 0) - (Number.isFinite(aTs) ? aTs : 0)
+      );
     });
 
     setFilteredGifts(filtered);
@@ -708,7 +710,10 @@ const Gifts = () => {
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <Grid size={{ xs: 6, sm: 4, md: 3 }} key={i}>
               <Card sx={{ borderRadius: 3, overflow: "hidden" }}>
-                <Skeleton variant="rectangular" sx={{ height: { xs: 130, sm: 160 } }} />
+                <Skeleton
+                  variant="rectangular"
+                  sx={{ height: { xs: 130, sm: 160 } }}
+                />
                 <CardContent sx={{ p: { xs: 1, sm: 1.5 } }}>
                   <Skeleton variant="text" width="85%" height={24} />
                   <Skeleton variant="text" width="65%" height={20} />

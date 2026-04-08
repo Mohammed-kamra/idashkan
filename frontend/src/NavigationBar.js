@@ -90,6 +90,7 @@ const NOTIFICATIONS_CENTER_ENABLED = true;
 /** Same gradient in every UI language. Applied via inline style so RTL (ar/ku) does not mirror it. */
 const NAV_BAR_GRADIENT =
   "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)";
+const HOME_DOUBLE_TAP_MS = 450;
 
 const NavigationBar = ({ darkMode, setDarkMode }) => {
   const theme = useTheme();
@@ -140,6 +141,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
   const [mobileNavCityAnchor, setMobileNavCityAnchor] = useState(null);
   const [mobileNavLangAnchor, setMobileNavLangAnchor] = useState(null);
+  const lastHomeTapTsRef = useRef(0);
 
   const [guestNameDialogOpen, setGuestNameDialogOpen] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState("");
@@ -298,6 +300,21 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const handleLangChange = (event) => {
     i18n.changeLanguage(event.target.value);
   };
+
+  const handleHomeTopAction = useCallback(() => {
+    if (location.pathname !== "/") return;
+
+    const now = Date.now();
+    const isDoubleTap = now - lastHomeTapTsRef.current <= HOME_DOUBLE_TAP_MS;
+    lastHomeTapTsRef.current = now;
+
+    if (isDoubleTap) {
+      triggerRefresh?.();
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname, triggerRefresh]);
 
   const handleProfileMenuOpen = (event) => {
     setProfileAnchorEl(event.currentTarget);
@@ -516,6 +533,27 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   <SearchIcon />
                 </IconButton>
                 <IconButton
+                  component={Link}
+                  to="/"
+                  onClick={handleHomeTopAction}
+                  sx={{
+                    color: "white",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    transition: "all 0.3s ease",
+                    width: 40,
+                    height: 40,
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      transform: "scale(1.1)",
+                    },
+                  }}
+                  aria-label={t("Home")}
+                >
+                  <HomeIcon />
+                </IconButton>
+                <IconButton
                   onClick={() => triggerRefresh?.()}
                   sx={{
                     color: "white",
@@ -650,6 +688,27 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               </Typography>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.9 }}>
+                <IconButton
+                  component={Link}
+                  to="/"
+                  onClick={handleHomeTopAction}
+                  sx={{
+                    color: "white",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    backdropFilter: "blur(10px)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    transition: "all 0.3s ease",
+                    width: 40,
+                    height: 40,
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.2)",
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                  aria-label={t("Home")}
+                >
+                  <HomeIcon />
+                </IconButton>
                 <IconButton
                   onClick={() => triggerRefresh?.()}
                   sx={{
@@ -909,42 +968,42 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
           {/* Desktop: Logo and Brand */}
           {isSmUp && (
-          <Box display="flex" alignItems="center">
-            <Avatar
-              sx={{
-                mr: 2,
-                width: 40,
-                height: 40,
+            <Box display="flex" alignItems="center">
+              <Avatar
+                sx={{
+                  mr: 2,
+                  width: 40,
+                  height: 40,
                   // background: "linear-gradient(135deg, #ffffff20, #ffffff40)",
-                backdropFilter: "blur(10px)",
-                border: "2px solid rgba(255,255,255,0.3)",
-              }}
-            >
-              <StoreIcon sx={{ color: "white", fontSize: 24 }} />
-            </Avatar>
-            <Typography
-              variant="h5"
-              component={Link}
-              to="/"
-              sx={{
-                textDecoration: "none",
-                color: "white",
+                  backdropFilter: "blur(10px)",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                <StoreIcon sx={{ color: "white", fontSize: 24 }} />
+              </Avatar>
+              <Typography
+                variant="h5"
+                component={Link}
+                to="/"
+                sx={{
+                  textDecoration: "none",
+                  color: "white",
                   fontWeight: 900,
                   fontSize: { xs: "1.75rem", sm: "1.75rem", md: "1.75rem" },
-                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                  textShadow: "0 2px 4px rgba(0,0,0,0.3)",
                   backgroundColor: "white",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "scale(1.05)",
-                },
-              }}
-            >
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "scale(1.05)",
+                  },
+                }}
+              >
                 {t("Discount Center")}
-            </Typography>
-          </Box>
+              </Typography>
+            </Box>
           )}
 
           {/* Desktop Navigation */}
@@ -1061,69 +1120,69 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 .slice(2)
                 .filter((item) => item.path !== "/favourites")
                 .map((item) => (
-                <Button
-                  key={item.path}
-                  component={Link}
-                  to={item.path}
-                  startIcon={item.icon}
+                  <Button
+                    key={item.path}
+                    component={Link}
+                    to={item.path}
+                    startIcon={item.icon}
                     onClick={item.path === "/gifts" ? markGiftsSeen : undefined}
-                  sx={{
-                    color: "white",
-                    textTransform: "none",
-                    fontSize: "1.3rem",
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    minWidth: "auto",
-                    position: "relative",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    sx={{
+                      color: "white",
+                      textTransform: "none",
+                      fontSize: "1.3rem",
+                      px: 2,
+                      py: 1,
+                      borderRadius: 2,
+                      minWidth: "auto",
+                      position: "relative",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                       // backgroundColor:
                       //   location.pathname === item.path
                       //     ? "rgba(255,255,255,0.2)"
                       //     : "transparent",
-                    backdropFilter:
-                      location.pathname === item.path ? "blur(10px)" : "none",
-                    border:
-                      location.pathname === item.path
-                        ? "1px solid rgba(255,255,255,0.3)"
-                        : "1px solid transparent",
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.15)",
-                      backdropFilter: "blur(10px)",
-                      transform: "translateY(-2px)",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                    },
-                    "&::after": {
-                      content: '""',
-                      position: "absolute",
-                      bottom: -2,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: location.pathname === item.path ? "80%" : "0%",
-                      height: 2,
+                      backdropFilter:
+                        location.pathname === item.path ? "blur(10px)" : "none",
+                      border:
+                        location.pathname === item.path
+                          ? "1px solid rgba(255,255,255,0.3)"
+                          : "1px solid transparent",
+                      "&:hover": {
+                        backgroundColor: "rgba(255,255,255,0.15)",
+                        backdropFilter: "blur(10px)",
+                        transform: "translateY(-2px)",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+                      },
+                      "&::after": {
+                        content: '""',
+                        position: "absolute",
+                        bottom: -2,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: location.pathname === item.path ? "80%" : "0%",
+                        height: 2,
                         // backgroundColor: "white",
-                      borderRadius: 1,
-                      transition: "width 0.3s ease",
-                    },
-                  }}
-                >
-                  {item.name}
-                </Button>
-              ))}
+                        borderRadius: 1,
+                        transition: "width 0.3s ease",
+                      },
+                    }}
+                  >
+                    {item.name}
+                  </Button>
+                ))}
               {/* Admin dropdown (Data Entry + Users + Dashboard) - for admin users only */}
               {isAdmin && (
                 <>
-                <Button
+                  <Button
                     onClick={handleAdminMenuOpen}
                     startIcon={<AdminPanelSettingsIcon />}
                     endIcon={<ExpandMoreIcon />}
-                  sx={{
-                    color: "white",
-                    textTransform: "none",
+                    sx={{
+                      color: "white",
+                      textTransform: "none",
                       fontSize: "1.3rem",
                       px: 2,
                       py: 1,
-                    borderRadius: 2,
+                      borderRadius: 2,
                       minWidth: "auto",
                       backgroundColor: location.pathname.startsWith("/admin")
                         ? "rgba(255,255,255,0.2)"
@@ -1131,14 +1190,14 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                       border: location.pathname.startsWith("/admin")
                         ? "1px solid rgba(255,255,255,0.3)"
                         : "1px solid transparent",
-                    "&:hover": {
+                      "&:hover": {
                         backgroundColor: "rgba(255,255,255,0.15)",
                         borderColor: "rgba(255,255,255,0.5)",
-                    },
-                  }}
-                >
+                      },
+                    }}
+                  >
                     {t("Admin")}
-                </Button>
+                  </Button>
                   <Menu
                     anchorEl={adminAnchorEl}
                     open={Boolean(adminAnchorEl)}
@@ -1154,10 +1213,10 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                             ? "var(--brand-primary-blue)"
                             : "#fff",
                         border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 2,
-                    },
-                  }}
-                >
+                        borderRadius: 2,
+                      },
+                    }}
+                  >
                     <MenuItem
                       component={Link}
                       to="/admin"
@@ -1201,7 +1260,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                         <DashboardIcon fontSize="small" />
                       </ListItemIcon>
                       <ListItemText primary={t("Admin Dashboard")} />
-                      </MenuItem>
+                    </MenuItem>
                     <MenuItem
                       component={Link}
                       to="/admin/customization"
@@ -1240,27 +1299,27 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 </IconButton>
               )}
               {/* Desktop Profile Icon (contains Favourites, Login/Logout, City, Mode) */}
-                <IconButton
+              <IconButton
                 component={Link}
                 to="/profile"
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
+                sx={{
+                  color: "white",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  transition: "all 0.3s ease",
+                  width: 40,
+                  height: 40,
                   ml: 0.5,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
-                  <PersonIcon />
-                </IconButton>
-          </Box>
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.2)",
+                    transform: "scale(1.1)",
+                  },
+                }}
+              >
+                <PersonIcon />
+              </IconButton>
+            </Box>
           )}
 
           {/* Controls - desktop only (mobile has its own navbar above) */}
@@ -1268,28 +1327,28 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
       </AppBar>
 
       {NOTIFICATIONS_CENTER_ENABLED && (
-      <Menu
+        <Menu
           anchorEl={notificationAnchorEl}
           open={Boolean(notificationAnchorEl)}
           onClose={handleNotificationMenuClose}
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
           transformOrigin={{ vertical: "top", horizontal: "right" }}
-        PaperProps={{
-          sx: {
+          PaperProps={{
+            sx: {
               mt: 1.5,
               minWidth: 320,
               maxWidth: 380,
               maxHeight: 400,
-            backgroundColor:
+              backgroundColor:
                 theme.palette.mode === "dark" ? "#1E6FD9" : "#fff",
               border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-          },
-        }}
-      >
+              borderRadius: 2,
+            },
+          }}
+        >
           <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider" }}>
-        <Box
-          sx={{
+            <Box
+              sx={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
@@ -1342,13 +1401,13 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
           )}
           <Box sx={{ maxHeight: 280, overflow: "auto" }}>
             {notifications.length === 0 ? (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
+              <Typography
+                variant="body2"
+                color="text.secondary"
                 sx={{ p: 2, textAlign: "center" }}
-                  >
+              >
                 {t("No notifications")}
-                  </Typography>
+              </Typography>
             ) : (
               notifications.map((n) => (
                 <ListItemButton
@@ -1356,7 +1415,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   onClick={() => {
                     markAsRead(n._id);
                   }}
-                sx={{
+                  sx={{
                     py: 1.5,
                     px: 2,
                     backgroundColor: n.read ? "transparent" : "action.hover",
@@ -1365,27 +1424,27 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   }}
                 >
                   <Box sx={{ width: "100%" }}>
-                <Typography
+                    <Typography
                       variant="body2"
                       fontWeight={n.read ? 400 : 600}
                       sx={{ mb: 0.25 }}
                     >
                       {pickNotificationText(n, "title")}
-                </Typography>
+                    </Typography>
                     {pickNotificationText(n, "body") && (
-                <Typography
+                      <Typography
                         variant="caption"
-                  color="text.secondary"
+                        color="text.secondary"
                         display="block"
-                >
+                      >
                         {pickNotificationText(n, "body").length > 120
                           ? `${pickNotificationText(n, "body").slice(0, 120)}...`
                           : pickNotificationText(n, "body")}
-                </Typography>
+                      </Typography>
                     )}
                     {n.link && (
                       <Typography
-                component={Link}
+                        component={Link}
                         to={n.link}
                         variant="caption"
                         onClick={(e) => {
@@ -1393,7 +1452,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                           markAsRead(n._id);
                           handleNotificationMenuClose();
                         }}
-              sx={{
+                        sx={{
                           display: "inline-block",
                           mt: 0.5,
                           color: "primary.main",
@@ -1410,7 +1469,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               ))
             )}
           </Box>
-      </Menu>
+        </Menu>
       )}
 
       {/* {NOTIFICATIONS_CENTER_ENABLED && (

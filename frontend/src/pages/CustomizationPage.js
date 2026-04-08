@@ -13,6 +13,7 @@ import {
   Typography,
   Snackbar,
   Alert,
+  useTheme,
 } from "@mui/material";
 import PaletteIcon from "@mui/icons-material/Palette";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -74,6 +75,8 @@ const NAV_ACTIONS = [
 
 const CustomizationPage = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { activeTheme, activeFontKey, navConfig, fetchTheme } =
     useActiveTheme();
   const [selectedTheme, setSelectedTheme] = useState(activeTheme);
@@ -129,20 +132,72 @@ const CustomizationPage = () => {
   }, [selectedTheme]);
 
   return (
-    <Container maxWidth="md" sx={{ pt: { xs: 2, md: 4 }, pb: 6 }}>
-      <Card>
-        <CardContent>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-            <PaletteIcon color="primary" />
-            <Typography variant="h5" sx={{ fontWeight: 800 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
+        pt: { xs: 2, md: 4 },
+        pb: 6,
+      }}
+    >
+    <Container maxWidth="md">
+      <Card
+        sx={{
+          borderRadius: 4,
+          background: isDark
+            ? "linear-gradient(145deg,#1a2235,#1e2a42)"
+            : "#ffffff",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+          boxShadow: isDark
+            ? "0 4px 32px rgba(0,0,0,0.4)"
+            : "0 4px 24px rgba(0,0,0,0.06)",
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2.5,
+                background: isDark
+                  ? "linear-gradient(135deg,#1e6fd9,#4a90e2)"
+                  : "linear-gradient(135deg,#1E6FD9,#0d47a1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <PaletteIcon sx={{ color: "#fff", fontSize: "1.3rem" }} />
+            </Box>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 800,
+                color: isDark ? "#fff" : "#111827",
+              }}
+            >
               {t("Customization")}
             </Typography>
           </Box>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            sx={{
+              mb: 2,
+              color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)",
+              fontSize: "0.92rem",
+            }}
+          >
             {t("Admin selects active theme. All users see it automatically.")}
           </Typography>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider
+            sx={{
+              my: 2,
+              borderColor: isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(0,0,0,0.08)",
+            }}
+          />
 
           <Box
             sx={{
@@ -159,12 +214,28 @@ const CustomizationPage = () => {
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
+                  color: isDark ? "rgba(255,255,255,0.85)" : "#111827",
                 }}
               >
-                <PaletteIcon fontSize="small" />
+                <PaletteIcon fontSize="small" color="primary" />
                 {t("Active Theme")}
               </Typography>
-              <FormControl fullWidth>
+              <FormControl
+                fullWidth
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 3,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.025)",
+                    "& fieldset": {
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(0,0,0,0.12)",
+                    },
+                  },
+                }}
+              >
                 <InputLabel>{t("Theme")}</InputLabel>
                 <Select
                   value={selectedTheme}
@@ -184,10 +255,31 @@ const CustomizationPage = () => {
 
               <Box sx={{ height: 14 }} />
 
-              <Typography sx={{ fontWeight: 800, mb: 1 }}>
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  mb: 1,
+                  color: isDark ? "rgba(255,255,255,0.85)" : "#111827",
+                }}
+              >
                 {t("Default Font")}
               </Typography>
-              <FormControl fullWidth>
+              <FormControl
+                fullWidth
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 3,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.025)",
+                    "& fieldset": {
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(0,0,0,0.12)",
+                    },
+                  },
+                }}
+              >
                 <InputLabel>{t("Font")}</InputLabel>
                 <Select
                   value={selectedFont}
@@ -205,12 +297,40 @@ const CustomizationPage = () => {
                 </Select>
               </FormControl>
 
-              <Divider sx={{ my: 2 }} />
+              <Divider
+                sx={{
+                  my: 2.5,
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(0,0,0,0.08)",
+                }}
+              />
 
-              <Typography sx={{ fontWeight: 800, mb: 1 }}>
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  mb: 1,
+                  color: isDark ? "rgba(255,255,255,0.85)" : "#111827",
+                }}
+              >
                 {t("Mobile Navigation Template")}
               </Typography>
-              <FormControl fullWidth>
+              <FormControl
+                fullWidth
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 3,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(0,0,0,0.025)",
+                    "& fieldset": {
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(0,0,0,0.12)",
+                    },
+                  },
+                }}
+              >
                 <InputLabel>{t("Template")}</InputLabel>
                 <Select
                   value={selectedNav?.template || "template1"}
@@ -234,8 +354,24 @@ const CustomizationPage = () => {
               </FormControl>
 
               {selectedNav?.template === "custom" && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    borderRadius: 3,
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.03)"
+                      : "rgba(0,0,0,0.02)",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      mb: 1.5,
+                      color: isDark ? "rgba(255,255,255,0.8)" : "#111827",
+                    }}
+                  >
                     {t("Top Navigation Slots")}
                   </Typography>
                   {[
@@ -245,7 +381,24 @@ const CustomizationPage = () => {
                     "topright1",
                     "topright2",
                   ].map((slot) => (
-                    <FormControl key={slot} fullWidth sx={{ mb: 1 }}>
+                    <FormControl
+                      key={slot}
+                      fullWidth
+                      sx={{
+                        mb: 1,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2.5,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.025)",
+                          "& fieldset": {
+                            borderColor: isDark
+                              ? "rgba(255,255,255,0.1)"
+                              : "rgba(0,0,0,0.1)",
+                          },
+                        },
+                      }}
+                    >
                       <InputLabel>{slot}</InputLabel>
                       <Select
                         value={selectedNav?.topSlots?.[slot] ?? ""}
@@ -272,7 +425,14 @@ const CustomizationPage = () => {
                     </FormControl>
                   ))}
 
-                  <Typography sx={{ fontWeight: 800, mb: 1, mt: 2 }}>
+                  <Typography
+                    sx={{
+                      fontWeight: 800,
+                      mb: 1.5,
+                      mt: 2,
+                      color: isDark ? "rgba(255,255,255,0.8)" : "#111827",
+                    }}
+                  >
                     {t("Bottom Navigation Slots")}
                   </Typography>
                   {[
@@ -282,7 +442,24 @@ const CustomizationPage = () => {
                     "bottomright1",
                     "bottomright2",
                   ].map((slot) => (
-                    <FormControl key={slot} fullWidth sx={{ mb: 1 }}>
+                    <FormControl
+                      key={slot}
+                      fullWidth
+                      sx={{
+                        mb: 1,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2.5,
+                          backgroundColor: isDark
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.025)",
+                          "& fieldset": {
+                            borderColor: isDark
+                              ? "rgba(255,255,255,0.1)"
+                              : "rgba(0,0,0,0.1)",
+                          },
+                        },
+                      }}
+                    >
                       <InputLabel>{slot}</InputLabel>
                       <Select
                         value={selectedNav?.bottomSlots?.[slot] ?? ""}
@@ -315,29 +492,56 @@ const CustomizationPage = () => {
 
               <Box
                 sx={{
-                  mt: 1.5,
-                  p: 1.5,
-                  borderRadius: 2,
-                  border: "1px dashed",
-                  borderColor: "divider",
+                  mt: 2,
+                  p: 2,
+                  borderRadius: 3,
+                  border: `1px dashed ${isDark ? "rgba(74,144,226,0.3)" : "rgba(30,111,217,0.25)"}`,
+                  backgroundColor: isDark
+                    ? "rgba(74,144,226,0.06)"
+                    : "rgba(30,111,217,0.03)",
                 }}
               >
-                <Typography sx={{ fontWeight: 800, mb: 0.5 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    mb: 0.5,
+                    color: isDark ? "rgba(255,255,255,0.85)" : "#111827",
+                  }}
+                >
                   {t("Preview")}
                 </Typography>
-                <Typography>
+                <Typography
+                  sx={{
+                    color: isDark ? "rgba(255,255,255,0.75)" : "#374151",
+                  }}
+                >
                   {t("Selected")}: {fontPreview}
                 </Typography>
-                <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  sx={{
+                    mt: 0.5,
+                    color: isDark
+                      ? "rgba(255,255,255,0.4)"
+                      : "rgba(0,0,0,0.45)",
+                    fontSize: "0.82rem",
+                  }}
+                >
                   {t("Tip: theme effects auto-disable on low motion devices.")}
                 </Typography>
               </Box>
             </Box>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider
+            sx={{
+              my: 2.5,
+              borderColor: isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(0,0,0,0.08)",
+            }}
+          />
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
             <Button
               variant="contained"
               disabled={saving}
@@ -359,7 +563,12 @@ const CustomizationPage = () => {
                   setSaveToastOpen(true);
                 }
               }}
-              sx={{ textTransform: "none", mr: 1, minWidth: 110 }}
+              sx={{
+                textTransform: "none",
+                minWidth: 110,
+                borderRadius: 3,
+                fontWeight: 700,
+              }}
             >
               {saving ? t("Saving...") : t("Save")}
             </Button>
@@ -372,7 +581,15 @@ const CustomizationPage = () => {
                 setSelectedTheme("default");
                 setSelectedFont("default");
               }}
-              sx={{ textTransform: "none" }}
+              sx={{
+                textTransform: "none",
+                borderRadius: 3,
+                fontWeight: 700,
+                borderColor: isDark
+                  ? "rgba(255,255,255,0.18)"
+                  : "rgba(0,0,0,0.18)",
+                color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.65)",
+              }}
             >
               {t("Reset")}
             </Button>
@@ -394,6 +611,7 @@ const CustomizationPage = () => {
         </Alert>
       </Snackbar>
     </Container>
+    </Box>
   );
 };
 

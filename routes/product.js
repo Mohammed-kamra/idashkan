@@ -11,6 +11,7 @@ const {
   updateProduct,
   deleteProduct,
   getProductsByBrand,
+  getProductsByCompany,
   getProductsByStore,
   getProductsByCategory,
   getCategories,
@@ -28,6 +29,7 @@ router.get("/categories", getCategories);
 // @route   GET /api/products/brand/:brandId
 // @desc    Get products by brand
 router.get("/brand/:brandId", getProductsByBrand);
+router.get("/company/:companyId", getProductsByCompany);
 
 // @route   GET /api/products/store/:storeId
 // @desc    Get products by store

@@ -21,6 +21,7 @@ export function buildMainPagePayload({
   adsData,
   storeTypesData,
   brandsData,
+  companiesData,
   giftsData,
   jobsData,
 }) {
@@ -54,6 +55,7 @@ export function buildMainPagePayload({
     allProducts: productsData,
     storeTypes: storeTypesData || [],
     brands: brandsData || [],
+    companies: companiesData || [],
     gifts: giftsData || [],
     jobs: jobsData || [],
     productsByStore: productsMap,

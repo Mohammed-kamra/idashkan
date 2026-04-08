@@ -375,7 +375,63 @@ const ProfilePage = () => {
           </Box> */}
 
           <Divider />
-
+          {/* ── Dark / Light mode toggle ──────────────────────── */}
+          <ListItemButton
+            onClick={toggleDarkMode}
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderRadius: 0,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <Box
+                sx={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "10px",
+                  background: darkMode
+                    ? "linear-gradient(135deg,#1e293b,#334155)"
+                    : "linear-gradient(135deg,#fde68a,#fbbf24)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1rem",
+                  transition: "background 0.3s ease",
+                }}
+              >
+                {darkMode ? "🌙" : "☀️"}
+              </Box>
+            </ListItemIcon>
+            <ListItemText
+              primary={darkMode ? t("Dark Mode") : t("Light Mode")}
+              secondary={
+                darkMode ? t("Switch to Light Mode") : t("Switch to Dark Mode")
+              }
+              primaryTypographyProps={{ fontWeight: 600, fontSize: "0.95rem" }}
+              secondaryTypographyProps={{ fontSize: "0.75rem" }}
+            />
+            <Switch
+              checked={darkMode}
+              onChange={toggleDarkMode}
+              onClick={(e) => e.stopPropagation()}
+              color="default"
+              sx={{
+                "& .MuiSwitch-thumb": {
+                  background: darkMode
+                    ? "linear-gradient(135deg,#818cf8,#6366f1)"
+                    : "linear-gradient(135deg,#fbbf24,#f59e0b)",
+                },
+                "& .MuiSwitch-track": {
+                  bgcolor: darkMode
+                    ? "#4f46e5 !important"
+                    : "#d1d5db !important",
+                  opacity: "1 !important",
+                },
+              }}
+            />
+          </ListItemButton>
           <Box sx={{ px: 2, py: 2 }}>
             <Typography
               variant="caption"
@@ -448,59 +504,6 @@ const ProfilePage = () => {
               </Button>
             </Box>
           </Box>
-
-          {/* ── Dark / Light mode toggle ──────────────────────── */}
-          <ListItemButton
-            onClick={toggleDarkMode}
-            sx={{
-              px: 2, py: 1.5,
-              borderRadius: 0,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
-              <Box
-                sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "10px",
-                  background: darkMode
-                    ? "linear-gradient(135deg,#1e293b,#334155)"
-                    : "linear-gradient(135deg,#fde68a,#fbbf24)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1rem",
-                  transition: "background 0.3s ease",
-                }}
-              >
-                {darkMode ? "🌙" : "☀️"}
-              </Box>
-            </ListItemIcon>
-            <ListItemText
-              primary={darkMode ? t("Dark Mode") : t("Light Mode")}
-              secondary={darkMode ? t("Switch to Light Mode") : t("Switch to Dark Mode")}
-              primaryTypographyProps={{ fontWeight: 600, fontSize: "0.95rem" }}
-              secondaryTypographyProps={{ fontSize: "0.75rem" }}
-            />
-            <Switch
-              checked={darkMode}
-              onChange={toggleDarkMode}
-              onClick={(e) => e.stopPropagation()}
-              color="default"
-              sx={{
-                "& .MuiSwitch-thumb": {
-                  background: darkMode
-                    ? "linear-gradient(135deg,#818cf8,#6366f1)"
-                    : "linear-gradient(135deg,#fbbf24,#f59e0b)",
-                },
-                "& .MuiSwitch-track": {
-                  bgcolor: darkMode ? "#4f46e5 !important" : "#d1d5db !important",
-                  opacity: "1 !important",
-                },
-              }}
-            />
-          </ListItemButton>
 
           <Divider />
 
@@ -669,7 +672,6 @@ const ProfilePage = () => {
               <ListItemButton
                 onClick={() => {
                   logout();
-                  navigate("/");
                 }}
                 sx={{ color: "#e53e3e" }}
               >

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Paper,
   BottomNavigation,
@@ -30,7 +30,7 @@ import {
   Refresh as RefreshIcon,
   Notifications as NotificationsIcon,
 } from "@mui/icons-material";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useIsMobileLayout from "../hooks/useIsMobileLayout";
 import { useActiveTheme } from "../context/ActiveThemeContext";
@@ -49,6 +49,7 @@ const NAV_PATH_CITY = "__nav_city__";
 const NAV_PATH_LANG = "__nav_language__";
 const NAV_PATH_REFRESH = "__nav_refresh__";
 const NAV_PATH_NOTIFICATIONS = "__nav_notifications__";
+const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 
 /** Same as top AppBar in every language (RTL must not mirror this gradient). */
 const BOTTOM_NAV_GRADIENT =
@@ -58,6 +59,7 @@ const BottomNavigationBar = () => {
   const theme = useTheme();
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobileLayout();
   const { navConfig } = useActiveTheme();
   const { triggerRefresh } = useContentRefresh();
@@ -74,6 +76,8 @@ const BottomNavigationBar = () => {
   const [cityMenuAnchor, setCityMenuAnchor] = useState(null);
   const [langMenuAnchor, setLangMenuAnchor] = useState(null);
   const [notifMenuAnchor, setNotifMenuAnchor] = useState(null);
+  const lastHomeTapTsRef = useRef(0);
+  const lastReelsTapTsRef = useRef(0);
 
   const pickNotificationText = useMemo(() => {
     const isAr = dataLanguage === DATA_LANG_AR;
@@ -82,25 +86,13 @@ const BottomNavigationBar = () => {
     return (n, field) => {
       if (field === "title") {
         return (
-          (isAr
-            ? n?.titleAr
-            : isKu
-              ? n?.titleKu
-              : isEn
-                ? n?.titleEn
-                : "") ||
+          (isAr ? n?.titleAr : isKu ? n?.titleKu : isEn ? n?.titleEn : "") ||
           n?.title ||
           ""
         );
       }
       return (
-        (isAr
-          ? n?.bodyAr
-          : isKu
-            ? n?.bodyKu
-            : isEn
-              ? n?.bodyEn
-              : "") ||
+        (isAr ? n?.bodyAr : isKu ? n?.bodyKu : isEn ? n?.bodyEn : "") ||
         n?.body ||
         ""
       );
@@ -398,8 +390,55 @@ const BottomNavigationBar = () => {
                 label={item.name}
                 value={item.path}
                 icon={item.icon}
-                component={Link}
-                to={item.path}
+                component="button"
+                type="button"
+                onClick={() => {
+                  if (item.path === "/" && location.pathname === "/") {
+                    const now = Date.now();
+                    const isDoubleTap = now - lastHomeTapTsRef.current <= 450;
+                    lastHomeTapTsRef.current = now;
+                    const isAtTop = (window.scrollY || window.pageYOffset || 0) <= 8;
+
+                    if (isDoubleTap || isAtTop) {
+                      triggerRefresh?.();
+                      return;
+                    }
+
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    return;
+                  }
+
+                  if (item.path === "/reels" && location.pathname === "/reels") {
+                    const now = Date.now();
+                    const isDoubleTap = now - lastReelsTapTsRef.current <= 450;
+                    lastReelsTapTsRef.current = now;
+
+                    window.dispatchEvent(
+                      new CustomEvent("app:reels-nav-tap", {
+                        detail: { doubleTap: isDoubleTap },
+                      }),
+                    );
+
+                    if (isDoubleTap) {
+                      triggerRefresh?.();
+                      return;
+                    }
+
+                    return;
+                  }
+
+                  if (location.pathname === "/" && item.path !== "/") {
+                    try {
+                      sessionStorage.setItem(
+                        MAIN_PAGE_SCROLL_KEY,
+                        String(window.scrollY || window.pageYOffset || 0),
+                      );
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  navigate(item.path);
+                }}
                 sx={actionSx(isActive)}
               />
             );

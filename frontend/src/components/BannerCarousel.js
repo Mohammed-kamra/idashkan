@@ -1,11 +1,8 @@
-import React from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 import { useTheme } from "@mui/material/styles";
 
-const PremiumDots = ({ dots }) => (
+const PremiumDots = ({ count, activeIndex }) => (
   <Box
     sx={{
       display: "flex",
@@ -19,8 +16,8 @@ const PremiumDots = ({ dots }) => (
       pointerEvents: "none",
     }}
   >
-    {React.Children.map(dots, (dot, i) => {
-      const isActive = dot.props.className?.includes("slick-active");
+    {Array.from({ length: count }).map((_, i) => {
+      const isActive = i === activeIndex;
       return (
         <Box
           key={i}
@@ -41,6 +38,15 @@ const PremiumDots = ({ dots }) => (
 
 const BannerCarousel = ({ banners, onBannerClick }) => {
   const theme = useTheme();
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!banners || banners.length <= 1) return undefined;
+    const id = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % banners.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [banners]);
 
   if (!banners || banners.length === 0) {
     return (
@@ -62,20 +68,6 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
     );
   }
 
-  const settings = {
-    dots: true,
-    appendDots: (dots) => <PremiumDots dots={dots} />,
-    infinite: true,
-    speed: 600,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 4000,
-    cssEase: "cubic-bezier(0.4, 0, 0.2, 1)",
-    arrows: false,
-    pauseOnHover: true,
-  };
-
   return (
     <Box
       sx={{
@@ -87,21 +79,21 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
             : "0 8px 32px rgba(30,111,217,0.15)",
         mb: 2,
         position: "relative",
-        "& .slick-slide > div": { lineHeight: 0 },
-        "& .slick-dots": {
-          position: "absolute",
-          bottom: 0,
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-        },
-        "& .slick-dots li": { display: "none" },
+        height: { xs: "160px", sm: "220px", md: "280px" },
       }}
     >
-      <Slider {...settings}>
-        {banners.map((ad, index) => (
+      {banners.map((ad, index) => (
+        <Box
+          key={ad._id || index}
+          sx={{
+            position: "absolute",
+            inset: 0,
+            opacity: index === activeIndex ? 1 : 0,
+            pointerEvents: index === activeIndex ? "auto" : "none",
+            transition: "opacity 450ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
           <Box
-            key={ad._id || index}
             sx={{
               position: "relative",
               width: "100%",
@@ -120,21 +112,11 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
                 display: "block",
               }}
             />
-            <Box
-              sx={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: "50%",
-                background:
-                  "linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 100%)",
-                pointerEvents: "none",
-              }}
-            />
           </Box>
-        ))}
-      </Slider>
+        </Box>
+      ))}
+
+      <PremiumDots count={banners.length} activeIndex={activeIndex} />
     </Box>
   );
 };

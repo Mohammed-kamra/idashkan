@@ -44,6 +44,7 @@ import {
   storeAPI,
   productAPI,
   brandAPI,
+  companyAPI,
   categoryAPI,
   giftAPI,
   adAPI,
@@ -93,16 +94,17 @@ const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 const LIST_TAB = {
   STORES: 0,
   BRANDS: 1,
-  PRODUCTS: 2,
-  GIFTS: 3,
-  REELS: 4,
-  ADS: 5,
-  JOBS: 6,
-  CATEGORIES: 7,
-  STORE_TYPES: 8,
-  BRAND_TYPES: 9,
-  SETTINGS: 10,
-  NOTIFICATIONS: 11,
+  COMPANIES: 2,
+  PRODUCTS: 3,
+  GIFTS: 4,
+  REELS: 5,
+  ADS: 6,
+  JOBS: 7,
+  CATEGORIES: 8,
+  STORE_TYPES: 9,
+  BRAND_TYPES: 10,
+  SETTINGS: 11,
+  NOTIFICATIONS: 12,
 };
 
 /** Horizontal scroll for action + filter rows inside each data-list tab */
@@ -175,6 +177,7 @@ const DataEntryForm = () => {
   const [activeListTab, setActiveListTab] = useState(0); // State for list tabs
   const [stores, setStores] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
   const [products, setProducts] = useState([]);
@@ -189,6 +192,7 @@ const DataEntryForm = () => {
   // Pagination states
   const [storesPage, setStoresPage] = useState(0);
   const [brandsPage, setBrandsPage] = useState(0);
+  const [companiesPage, setCompaniesPage] = useState(0);
   const [productsPage, setProductsPage] = useState(0);
   const [giftsPage, setGiftsPage] = useState(0);
   const [adsPage, setAdsPage] = useState(0);
@@ -197,6 +201,7 @@ const DataEntryForm = () => {
   const [rowsPerPage] = useState(10);
   const [storeNameSearch, setStoreNameSearch] = useState("");
   const [brandNameSearch, setBrandNameSearch] = useState("");
+  const [companyNameSearch, setCompanyNameSearch] = useState("");
   const [categoryStoreTypeFilter, setCategoryStoreTypeFilter] = useState("all");
   const [storeTypes, setStoreTypes] = useState([]);
   const [brandTypes, setBrandTypes] = useState([]);
@@ -319,6 +324,7 @@ const DataEntryForm = () => {
     barcode: "",
     weight: "",
     brandId: "",
+    companyId: "",
     categoryId: "",
     categoryTypeId: "",
     storeId: "",
@@ -331,6 +337,7 @@ const DataEntryForm = () => {
   const [adForm, setAdForm] = useState({
     image: "",
     brandId: "",
+    companyId: "",
     storeId: "",
     giftId: "",
     startDate: "",
@@ -355,6 +362,7 @@ const DataEntryForm = () => {
     gender: "any",
     storeId: "",
     brandId: "",
+    companyId: "",
     image: "",
     expireDate: "",
     active: true,
@@ -370,6 +378,7 @@ const DataEntryForm = () => {
     titleKu: "",
     storeId: "",
     brandId: "",
+    companyId: "",
     videoUrl: "",
     key: "",
     expireDate: "",
@@ -390,6 +399,7 @@ const DataEntryForm = () => {
     descriptionKu: "",
     storeId: [],
     brandId: "",
+    companyId: "",
     productId: "",
     expireDate: "",
   });
@@ -469,6 +479,7 @@ const DataEntryForm = () => {
   useEffect(() => {
     fetchStores();
     fetchBrands();
+    fetchCompanies();
     fetchCategories();
     fetchGifts();
     fetchAds();
@@ -487,6 +498,10 @@ const DataEntryForm = () => {
   useEffect(() => {
     setBrandsPage(0);
   }, [brandNameSearch]);
+
+  useEffect(() => {
+    setCompaniesPage(0);
+  }, [companyNameSearch]);
 
   useEffect(() => {
     if (activeListTab === LIST_TAB.SETTINGS) {
@@ -541,6 +556,16 @@ const DataEntryForm = () => {
       setBrands(response.data);
     } catch (err) {
       console.error("Error fetching brands:", err);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await companyAPI.getAllIncludingHidden();
+      setCompanies(response.data || []);
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      setCompanies([]);
     }
   };
 
@@ -706,6 +731,9 @@ const DataEntryForm = () => {
   const handleBrandsPageChange = (event, newPage) => {
     setBrandsPage(newPage);
   };
+  const handleCompaniesPageChange = (event, newPage) => {
+    setCompaniesPage(newPage);
+  };
 
   const filteredStores = stores.filter((store) =>
     (store?.name || "")
@@ -717,6 +745,11 @@ const DataEntryForm = () => {
     (brand?.name || "")
       .toLowerCase()
       .includes((brandNameSearch || "").trim().toLowerCase()),
+  );
+  const filteredCompanies = companies.filter((company) =>
+    (company?.name || "")
+      .toLowerCase()
+      .includes((companyNameSearch || "").trim().toLowerCase()),
   );
 
   const filteredCategoriesByStoreType = categories.filter((cat) => {
@@ -1219,6 +1252,7 @@ const DataEntryForm = () => {
       setAdForm({
         image: "",
         brandId: "",
+        companyId: "",
         storeId: "",
         giftId: "",
         startDate: "",
@@ -1649,8 +1683,16 @@ const DataEntryForm = () => {
         },
       };
 
-      const result = await brandAPI.create(brandData);
-      setMessage({ type: "success", text: t("Brand created successfully!") });
+      await (addDialog.type === "company"
+        ? companyAPI.create(brandData)
+        : brandAPI.create(brandData));
+      setMessage({
+        type: "success",
+        text:
+          addDialog.type === "company"
+            ? t("Company created successfully!")
+            : t("Brand created successfully!"),
+      });
       setBrandForm({
         name: "",
         nameEn: "",
@@ -1683,7 +1725,8 @@ const DataEntryForm = () => {
       if (brandLogoFileRef.current) {
         brandLogoFileRef.current.value = "";
       }
-      fetchBrands(); // Refresh brands list
+      if (addDialog.type === "company") fetchCompanies();
+      else fetchBrands();
     } catch (err) {
       console.error("Error creating brand:", err);
       console.error("Error response:", err.response?.data);
@@ -1830,6 +1873,7 @@ const DataEntryForm = () => {
         weight: "",
         storeId: "",
         brandId: "",
+        companyId: "",
         categoryId: "",
         categoryTypeId: "",
         storeTypeId: "",
@@ -1909,6 +1953,7 @@ const DataEntryForm = () => {
         descriptionKu: "",
         storeId: [],
         brandId: "",
+        companyId: "",
         productId: "",
         expireDate: "",
       });
@@ -2017,7 +2062,7 @@ const DataEntryForm = () => {
 
   // Open edit dialog and set form data
   const handleEditOpen = (type, data) => {
-    if (type === "brand") {
+    if (type === "brand" || type === "company") {
       setEditForm({
         name: data.name,
         nameEn: data.nameEn || "",
@@ -2124,6 +2169,7 @@ const DataEntryForm = () => {
         weight: data.weight || "",
         storeId: data.storeId?._id || data.storeId,
         brandId: data.brandId?._id || data.brandId,
+        companyId: data.companyId?._id || data.companyId || "",
         categoryId: productCategoryId,
         categoryTypeId: data.categoryTypeId,
         storeTypeId: data.storeTypeId?._id || data.storeTypeId || "",
@@ -2142,6 +2188,7 @@ const DataEntryForm = () => {
         descriptionKu: data.descriptionKu || "",
         storeId: data.storeId?.map((m) => m._id) || data.storeId || [],
         brandId: data.brandId?._id || data.brandId || "",
+        companyId: data.companyId?._id || data.companyId || "",
         productId: data.productId || "",
         expireDate: data.expireDate
           ? toDatetimeLocalValue(data.expireDate)
@@ -2151,6 +2198,7 @@ const DataEntryForm = () => {
       setEditForm({
         image: data.image || "",
         brandId: data.brandId?._id || data.brandId || "",
+        companyId: data.companyId?._id || data.companyId || "",
         storeId: data.storeId?._id || data.storeId || "",
         giftId: data.giftId?._id || data.giftId || "",
         startDate: data.startDate
@@ -2222,7 +2270,7 @@ const DataEntryForm = () => {
       setEditLoading(true);
       setMessage({ type: "", text: "" });
 
-      if (editDialog.type === "brand") {
+      if (editDialog.type === "brand" || editDialog.type === "company") {
         let logoUrl = editForm.logo;
         if (selectedEditImage) {
           logoUrl = await uploadBrandLogo(selectedEditImage);
@@ -2245,14 +2293,22 @@ const DataEntryForm = () => {
             waze: editForm.waze || "",
           },
         };
-        await brandAPI.update(editDialog.data._id, {
-          ...brandUpdateData,
-        });
+        await (editDialog.type === "company"
+          ? companyAPI.update(editDialog.data._id, {
+              ...brandUpdateData,
+            })
+          : brandAPI.update(editDialog.data._id, {
+              ...brandUpdateData,
+            }));
         setMessage({
           type: "success",
-          text: t("Brand updated successfully!"),
+          text:
+            editDialog.type === "company"
+              ? t("Company updated successfully!")
+              : t("Brand updated successfully!"),
         });
-        fetchBrands();
+        if (editDialog.type === "company") fetchCompanies();
+        else fetchBrands();
       } else if (editDialog.type === "store") {
         let logoUrl = editForm.logo;
         if (selectedEditImage) {
@@ -2476,6 +2532,14 @@ const DataEntryForm = () => {
         });
         fetchBrands();
         fetchProducts(selectedStoreFilter); // Refresh products as some might be deleted
+      } else if (deleteDialog.type === "company") {
+        await companyAPI.delete(deleteDialog.data._id);
+        setMessage({
+          type: "success",
+          text: t("Company deleted successfully!"),
+        });
+        fetchCompanies();
+        fetchProducts(selectedStoreFilter);
       } else if (deleteDialog.type === "product") {
         await productAPI.delete(deleteDialog.data._id);
         setMessage({
@@ -3011,6 +3075,13 @@ const DataEntryForm = () => {
                 key="brands"
                 value={LIST_TAB.BRANDS}
                 label={t("Brands")}
+                icon={<BusinessIcon />}
+                iconPosition="start"
+              />,
+              <Tab
+                key="companies"
+                value={LIST_TAB.COMPANIES}
+                label={t("Companies")}
                 icon={<BusinessIcon />}
                 iconPosition="start"
               />,
@@ -4234,6 +4305,153 @@ const DataEntryForm = () => {
                 count={filteredBrands.length}
                 page={brandsPage}
                 onPageChange={handleBrandsPageChange}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={[10]}
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}-${to} of ${count !== -1 ? count : `more than ${to}`}`
+                }
+              />
+            </Box>
+          )}
+
+          {/* Company List Panel */}
+          {activeListTab === LIST_TAB.COMPANIES && (
+            <Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: { xs: "flex-start", sm: "space-between" },
+                  alignItems: "center",
+                  gap: 1,
+                  mb: 2,
+                  ...DATA_LIST_TAB_TOOLBAR_SCROLL_SX,
+                }}
+              >
+                <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setAddDialog({ open: true, type: "company" })}
+                  >
+                    {t("New Company")}
+                  </Button>
+                </Box>
+                <TextField
+                  size="small"
+                  label={t("Search by Company Name")}
+                  value={companyNameSearch}
+                  onChange={(e) => setCompanyNameSearch(e.target.value)}
+                  sx={{ minWidth: { xs: 180, sm: 260 }, flexShrink: 0 }}
+                />
+              </Box>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("No.")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Name")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Logo")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Phone")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Type")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Description")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        VIP
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Status All")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Expire Contact")}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                        {t("Actions")}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredCompanies
+                      .slice(
+                        companiesPage * rowsPerPage,
+                        companiesPage * rowsPerPage + rowsPerPage,
+                      )
+                      .map((company, idx) => (
+                        <TableRow key={company._id}>
+                          <TableCell>{companiesPage * rowsPerPage + idx + 1}</TableCell>
+                          <TableCell width={200} sx={{ fontSize: "18px", fontWeight: "bold" }}>
+                            {company.name}
+                          </TableCell>
+                          <TableCell>
+                            {company.logo && (
+                              <img
+                                src={
+                                  company.logo.startsWith("http")
+                                    ? company.logo
+                                    : `${API_URL}${company.logo}`
+                                }
+                                alt={company.name}
+                                width={80}
+                                height={80}
+                                style={{ objectFit: "cover", borderRadius: "4px" }}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>{company.phone}</TableCell>
+                          <TableCell>{company.brandTypeId?.name || company.type || ""}</TableCell>
+                          <TableCell width="100px" height="100px" sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {company.description}
+                          </TableCell>
+                          <TableCell>
+                            {company.isVip && (
+                              <Box sx={{ backgroundColor: "#FFD700", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.3)", border: "2px solid #FFF", "&::before": { content: '"👑"', fontSize: "16px" } }} />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={company.statusAll === "off" ? t("off") : t("on")}
+                              color={company.statusAll === "off" ? "error" : "success"}
+                            />
+                          </TableCell>
+                          <TableCell>{formatDisplayDate(company.expireDate)}</TableCell>
+                          <TableCell>
+                            <IconButton color="primary" onClick={() => handleEditOpen("company", company)}>
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              onClick={() =>
+                                setDeleteDialog({
+                                  open: true,
+                                  type: "company",
+                                  data: company,
+                                })
+                              }
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                component="div"
+                count={filteredCompanies.length}
+                page={companiesPage}
+                onPageChange={handleCompaniesPageChange}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={[10]}
                 labelDisplayedRows={({ from, to, count }) =>
@@ -5728,8 +5946,10 @@ const DataEntryForm = () => {
         maxWidth="md"
       >
         <DialogTitle>
-          {addDialog.type === "brand"
-            ? t("Add Brand")
+          {addDialog.type === "brand" || addDialog.type === "company"
+            ? addDialog.type === "company"
+              ? t("Add Company")
+              : t("Add Brand")
             : addDialog.type === "store"
               ? t("Add Store")
               : addDialog.type === "gift"
@@ -6346,13 +6566,17 @@ const DataEntryForm = () => {
             </Box>
           )}
 
-          {addDialog.type === "brand" && (
+          {(addDialog.type === "brand" || addDialog.type === "company") && (
             <Box component="form" onSubmit={handleBrandSubmit} sx={{ mt: 1 }}>
               <Grid container spacing={2}>
                 <Grid xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label={t("Brand Name")}
+                    label={
+                      addDialog.type === "company"
+                        ? t("Company Name")
+                        : t("Brand Name")
+                    }
                     name="name"
                     value={brandForm.name}
                     onChange={handleBrandFormChange}
@@ -6368,7 +6592,11 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12}>
                   <MultilingualFieldGroup
-                    sectionLabel={t("Brand name (translations)")}
+                    sectionLabel={
+                      addDialog.type === "company"
+                        ? t("Company name (translations)")
+                        : t("Brand name (translations)")
+                    }
                     value={{
                       english: brandForm.nameEn,
                       arabic: brandForm.nameAr,
@@ -6586,7 +6814,9 @@ const DataEntryForm = () => {
                         }
                       />
                     }
-                    label={t("VIP Brand")}
+                    label={
+                      addDialog.type === "company" ? t("VIP Company") : t("VIP Brand")
+                    }
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
@@ -6632,7 +6862,9 @@ const DataEntryForm = () => {
                       ? t("Creating...")
                       : uploadLoading
                         ? t("Uploading...")
-                        : t("Add Brand")}
+                        : addDialog.type === "company"
+                          ? t("Add Company")
+                          : t("Add Brand")}
                   </Button>
                 </Grid>
               </Grid>
@@ -6868,6 +7100,71 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Company")}</InputLabel>
+                    <Select
+                      name="companyId"
+                      value={editForm.companyId || ""}
+                      onChange={handleEditFormChange}
+                      label={t("Company")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("None")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Company")}</InputLabel>
+                    <Select
+                      name="companyId"
+                      value={adForm.companyId || ""}
+                      onChange={(e) =>
+                        setAdForm({ ...adForm, companyId: e.target.value })
+                      }
+                      label={t("Company")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("None")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Company")}</InputLabel>
+                    <Select
+                      name="companyId"
+                      value={productForm.companyId || ""}
+                      onChange={handleProductFormChange}
+                      label={t("Company")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Company")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
                   <FormControl fullWidth required>
                     <InputLabel shrink>{t("Category")}</InputLabel>
                     <Select
@@ -7077,6 +7374,26 @@ const DataEntryForm = () => {
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
                           {brand.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Company")}</InputLabel>
+                    <Select
+                      name="companyId"
+                      value={giftForm.companyId || ""}
+                      onChange={handleGiftFormChange}
+                      label={t("Company")}
+                    >
+                      <MenuItem value="">
+                        <em>{t("None")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -7651,12 +7968,13 @@ const DataEntryForm = () => {
                       value={jobForm.storeId || ""}
                       label={t("Store")}
                       displayEmpty
-                      disabled={Boolean(jobForm.brandId)}
+                      disabled={Boolean(jobForm.brandId || jobForm.companyId)}
                       onChange={(e) =>
                         setJobForm((p) => ({
                           ...p,
                           storeId: e.target.value,
                           brandId: "",
+                          companyId: "",
                         }))
                       }
                     >
@@ -7685,6 +8003,7 @@ const DataEntryForm = () => {
                           ...p,
                           brandId: e.target.value,
                           storeId: "",
+                          companyId: "",
                         }))
                       }
                     >
@@ -7694,6 +8013,35 @@ const DataEntryForm = () => {
                       {brands.map((b) => (
                         <MenuItem key={b._id} value={b._id}>
                           {b.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Company")}</InputLabel>
+                    <Select
+                      value={jobForm.companyId || ""}
+                      label={t("Company")}
+                      displayEmpty
+                      disabled={Boolean(jobForm.storeId || jobForm.brandId)}
+                      onChange={(e) =>
+                        setJobForm((p) => ({
+                          ...p,
+                          companyId: e.target.value,
+                          storeId: "",
+                          brandId: "",
+                        }))
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>{t("None")}</em>
+                      </MenuItem>
+                      {companies.map((c) => (
+                        <MenuItem key={c._id} value={c._id}>
+                          {c.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -7842,7 +8190,7 @@ const DataEntryForm = () => {
                       }
                       label={t("Store")}
                       displayEmpty
-                      disabled={Boolean(videoForm.brandId)}
+                      disabled={Boolean(videoForm.brandId || videoForm.companyId)}
                     >
                       <MenuItem value="">
                         <em>{t("None")}</em>
@@ -7864,12 +8212,13 @@ const DataEntryForm = () => {
                         setVideoForm({
                           ...videoForm,
                           brandId: e.target.value,
+                          companyId: "",
                           storeId: e.target.value ? "" : videoForm.storeId,
                         })
                       }
                       label={t("Brand")}
                       displayEmpty
-                      disabled={Boolean(videoForm.storeId)}
+                      disabled={Boolean(videoForm.storeId || videoForm.companyId)}
                     >
                       <MenuItem value="">
                         <em>{t("None")}</em>
@@ -7877,6 +8226,34 @@ const DataEntryForm = () => {
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
                           {brand.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Company")}</InputLabel>
+                    <Select
+                      value={videoForm.companyId || ""}
+                      onChange={(e) =>
+                        setVideoForm({
+                          ...videoForm,
+                          companyId: e.target.value,
+                          brandId: "",
+                          storeId: e.target.value ? "" : videoForm.storeId,
+                        })
+                      }
+                      label={t("Company")}
+                      displayEmpty
+                      disabled={Boolean(videoForm.storeId || videoForm.brandId)}
+                    >
+                      <MenuItem value="">
+                        <em>{t("None")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -8330,6 +8707,8 @@ const DataEntryForm = () => {
           {t(
             editDialog.type === "brand"
               ? "Edit Brand"
+              : editDialog.type === "company"
+                ? "Edit Company"
               : editDialog.type === "store"
                 ? "Edit Store"
                 : editDialog.type === "gift"
@@ -8342,7 +8721,7 @@ const DataEntryForm = () => {
           )}
         </DialogTitle>
         <DialogContent>
-          {editDialog.type === "brand" ? (
+          {editDialog.type === "brand" || editDialog.type === "company" ? (
             <Box component="form" sx={{ mt: 1 }}>
               <TextField
                 margin="normal"
@@ -9335,6 +9714,42 @@ const DataEntryForm = () => {
                   ))}
                 </Select>
               </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>{t("Company")}</InputLabel>
+                <Select
+                  name="companyId"
+                  value={editForm.companyId || ""}
+                  onChange={handleEditFormChange}
+                  label={t("Company")}
+                >
+                  <MenuItem value="">
+                    <em>{t("None")}</em>
+                  </MenuItem>
+                  {companies.map((company) => (
+                    <MenuItem key={company._id} value={company._id}>
+                      {company.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>{t("Company")}</InputLabel>
+                <Select
+                  name="companyId"
+                  value={editForm.companyId || ""}
+                  onChange={handleEditFormChange}
+                  label={t("Company")}
+                >
+                  <MenuItem value="">
+                    <em>{t("None")}</em>
+                  </MenuItem>
+                  {companies.map((company) => (
+                    <MenuItem key={company._id} value={company._id}>
+                      {company.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
               <TextField
                 margin="normal"
@@ -9886,9 +10301,30 @@ const DataEntryForm = () => {
                   onChange={handleEditFormChange}
                   label={t("Brand")}
                 >
+                  <MenuItem value="">
+                    <em>{t("None")}</em>
+                  </MenuItem>
                   {brands.map((brand) => (
                     <MenuItem key={brand._id} value={brand._id}>
                       {brand.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>{t("Company")}</InputLabel>
+                <Select
+                  name="companyId"
+                  value={editForm.companyId || ""}
+                  onChange={handleEditFormChange}
+                  label={t("Company")}
+                >
+                  <MenuItem value="">
+                    <em>{t("None")}</em>
+                  </MenuItem>
+                  {companies.map((company) => (
+                    <MenuItem key={company._id} value={company._id}>
+                      {company.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -9999,6 +10435,8 @@ const DataEntryForm = () => {
             color="error"
             onClick={() =>
               deleteDialog.type === "brand"
+                ? handleDeleteBrandConfirm()
+                : deleteDialog.type === "company"
                 ? handleDeleteBrandConfirm()
                 : deleteDialog.type === "gift"
                   ? handleDeleteBrandConfirm()
