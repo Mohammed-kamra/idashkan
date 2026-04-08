@@ -342,7 +342,7 @@ const MainPage = () => {
           adAPI.getAll({ page: "home" }),
           storeTypeAPI.getAll(),
           brandAPI.getAll(),
-          companyAPI.getAll(),
+          companyAPI.getAll().catch(() => ({ data: [] })),
           giftAPI.getAll().catch(() => ({ data: { data: [] } })),
           jobAPI.getAll().catch(() => ({ data: [] })),
         ]);
