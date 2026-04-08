@@ -86,6 +86,7 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { isAdminEmail } from "../utils/adminAccess";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
@@ -153,8 +154,7 @@ const DataEntryForm = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { getAuthHeaders, user } = useAuth();
-  const isAdmin =
-    user?.email === "mshexani45@gmail.com" || user?.email === "admin@gmail.com";
+  const isAdmin = isAdminEmail(user);
   const {
     contactWhatsAppNumber,
     setContactWhatsAppNumber,

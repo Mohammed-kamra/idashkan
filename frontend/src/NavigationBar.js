@@ -83,6 +83,7 @@ import {
 } from "./context/DataLanguageContext";
 import { giftAPI } from "./services/api";
 import { isExpiryStillValid } from "./utils/expiryDate";
+import { isAdminEmail, canAccessDataEntry } from "./utils/adminAccess";
 
 // Enable notification center (bell + menu)
 const NOTIFICATIONS_CENTER_ENABLED = true;
@@ -121,7 +122,8 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const { dataLanguage } = useDataLanguage();
   const location = useLocation();
   const isAuthenticated = !!user;
-  const isAdmin = !!user && user.email === "mshexani45@gmail.com";
+  const isFullAdmin = isAdminEmail(user);
+  const showAdminNav = !!user && canAccessDataEntry(user);
   const [showMobileNavbar, setShowMobileNavbar] = useState(true);
   const lastScrollYRef = useRef(0);
   // Profile menu state
@@ -1169,13 +1171,12 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     {item.name}
                   </Button>
                 ))}
-              {/* Admin dropdown (Data Entry + Users + Dashboard) - for admin users only */}
-              {isAdmin && (
+              {/* Admin: full menu for admin emails; support role sees Data Entry only */}
+              {showAdminNav && (
                 <>
                   <Button
-                    onClick={handleAdminMenuOpen}
                     startIcon={<AdminPanelSettingsIcon />}
-                    endIcon={<ExpandMoreIcon />}
+                    endIcon={isFullAdmin ? <ExpandMoreIcon /> : undefined}
                     sx={{
                       color: "white",
                       textTransform: "none",
@@ -1195,9 +1196,13 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                         borderColor: "rgba(255,255,255,0.5)",
                       },
                     }}
+                    {...(isFullAdmin
+                      ? { onClick: handleAdminMenuOpen }
+                      : { component: Link, to: "/admin" })}
                   >
                     {t("Admin")}
                   </Button>
+                  {isFullAdmin && (
                   <Menu
                     anchorEl={adminAnchorEl}
                     open={Boolean(adminAnchorEl)}
@@ -1273,6 +1278,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                       <ListItemText primary={t("Customization")} />
                     </MenuItem>
                   </Menu>
+                  )}
                 </>
               )}
               {NOTIFICATIONS_CENTER_ENABLED && (

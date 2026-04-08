@@ -74,7 +74,7 @@ const getUsers = async (req, res) => {
     }
 
     const users = await User.find({})
-      .select("username email displayName deviceId isActive createdAt")
+      .select("username email displayName deviceId isActive createdAt role")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -99,7 +99,9 @@ const createUser = async (req, res) => {
       });
     }
 
-    const { username, email, password } = req.body;
+    const { username, email, password, role: roleIn } = req.body;
+    const role =
+      roleIn === "support" ? "support" : "user";
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -130,6 +132,7 @@ const createUser = async (req, res) => {
       username,
       email,
       password,
+      role,
     });
 
     await user.save();
@@ -141,6 +144,7 @@ const createUser = async (req, res) => {
       displayName: user.displayName,
       deviceId: user.deviceId,
       isActive: user.isActive,
+      role: user.role || "user",
       createdAt: user.createdAt,
     };
 
@@ -163,7 +167,7 @@ const updateUser = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { username, email, displayName, isActive, password } =
+    const { username, email, displayName, isActive, password, role: roleIn } =
       req.body;
 
     const user = await User.findById(id);
@@ -179,6 +183,9 @@ const updateUser = async (req, res) => {
     if (displayName !== undefined) user.displayName = displayName && displayName.trim() ? displayName.trim() : null;
     if (password !== undefined && password !== "") user.password = password;
     if (isActive !== undefined) user.isActive = !!isActive;
+    if (roleIn !== undefined) {
+      user.role = roleIn === "support" ? "support" : "user";
+    }
 
     await user.save();
 
@@ -189,6 +196,7 @@ const updateUser = async (req, res) => {
       displayName: user.displayName,
       deviceId: user.deviceId,
       isActive: user.isActive,
+      role: user.role || "user",
       createdAt: user.createdAt,
     };
 

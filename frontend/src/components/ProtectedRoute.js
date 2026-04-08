@@ -2,21 +2,45 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const ProtectedRoute = ({ children, allowedEmails = null }) => {
+/**
+ * @param {string[] | null} allowedEmails - If set, user email must be in list OR (if allowSupportRole) role === support.
+ * @param {boolean} allowSupportRole - When true with allowedEmails, users with role `support` may access (Data Entry).
+ */
+const ProtectedRoute = ({
+  children,
+  allowedEmails = null,
+  allowSupportRole = false,
+}) => {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Check if user is authenticated
   if (!isAuthenticated || !user) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after they
-    // log in, which is a nicer user experience than dropping them off on the home page.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If allowedEmails is specified, check if user's email is in the allowed list
-  if (allowedEmails && !allowedEmails.includes(user.email)) {
-    // Redirect to home page if user doesn't have access
+  if (allowedEmails && allowedEmails.length > 0) {
+    const emailAllowed =
+      user.email && allowedEmails.includes(user.email);
+    const supportAllowed = allowSupportRole && user.role === "support";
+    if (emailAllowed || supportAllowed) {
+      return children;
+    }
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+/** Only full admin emails (not support role). */
+export const ProtectedAdminOnlyRoute = ({ children, allowedEmails }) => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedEmails?.length && !allowedEmails.includes(user.email)) {
     return <Navigate to="/" replace />;
   }
 

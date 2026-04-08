@@ -63,6 +63,7 @@ import {
   DATA_LANG_NORMAL,
 } from "../context/DataLanguageContext";
 import { useDarkMode } from "../context/DarkModeContext";
+import { isAdminEmail, canAccessDataEntry } from "../utils/adminAccess";
 
 const THEME_OPTIONS = [
   { id: "default", label: "Default Theme" },
@@ -151,9 +152,8 @@ const ProfilePage = () => {
     guestUser?.displayName ||
     t("Guest User");
   const email = user?.email || "";
-  const isAdmin =
-    !!user &&
-    (user.email === "mshexani45@gmail.com" || user.email === "admin@gmail.com");
+  const isAdmin = !!user && isAdminEmail(user);
+  const showDataEntryLink = !!user && canAccessDataEntry(user);
 
   const normalizeUrl = (url, type) => {
     if (!url || typeof url !== "string") return null;
@@ -295,7 +295,7 @@ const ProfilePage = () => {
             <ListItemText primary={t("Favourites")} />
           </ListItemButton> */}
 
-          {isAdmin && (
+          {showDataEntryLink && (
             <>
               <Divider />
               <ListItemButton component={Link} to="/admin">
@@ -304,30 +304,34 @@ const ProfilePage = () => {
                 </ListItemIcon>
                 <ListItemText primary={t("Data Entry")} />
               </ListItemButton>
-              <ListItemButton component={Link} to="/admin/customization">
-                <ListItemIcon>
-                  <PaletteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary={t("Customization")} />
-              </ListItemButton>
-              <ListItemButton component={Link} to="/admin/users">
-                <ListItemIcon>
-                  <PeopleIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary={t("Users")} />
-              </ListItemButton>
-              <ListItemButton component={Link} to="/admin/translations">
-                <ListItemIcon>
-                  <LanguageIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary={t("translationPage.title")} />
-              </ListItemButton>
-              <ListItemButton component={Link} to="/admin/dashboard">
-                <ListItemIcon>
-                  <DashboardIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary={t("Admin Dashboard")} />
-              </ListItemButton>
+              {isAdmin && (
+                <>
+                  <ListItemButton component={Link} to="/admin/customization">
+                    <ListItemIcon>
+                      <PaletteIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Customization")} />
+                  </ListItemButton>
+                  <ListItemButton component={Link} to="/admin/users">
+                    <ListItemIcon>
+                      <PeopleIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Users")} />
+                  </ListItemButton>
+                  <ListItemButton component={Link} to="/admin/translations">
+                    <ListItemIcon>
+                      <LanguageIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("translationPage.title")} />
+                  </ListItemButton>
+                  <ListItemButton component={Link} to="/admin/dashboard">
+                    <ListItemIcon>
+                      <DashboardIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Admin Dashboard")} />
+                  </ListItemButton>
+                </>
+              )}
             </>
           )}
 

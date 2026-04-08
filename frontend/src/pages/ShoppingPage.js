@@ -130,8 +130,11 @@ const ShoppingPage = () => {
       <Box
         sx={{
           py: { xs: 9, md: 8 },
-          px: { xs: 1, sm: 2, md: 3 },
+          px: { xs: 1, sm: 1.5, md: 3 },
           pb: { xs: 12, sm: 4 },
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* Header skeleton */}
@@ -139,8 +142,19 @@ const ShoppingPage = () => {
           variant="rounded"
           sx={{ width: "100%", height: 80, borderRadius: "20px", mb: 2 }}
         />
-        {/* Chips skeleton */}
-        <Box sx={{ display: "flex", gap: 1, mb: 2.5 }}>
+        {/* Chips skeleton — scroll row */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 2.5,
+            overflowX: "auto",
+            overflowY: "hidden",
+            pb: 0.5,
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
           {[60, 90, 80, 100, 70].map((w, i) => (
             <Skeleton
               key={i}
@@ -151,16 +165,17 @@ const ShoppingPage = () => {
             />
           ))}
         </Box>
-        {/* Store grid skeleton */}
+        {/* Store grid skeleton — full-width two columns like loaded state */}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
+            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(2, minmax(0, 1fr))" },
             gap: 1.5,
+            width: "100%",
           }}
         >
           {Array.from({ length: 6 }).map((_, idx) => (
-            <Box key={idx}>
+            <Box key={idx} sx={{ minWidth: 0, width: "100%" }}>
               <Skeleton
                 variant="rounded"
                 sx={{

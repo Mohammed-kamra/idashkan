@@ -109,6 +109,13 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
+  /** Application role: all accounts default to normal user; admin assigns `support` for Data Entry access. */
+  role: {
+    type: String,
+    enum: ["user", "support"],
+    default: "user",
+  },
+
   // Timestamps
   createdAt: {
     type: Date,
@@ -162,6 +169,7 @@ userSchema.methods.getPublicProfile = function () {
         _id: this._id,
         deviceId: this.deviceId,
         isAnonymous: true,
+        role: this.role || "user",
         likedProducts: this.likedProducts,
         likedVideos: this.likedVideos,
         viewedProducts: this.viewedProducts,
@@ -177,6 +185,7 @@ userSchema.methods.getPublicProfile = function () {
       email: this.email,
       avatar: this.avatar,
       isActive: this.isActive,
+      role: this.role || "user",
       likedProducts: this.likedProducts,
       likedVideos: this.likedVideos,
       viewedProducts: this.viewedProducts,
@@ -190,6 +199,7 @@ userSchema.methods.getPublicProfile = function () {
       displayName: this.displayName || "",
       email: this.email || "",
       isActive: this.isActive || false,
+      role: this.role || "user",
       likedProducts: this.likedProducts || [],
       likedVideos: this.likedVideos || [],
       viewedProducts: this.viewedProducts || [],

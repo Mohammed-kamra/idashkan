@@ -621,7 +621,11 @@ const ProductCategory = () => {
                       sx={{ width: 32, height: 32, bgcolor: "transparent" }}
                     />
                   ) : (
-                    <Typography component="span" role="img" sx={{ fontSize: "1.35rem", lineHeight: 1 }}>
+                    <Typography
+                      component="span"
+                      role="img"
+                      sx={{ fontSize: "1.35rem", lineHeight: 1 }}
+                    >
                       {type.icon || "🏪"}
                     </Typography>
                   )}
@@ -663,26 +667,72 @@ const ProductCategory = () => {
           {/* ── CATEGORIES VIEW ── */}
           {mobileViewMode === "categories" && (
             <>
-              <Box sx={{ px: 1, pt: 1.5, pb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  px: 1,
+                  pt: 1.5,
+                  pb: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
                 <CategoryIcon sx={{ fontSize: "1.1rem", color: accentColor }} />
-                <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.85)" }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    color: isDark
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(0,0,0,0.85)",
+                  }}
+                >
                   {t("Categories")}
                 </Typography>
               </Box>
 
               {loading ? (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, px: 1 }}>
-                  {[1,2,3,4,5,6].map(i => (
-                    <Skeleton key={i} variant="rounded" height={110} sx={{ borderRadius: 3 }} />
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: 1,
+                    px: 1,
+                  }}
+                >
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton
+                      key={i}
+                      variant="rounded"
+                      height={110}
+                      sx={{ borderRadius: 3 }}
+                    />
                   ))}
                 </Box>
               ) : categories.length === 0 ? (
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 8, color: "text.secondary" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    pt: 8,
+                    color: "text.secondary",
+                  }}
+                >
                   <CategoryIcon sx={{ fontSize: 56, opacity: 0.3, mb: 1 }} />
-                  <Typography variant="body2">{t("No categories found")}</Typography>
+                  <Typography variant="body2">
+                    {t("No categories found")}
+                  </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, px: 1 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: 1,
+                    px: 1,
+                  }}
+                >
                   {categories.map((category) => (
                     <Box
                       key={category._id}
@@ -706,17 +756,24 @@ const ProductCategory = () => {
                       }}
                     >
                       <Avatar
-                        src={category.image ? resolveMediaUrl(category.image) : undefined}
+                        src={
+                          category.image
+                            ? resolveMediaUrl(category.image)
+                            : undefined
+                        }
                         sx={{
                           width: 58,
                           height: 58,
-                          background: "linear-gradient(135deg, var(--color-primary,#1E6FD9) 0%, var(--brand-accent-orange,#ff8c00) 100%)",
+                          background:
+                            "linear-gradient(135deg, var(--color-primary,#1E6FD9) 0%, var(--brand-accent-orange,#ff8c00) 100%)",
                           color: "white",
                           fontSize: "1.6rem",
                           boxShadow: "0 3px 10px rgba(30,111,217,0.25)",
                         }}
                       >
-                        {!(category.image) && (category.icon || (locName(category) || "").charAt(0))}
+                        {!category.image &&
+                          (category.icon ||
+                            (locName(category) || "").charAt(0))}
                       </Avatar>
                       <Typography
                         variant="caption"
@@ -724,7 +781,9 @@ const ProductCategory = () => {
                           fontWeight: 700,
                           fontSize: "0.78rem",
                           textAlign: "center",
-                          color: isDark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.8)",
+                          color: isDark
+                            ? "rgba(255,255,255,0.88)"
+                            : "rgba(0,0,0,0.8)",
                           lineHeight: 1.3,
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
@@ -745,23 +804,47 @@ const ProductCategory = () => {
           {mobileViewMode === "products" && selectedCategory && (
             <>
               {/* Header row */}
-              <Box sx={{ px: 1, pt: 1, pb: 0.75, display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  px: 1,
+                  pt: 1,
+                  pb: 0.75,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
                 <IconButton
                   size="small"
                   onClick={() => setMobileViewMode("categories")}
                   sx={{
-                    backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                    backgroundColor: isDark
+                      ? "rgba(255,255,255,0.08)"
+                      : "rgba(0,0,0,0.06)",
                     borderRadius: 2,
-                    "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.1)" },
+                    "&:hover": {
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.14)"
+                        : "rgba(0,0,0,0.1)",
+                    },
                   }}
                 >
-                  <ArrowBackIcon sx={{ fontSize: "1.1rem", color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.7)" }} />
+                  <ArrowBackIcon
+                    sx={{
+                      fontSize: "1.1rem",
+                      color: isDark
+                        ? "rgba(255,255,255,0.85)"
+                        : "rgba(0,0,0,0.7)",
+                    }}
+                  />
                 </IconButton>
                 <Typography
                   sx={{
                     fontWeight: 700,
                     fontSize: "1rem",
-                    color: isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.85)",
+                    color: isDark
+                      ? "rgba(255,255,255,0.9)"
+                      : "rgba(0,0,0,0.85)",
                     flex: 1,
                     display: "-webkit-box",
                     WebkitLineClamp: 1,
@@ -779,7 +862,9 @@ const ProductCategory = () => {
                       height: 22,
                       fontSize: "0.7rem",
                       fontWeight: 700,
-                      backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(30,111,217,0.1)",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.1)"
+                        : "rgba(30,111,217,0.1)",
                       color: accentColor,
                     }}
                   />
@@ -800,9 +885,10 @@ const ProductCategory = () => {
                   }}
                 >
                   {[null, ...categoryTypes].map((type) => {
-                    const isActive = type === null
-                      ? selectedCategoryType === null
-                      : selectedCategoryType?._id === type._id;
+                    const isActive =
+                      type === null
+                        ? selectedCategoryType === null
+                        : selectedCategoryType?._id === type._id;
                     return (
                       <Chip
                         key={type?._id ?? "all"}
@@ -820,9 +906,15 @@ const ProductCategory = () => {
                             : isDark
                               ? "rgba(255,255,255,0.07)"
                               : "rgba(0,0,0,0.05)",
-                          color: isActive ? "#fff" : isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.65)",
+                          color: isActive
+                            ? "#fff"
+                            : isDark
+                              ? "rgba(255,255,255,0.75)"
+                              : "rgba(0,0,0,0.65)",
                           border: "none",
-                          boxShadow: isActive ? "0 2px 8px rgba(30,111,217,0.3)" : "none",
+                          boxShadow: isActive
+                            ? "0 2px 8px rgba(30,111,217,0.3)"
+                            : "none",
                           transition: "all 0.18s ease",
                         }}
                       />
@@ -833,30 +925,78 @@ const ProductCategory = () => {
 
               {/* Products */}
               {categoryProductsLoading ? (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, px: 1 }}>
-                  {[1,2,3,4,5,6].map(i => (
-                    <Card key={i} sx={{ borderRadius: 3, overflow: "hidden", backgroundColor: cardBg }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: 1,
+                    px: 1,
+                  }}
+                >
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Card
+                      key={i}
+                      sx={{
+                        borderRadius: 3,
+                        overflow: "hidden",
+                        backgroundColor: cardBg,
+                      }}
+                    >
                       <Skeleton variant="rectangular" height={130} />
                       <CardContent sx={{ p: 1 }}>
                         <Skeleton variant="text" width="85%" height={16} />
-                        <Skeleton variant="text" width="55%" height={14} sx={{ mt: 0.5 }} />
-                        <Skeleton variant="text" width="65%" height={20} sx={{ mt: 0.5 }} />
+                        <Skeleton
+                          variant="text"
+                          width="55%"
+                          height={14}
+                          sx={{ mt: 0.5 }}
+                        />
+                        <Skeleton
+                          variant="text"
+                          width="65%"
+                          height={20}
+                          sx={{ mt: 0.5 }}
+                        />
                       </CardContent>
                     </Card>
                   ))}
                 </Box>
               ) : filteredProducts.length === 0 ? (
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 8, color: "text.secondary" }}>
-                  <ShoppingCartIcon sx={{ fontSize: 56, opacity: 0.3, mb: 1 }} />
-                  <Typography variant="body2">{t("No products found")}</Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    pt: 8,
+                    color: "text.secondary",
+                  }}
+                >
+                  <ShoppingCartIcon
+                    sx={{ fontSize: 56, opacity: 0.3, mb: 1 }}
+                  />
+                  <Typography variant="body2">
+                    {t("No products found")}
+                  </Typography>
                 </Box>
               ) : (
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, px: 1 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: 1,
+                    px: 1,
+                  }}
+                >
                   {filteredProducts.map((product) => {
-                    const discountPct = calculateDiscount(product.previousPrice, product.newPrice);
+                    const discountPct = calculateDiscount(
+                      product.previousPrice,
+                      product.newPrice,
+                    );
                     const hasDiscount = isDiscountValid(product);
-                    const discountLabel = discountPct !== null ? `-${discountPct}%` : t("Discount");
-                    const isLiked = likeStates[product._id] ?? isProductLiked(product._id);
+                    const discountLabel =
+                      discountPct !== null ? `-${discountPct}%` : t("Discount");
+                    const isLiked =
+                      likeStates[product._id] ?? isProductLiked(product._id);
 
                     return (
                       <ProductViewTracker
@@ -892,7 +1032,9 @@ const ProductCategory = () => {
                                 sx={{
                                   height: 130,
                                   objectFit: "contain",
-                                  backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.04)"
+                                    : "rgba(0,0,0,0.03)",
                                 }}
                               />
                             ) : (
@@ -902,10 +1044,14 @@ const ProductCategory = () => {
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.04)"
+                                    : "rgba(0,0,0,0.03)",
                                 }}
                               >
-                                <ShoppingCartIcon sx={{ fontSize: 36, opacity: 0.25 }} />
+                                <ShoppingCartIcon
+                                  sx={{ fontSize: 36, opacity: 0.25 }}
+                                />
                               </Box>
                             )}
 
@@ -916,7 +1062,8 @@ const ProductCategory = () => {
                                   position: "absolute",
                                   top: 6,
                                   left: 6,
-                                  background: "linear-gradient(135deg,#e53e3e,#c53030)",
+                                  background:
+                                    "linear-gradient(135deg,#e53e3e,#c53030)",
                                   color: "#fff",
                                   fontSize: "0.62rem",
                                   fontWeight: 800,
@@ -961,7 +1108,16 @@ const ProductCategory = () => {
                           </Box>
 
                           {/* Content */}
-                          <CardContent sx={{ p: 1, pt: 0.75, flexGrow: 1, display: "flex", flexDirection: "column", gap: 0.35 }}>
+                          <CardContent
+                            sx={{
+                              p: 1,
+                              pt: 0.75,
+                              flexGrow: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 0.35,
+                            }}
+                          >
                             <Typography
                               sx={{
                                 fontWeight: 600,
@@ -971,7 +1127,9 @@ const ProductCategory = () => {
                                 WebkitLineClamp: 2,
                                 WebkitBoxOrient: "vertical",
                                 overflow: "hidden",
-                                color: isDark ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.85)",
+                                color: isDark
+                                  ? "rgba(255,255,255,0.9)"
+                                  : "rgba(0,0,0,0.85)",
                               }}
                             >
                               {locName(product) || "\u00A0"}
@@ -994,19 +1152,24 @@ const ProductCategory = () => {
                             )}
 
                             <Box sx={{ mt: "auto", pt: 0.5 }}>
-                              {isDiscountValid(product) && product.previousPrice && Number(product.previousPrice) > Number(product.newPrice) && (
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.65rem",
-                                    textDecoration: "line-through",
-                                    color: isDark ? "rgba(255,100,100,0.7)" : "rgba(200,0,0,0.55)",
-                                    fontWeight: 500,
-                                    lineHeight: 1.2,
-                                  }}
-                                >
-                                  {formatPrice(product.previousPrice)}
-                                </Typography>
-                              )}
+                              {isDiscountValid(product) &&
+                                product.previousPrice &&
+                                Number(product.previousPrice) >
+                                  Number(product.newPrice) && (
+                                  <Typography
+                                    sx={{
+                                      fontSize: "0.65rem",
+                                      textDecoration: "line-through",
+                                      color: isDark
+                                        ? "rgba(255,100,100,0.7)"
+                                        : "rgba(200,0,0,0.55)",
+                                      fontWeight: 500,
+                                      lineHeight: 1.2,
+                                    }}
+                                  >
+                                    {formatPrice(product.previousPrice)}
+                                  </Typography>
+                                )}
                               {product.newPrice && (
                                 <Typography
                                   sx={{
@@ -1547,15 +1710,30 @@ const ProductCategory = () => {
               width: 80,
               bottom: 0,
               borderRight: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
-              backgroundColor: isDark ? "rgba(18,24,38,0.98)" : "rgba(248,249,252,0.98)",
+              backgroundColor: isDark
+                ? "rgba(18,24,38,0.98)"
+                : "rgba(248,249,252,0.98)",
               py: 2,
               px: 0.75,
               zIndex: 10,
             }}
           >
             {[1, 2, 3, 4, 5].map((i) => (
-              <Box key={i} sx={{ mb: 1.5, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <Skeleton variant="circular" width={44} height={44} sx={{ mb: 0.5 }} />
+              <Box
+                key={i}
+                sx={{
+                  mb: 1.5,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <Skeleton
+                  variant="circular"
+                  width={44}
+                  height={44}
+                  sx={{ mb: 0.5 }}
+                />
                 <Skeleton variant="text" width={48} height={12} />
               </Box>
             ))}
@@ -1563,13 +1741,33 @@ const ProductCategory = () => {
 
           {/* Right content skeleton */}
           <Box sx={{ pl: "84px", pt: "72px", pr: 1, pb: "80px" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1, mb: 1.5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1,
+                mb: 1.5,
+              }}
+            >
               <Skeleton variant="circular" width={20} height={20} />
               <Skeleton variant="text" width={100} height={22} />
             </Box>
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, px: 1 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 1,
+                px: 1,
+              }}
+            >
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} variant="rounded" height={110} sx={{ borderRadius: 3 }} />
+                <Skeleton
+                  key={i}
+                  variant="rounded"
+                  height={110}
+                  sx={{ borderRadius: 3 }}
+                />
               ))}
             </Box>
           </Box>
@@ -1651,7 +1849,8 @@ const ProductCategory = () => {
           sx: {
             borderRadius: isMobile ? 0 : 4,
             overflow: "hidden",
-            backgroundColor: theme.palette.mode === "dark" ? "rgba(22,28,44,1)" : "#fff",
+            backgroundColor:
+              theme.palette.mode === "dark" ? "rgba(22,28,44,1)" : "#fff",
             backgroundImage: "none",
           },
         }}
@@ -1671,7 +1870,10 @@ const ProductCategory = () => {
             onClick={() => setDialogOpen(false)}
             sx={{
               mr: 1.5,
-              backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.07)"
+                  : "rgba(0,0,0,0.05)",
               borderRadius: 2,
             }}
           >
@@ -1689,7 +1891,10 @@ const ProductCategory = () => {
               {selectedProduct.image ? (
                 <Box
                   sx={{
-                    backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                    backgroundColor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(0,0,0,0.03)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1717,7 +1922,10 @@ const ProductCategory = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                    backgroundColor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(0,0,0,0.03)",
                   }}
                 >
                   <ShoppingCartIcon sx={{ fontSize: 64, opacity: 0.2 }} />
@@ -1725,13 +1933,31 @@ const ProductCategory = () => {
               )}
 
               {/* Details */}
-              <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 1.25 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", lineHeight: 1.35 }}>
+              <Box
+                sx={{
+                  px: 2.5,
+                  py: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.25,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: "1.15rem",
+                    lineHeight: 1.35,
+                  }}
+                >
                   {locName(selectedProduct)}
                 </Typography>
 
                 {locDescription(selectedProduct) && (
-                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.55 }}
+                  >
                     {locDescription(selectedProduct)}
                   </Typography>
                 )}
@@ -1739,108 +1965,146 @@ const ProductCategory = () => {
                 {/* Brand / Store chips */}
                 <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
                   {(selectedProduct.companyId || selectedProduct.brandId) &&
-                    locName(selectedProduct.companyId || selectedProduct.brandId) && (
-                    <Chip
-                      icon={<BusinessIcon sx={{ fontSize: "0.9rem !important" }} />}
-                      label={locName(selectedProduct.companyId || selectedProduct.brandId)}
-                      size="small"
-                      onClick={() => {
-                        const owner =
-                          selectedProduct.companyId || selectedProduct.brandId;
-                        setDialogOpen(false);
-                        navigate(
-                          selectedProduct.companyId
-                            ? `/companies/${owner._id}`
-                            : `/brands/${owner._id}`,
-                        );
-                      }}
-                      sx={{
-                        borderRadius: 99,
-                        fontWeight: 600,
-                        fontSize: "0.72rem",
-                        cursor: "pointer",
-                        backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(30,111,217,0.08)",
-                        color: "var(--color-primary,#1E6FD9)",
-                      }}
-                    />
-                  )}
-                  {selectedProduct.storeId && locName(selectedProduct.storeId) && (
-                    <Chip
-                      icon={<StorefrontIcon sx={{ fontSize: "0.9rem !important" }} />}
-                      label={locName(selectedProduct.storeId)}
-                      size="small"
-                      onClick={() => { setDialogOpen(false); navigate(`/stores/${selectedProduct.storeId._id}`); }}
-                      sx={{
-                        borderRadius: 99,
-                        fontWeight: 600,
-                        fontSize: "0.72rem",
-                        cursor: "pointer",
-                        backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(30,111,217,0.08)",
-                        color: "var(--color-primary,#1E6FD9)",
-                      }}
-                    />
-                  )}
+                    locName(
+                      selectedProduct.companyId || selectedProduct.brandId,
+                    ) && (
+                      <Chip
+                        icon={
+                          <BusinessIcon
+                            sx={{ fontSize: "0.9rem !important" }}
+                          />
+                        }
+                        label={locName(
+                          selectedProduct.companyId || selectedProduct.brandId,
+                        )}
+                        size="small"
+                        onClick={() => {
+                          const owner =
+                            selectedProduct.companyId ||
+                            selectedProduct.brandId;
+                          setDialogOpen(false);
+                          navigate(
+                            selectedProduct.companyId
+                              ? `/companies/${owner._id}`
+                              : `/brands/${owner._id}`,
+                          );
+                        }}
+                        sx={{
+                          borderRadius: 99,
+                          fontWeight: 600,
+                          fontSize: "0.72rem",
+                          cursor: "pointer",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(30,111,217,0.08)",
+                          color: "var(--color-primary,#1E6FD9)",
+                        }}
+                      />
+                    )}
+                  {selectedProduct.storeId &&
+                    locName(selectedProduct.storeId) && (
+                      <Chip
+                        icon={
+                          <StorefrontIcon
+                            sx={{ fontSize: "0.9rem !important" }}
+                          />
+                        }
+                        label={locName(selectedProduct.storeId)}
+                        size="small"
+                        onClick={() => {
+                          setDialogOpen(false);
+                          navigate(`/stores/${selectedProduct.storeId._id}`);
+                        }}
+                        sx={{
+                          borderRadius: 99,
+                          fontWeight: 600,
+                          fontSize: "0.72rem",
+                          cursor: "pointer",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(255,255,255,0.08)"
+                              : "rgba(30,111,217,0.08)",
+                          color: "var(--color-primary,#1E6FD9)",
+                        }}
+                      />
+                    )}
                 </Box>
 
                 {/* Expiry date + remaining days */}
-                {selectedProduct.expireDate && (() => {
-                  const info = getExpiryRemainingInfo(selectedProduct.expireDate);
-                  const label = formatExpiryChipLabel(info, t);
-                  const chipColor = expiryChipBg(info);
-                  const dateStr = formatExpiryDateDdMmYyyy(selectedProduct.expireDate);
-                  const isDark = theme.palette.mode === "dark";
-                  return (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        px: 1.25,
-                        py: 0.9,
-                        borderRadius: 2.5,
-                        backgroundColor: isDark
-                          ? `${chipColor}22`
-                          : `${chipColor}18`,
-                        border: `1px solid ${chipColor}55`,
-                        mt: 0.25,
-                      }}
-                    >
-                      <AccessTimeIcon
-                        sx={{ fontSize: "1rem", color: chipColor, flexShrink: 0 }}
-                      />
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        <Typography
+                {selectedProduct.expireDate &&
+                  (() => {
+                    const info = getExpiryRemainingInfo(
+                      selectedProduct.expireDate,
+                    );
+                    const label = formatExpiryChipLabel(info, t);
+                    const chipColor = expiryChipBg(info);
+                    const dateStr = formatExpiryDateDdMmYyyy(
+                      selectedProduct.expireDate,
+                    );
+                    const isDark = theme.palette.mode === "dark";
+                    return (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          px: 1.25,
+                          py: 0.9,
+                          borderRadius: 2.5,
+                          backgroundColor: isDark
+                            ? `${chipColor}22`
+                            : `${chipColor}18`,
+                          border: `1px solid ${chipColor}55`,
+                          mt: 0.25,
+                        }}
+                      >
+                        <AccessTimeIcon
                           sx={{
-                            fontSize: "0.72rem",
-                            fontWeight: 700,
+                            fontSize: "1rem",
                             color: chipColor,
-                            lineHeight: 1.3,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0,
                           }}
                         >
-                          {info.kind === "expired"
-                            ? t("Expired")
-                            : label
-                              ? label
-                              : t("Expires")}
-                        </Typography>
-                        {dateStr && (
                           <Typography
                             sx={{
-                              fontSize: "0.66rem",
-                              fontWeight: 500,
-                              color: isDark
-                                ? "rgba(255,255,255,0.5)"
-                                : "rgba(0,0,0,0.45)",
-                              lineHeight: 1.2,
+                              fontSize: "0.9rem",
+                              fontWeight: 700,
+                              color: chipColor,
+                              lineHeight: 1.3,
                             }}
                           >
-                            {dateStr}
+                            {info.kind === "expired"
+                              ? t("Expired")
+                              : label
+                                ? label
+                                : t("Expires")}
                           </Typography>
-                        )}
+                          {dateStr && (
+                            <Typography
+                              sx={{
+                                fontSize: "0.66rem",
+                                fontWeight: 500,
+                                color: isDark
+                                  ? "rgba(255,255,255,0.5)"
+                                  : "rgba(0,0,0,0.45)",
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {dateStr}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
-                    </Box>
-                  );
-                })()}
+                    );
+                  })()}
 
                 {/* Price block */}
                 <Box
@@ -1848,29 +2112,69 @@ const ProductCategory = () => {
                     mt: 0.5,
                     p: 1.75,
                     borderRadius: 3,
-                    backgroundColor: theme.palette.mode === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.025)",
+                    backgroundColor:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.025)",
                     display: "flex",
                     flexDirection: "column",
                     gap: 0.25,
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
                     {t("Price")}
                   </Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    {isDiscountValid(selectedProduct) && selectedProduct.previousPrice && Number(selectedProduct.previousPrice) > Number(selectedProduct.newPrice) && (
-                      <Typography sx={{ textDecoration: "line-through", color: "text.disabled", fontSize: "0.9rem" }}>
-                        {formatPrice(selectedProduct.previousPrice)}
-                      </Typography>
-                    )}
-                    <Typography sx={{ fontWeight: 900, fontSize: "1.65rem", color: "var(--color-secondary,#0d47a1)", lineHeight: 1 }}>
+                    {isDiscountValid(selectedProduct) &&
+                      selectedProduct.previousPrice &&
+                      Number(selectedProduct.previousPrice) >
+                        Number(selectedProduct.newPrice) && (
+                        <Typography
+                          sx={{
+                            textDecoration: "line-through",
+                            color: "text.disabled",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          {formatPrice(selectedProduct.previousPrice)}
+                        </Typography>
+                      )}
+                    <Typography
+                      sx={{
+                        fontWeight: 900,
+                        fontSize: "1.65rem",
+                        color: "var(--color-secondary,#0d47a1)",
+                        lineHeight: 1,
+                      }}
+                    >
                       {formatPrice(selectedProduct.newPrice)}
                     </Typography>
                     {isDiscountValid(selectedProduct) && (
                       <Chip
-                        label={(() => { const p = calculateDiscount(selectedProduct.previousPrice, selectedProduct.newPrice); return p !== null ? `-${p}%` : t("Discount"); })()}
+                        label={(() => {
+                          const p = calculateDiscount(
+                            selectedProduct.previousPrice,
+                            selectedProduct.newPrice,
+                          );
+                          return p !== null ? `-${p}%` : t("Discount");
+                        })()}
                         size="small"
-                        sx={{ height: 22, fontSize: "0.72rem", fontWeight: 800, backgroundColor: "#e53e3e", color: "#fff", borderRadius: 99 }}
+                        sx={{
+                          height: 22,
+                          fontSize: "0.72rem",
+                          fontWeight: 800,
+                          backgroundColor: "#e53e3e",
+                          color: "#fff",
+                          borderRadius: 99,
+                        }}
                       />
                     )}
                   </Box>
@@ -1882,9 +2186,7 @@ const ProductCategory = () => {
                   const isDark = theme.palette.mode === "dark";
                   const liked = likeStates[pid] ?? isProductLiked(pid);
                   const likeCount =
-                    likeCounts[pid] ??
-                    selectedProduct.likeCount ??
-                    0;
+                    likeCounts[pid] ?? selectedProduct.likeCount ?? 0;
                   const viewCount = selectedProduct.viewCount ?? 0;
                   const isLoading = likeLoading[pid];
                   return (
@@ -2206,8 +2508,7 @@ const ProductCategory = () => {
                                     sx={{
                                       fontSize: "0.72rem",
                                       fontWeight: 800,
-                                      color:
-                                        "var(--color-secondary,#0d47a1)",
+                                      color: "var(--color-secondary,#0d47a1)",
                                       lineHeight: 1,
                                     }}
                                   >

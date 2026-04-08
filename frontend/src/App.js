@@ -46,7 +46,9 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProfilePage from "./pages/ProfilePage";
 import FindJob from "./pages/FindJob";
 import ShoppingPage from "./pages/ShoppingPage";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, {
+  ProtectedAdminOnlyRoute,
+} from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotificationEnableBanner from "./components/NotificationEnableBanner";
@@ -247,6 +249,7 @@ function AppContent() {
                         "mshexani45@gmail.com",
                         "admin@gmail.com",
                       ]}
+                      allowSupportRole
                     >
                       <DataEntryForm />
                     </ProtectedRoute>
@@ -255,9 +258,14 @@ function AppContent() {
                 <Route
                   path="/admin/dashboard"
                   element={
-                    <ProtectedRoute allowedEmails={["mshexani45@gmail.com"]}>
+                    <ProtectedAdminOnlyRoute
+                      allowedEmails={[
+                        "mshexani45@gmail.com",
+                        "admin@gmail.com",
+                      ]}
+                    >
                       <AdminPage />
-                    </ProtectedRoute>
+                    </ProtectedAdminOnlyRoute>
                   }
                 />
                 <Route

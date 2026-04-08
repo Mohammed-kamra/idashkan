@@ -1399,8 +1399,18 @@ const StoreProfile = () => {
   };
 
   if (loading) {
+    const cardW = { xs: 155, sm: 190 };
     return (
-      <Box sx={{ py: { xs: 8, sm: 4 }, px: { xs: 1, sm: 2 } }}>
+      <Box
+        sx={{
+          py: { xs: 8, sm: 4 },
+          px: { xs: 1, sm: 1.5, md: 3 },
+          pb: { xs: 10, sm: 4 },
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Back button skeleton */}
         <Skeleton
           variant="rounded"
@@ -1418,36 +1428,86 @@ const StoreProfile = () => {
             mb: 3,
           }}
         />
-        {/* Tab bar skeleton */}
-        <Box sx={{ display: "flex", gap: 1, mb: 3 }}>
+        {/* Tab bar skeleton — horizontal scroll */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 3,
+            overflowX: "auto",
+            overflowY: "hidden",
+            pb: 0.5,
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
           {[100, 120, 90, 80].map((w, i) => (
             <Skeleton
               key={i}
               variant="rounded"
               width={w}
               height={38}
-              sx={{ borderRadius: "999px" }}
+              sx={{ borderRadius: "999px", flexShrink: 0 }}
             />
           ))}
         </Box>
-        {/* Product rows skeleton */}
+        {/* Category blocks + horizontal product row (matches renderProductsByType) */}
         {[1, 2].map((g) => (
-          <Box key={g} sx={{ mb: 3 }}>
-            <Skeleton variant="text" width={160} height={28} sx={{ mb: 1 }} />
-            <Box sx={{ display: "flex", gap: 1.5 }}>
-              {[1, 2, 3, 4].map((c) => (
-                <Box key={c}>
+          <Box
+            key={g}
+            sx={{
+              mb: 2,
+              borderRadius: "18px",
+              overflow: "hidden",
+              border: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "1px solid rgba(255,255,255,0.07)"
+                  : "1px solid #eef0f4",
+            }}
+          >
+            <Box sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.2, sm: 1.4 } }}>
+              <Skeleton variant="text" width="55%" height={28} sx={{ mb: 0.5 }} />
+            </Box>
+            <Box
+              sx={{
+                px: { xs: 1, sm: 1.5 },
+                py: { xs: 1.2, sm: 1.5 },
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
+                gap: { xs: 1, sm: 1.2 },
+                overflowX: "auto",
+                overflowY: "hidden",
+                width: "100%",
+                boxSizing: "border-box",
+                scrollbarWidth: "thin",
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((c) => (
+                <Box
+                  key={c}
+                  sx={{
+                    flexShrink: 0,
+                    width: cardW,
+                    minWidth: cardW,
+                  }}
+                >
                   <Skeleton
                     variant="rounded"
-                    width={148}
-                    height={150}
-                    sx={{ borderRadius: "12px 12px 0 0" }}
+                    sx={{
+                      width: cardW,
+                      height: { xs: 140, sm: 160 },
+                      borderRadius: "16px 16px 0 0",
+                    }}
                   />
                   <Skeleton
                     variant="rounded"
-                    width={148}
-                    height={68}
-                    sx={{ borderRadius: "0 0 12px 12px", mt: "1px" }}
+                    sx={{
+                      width: cardW,
+                      height: 72,
+                      borderRadius: "0 0 16px 16px",
+                      mt: "1px",
+                    }}
                   />
                 </Box>
               ))}

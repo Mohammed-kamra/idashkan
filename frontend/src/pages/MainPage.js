@@ -1456,6 +1456,10 @@ const MainPage = () => {
         sx={{
           px: { xs: 1, sm: 1.5, md: 3 },
           pt: { xs: "100px", sm: "113px", md: "113px" },
+          pb: { xs: 10, sm: 4 },
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* Banner skeleton */}
@@ -1465,15 +1469,27 @@ const MainPage = () => {
           height={160}
           sx={{ mb: 2, borderRadius: "16px" }}
         />
-        {/* Filter chips skeleton */}
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        {/* Filter chips skeleton — scroll row, fixed chip widths (matches FilterChips) */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            mb: 2,
+            overflowX: "auto",
+            overflowY: "hidden",
+            width: "100%",
+            pb: 0.5,
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
           {[80, 100, 90, 110, 80].map((w, i) => (
             <Skeleton
               key={i}
               variant="rounded"
               width={w}
               height={34}
-              sx={{ borderRadius: "999px" }}
+              sx={{ borderRadius: "999px", flexShrink: 0 }}
             />
           ))}
         </Box>
@@ -1487,6 +1503,7 @@ const MainPage = () => {
               overflow: "hidden",
               border: "1px solid",
               borderColor: "divider",
+              width: "100%",
             }}
           >
             {/* Store header */}
@@ -1508,29 +1525,49 @@ const MainPage = () => {
                 height={52}
                 sx={{ borderRadius: "14px", flexShrink: 0 }}
               />
-              <Box sx={{ flex: 1 }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Skeleton variant="text" width="45%" height={24} />
                 <Skeleton variant="text" width="70%" height={18} />
-                <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
                   <Skeleton
                     variant="rounded"
                     width={100}
                     height={22}
-                    sx={{ borderRadius: "999px" }}
+                    sx={{ borderRadius: "999px", flexShrink: 0 }}
                   />
                   <Skeleton
                     variant="rounded"
                     width={80}
                     height={22}
-                    sx={{ borderRadius: "999px" }}
+                    sx={{ borderRadius: "999px", flexShrink: 0 }}
                   />
                 </Box>
               </Box>
             </Box>
-            {/* Products row */}
-            <Box sx={{ p: "12px 14px", display: "flex", gap: 1 }}>
-              {[1, 2, 3, 4].map((c) => (
-                <Box key={c} sx={{ flexShrink: 0 }}>
+            {/* Products row — horizontal scroll + non-shrinking cards (matches StoreGroupSection / ProductCard) */}
+            <Box
+              sx={{
+                p: "12px 14px",
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
+                gap: { xs: 1, sm: 1.2 },
+                overflowX: "auto",
+                overflowY: "hidden",
+                width: "100%",
+                boxSizing: "border-box",
+                scrollbarWidth: "thin",
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((c) => (
+                <Box
+                  key={c}
+                  sx={{
+                    flexShrink: 0,
+                    width: 148,
+                    minWidth: 148,
+                  }}
+                >
                   <Skeleton
                     variant="rounded"
                     width={148}

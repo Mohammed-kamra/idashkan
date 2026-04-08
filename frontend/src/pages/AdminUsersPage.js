@@ -19,10 +19,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { adminAPI } from "../services/api";
 import { useTranslation } from "react-i18next";
+import { isAdminEmail, normalizeUserRole } from "../utils/adminAccess";
 
 const AdminUsersPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -35,8 +40,7 @@ const AdminUsersPage = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const isAdmin =
-    user?.email === "mshexani45@gmail.com" || user?.email === "admin@gmail.com";
+  const isAdmin = isAdminEmail(user);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -106,12 +110,16 @@ const AdminUsersPage = () => {
       email: "",
       displayName: "",
       isActive: true,
+      role: "user",
     });
     setEditDialogOpen(true);
   };
 
-  const openEditDialog = (user) => {
-    setEditingUser({ ...user });
+  const openEditDialog = (row) => {
+    setEditingUser({
+      ...row,
+      role: normalizeUserRole(row),
+    });
     setEditDialogOpen(true);
   };
 
@@ -136,6 +144,7 @@ const AdminUsersPage = () => {
           email: editingUser.email,
           displayName: editingUser.displayName,
           isActive: editingUser.isActive,
+          role: editingUser.role === "support" ? "support" : "user",
         };
         if (editingUser.password && editingUser.password.trim() !== "") {
           updatePayload.password = editingUser.password;
@@ -147,6 +156,7 @@ const AdminUsersPage = () => {
           email: editingUser.email,
           password: editingUser.password,
           displayName: editingUser.displayName,
+          role: editingUser.role === "support" ? "support" : "user",
         });
       }
 
@@ -228,6 +238,7 @@ const AdminUsersPage = () => {
               <TableCell>{t("Email")}</TableCell>
               <TableCell>{t("Device ID")}</TableCell>
               <TableCell>{t("Type")}</TableCell>
+              <TableCell>{t("Role")}</TableCell>
               <TableCell>{t("Status")}</TableCell>
               <TableCell>{t("Created At")}</TableCell>
               <TableCell align="right">{t("Actions")}</TableCell>
@@ -236,7 +247,7 @@ const AdminUsersPage = () => {
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   {t("No users found")}
                 </TableCell>
               </TableRow>
@@ -245,6 +256,7 @@ const AdminUsersPage = () => {
                 const isGuest = !!u.deviceId && !u.email;
                 const displayName =
                   u.displayName?.trim() || u.username || (isGuest ? t("Guest user") : t("User"));
+                const role = normalizeUserRole(u);
                 return (
                   <TableRow key={u._id}>
                     <TableCell>{displayName}</TableCell>
@@ -259,6 +271,17 @@ const AdminUsersPage = () => {
                           label={t("Registered")}
                           color="primary"
                         />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {role === "support" ? (
+                        <Chip
+                          size="small"
+                          color="secondary"
+                          label={t("Support (Data Entry)")}
+                        />
+                      ) : (
+                        <Chip size="small" label={t("Normal user")} />
                       )}
                     </TableCell>
                     <TableCell>
@@ -351,6 +374,22 @@ const AdminUsersPage = () => {
                   handleEditFieldChange("password", e.target.value)
                 }
               />
+              <FormControl fullWidth margin="normal">
+                <InputLabel id="user-role-label">{t("Role")}</InputLabel>
+                <Select
+                  labelId="user-role-label"
+                  label={t("Role")}
+                  value={editingUser.role === "support" ? "support" : "user"}
+                  onChange={(e) =>
+                    handleEditFieldChange("role", e.target.value)
+                  }
+                >
+                  <MenuItem value="user">{t("Normal user")}</MenuItem>
+                  <MenuItem value="support">
+                    {t("Support (Data Entry)")}
+                  </MenuItem>
+                </Select>
+              </FormControl>
             </Box>
           )}
         </DialogContent>

@@ -1,12 +1,7 @@
 const Job = require("../models/Job");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
 const { storeJob, brandJob, storeTypeList } = require("../utils/refPopulate");
-
-const isAdminUser = (user) => {
-  if (!user) return false;
-  const adminEmails = ["mshexani45@gmail.com", "admin@gmail.com"];
-  return adminEmails.includes(user.email);
-};
+const { canAccessDataEntryApis } = require("../utils/roleAccess");
 
 // @desc    Get jobs (public)
 // @route   GET /api/jobs?storeTypeId=...&q=...
@@ -67,7 +62,7 @@ const getJobs = async (req, res) => {
 // Admin list — includes inactive and expired (data entry / moderation only).
 const getJobsAdmin = async (req, res) => {
   try {
-    if (!isAdminUser(req.user)) {
+    if (!canAccessDataEntryApis(req.user)) {
       return res.status(403).json({ message: "Admin privileges required" });
     }
     const q = String(req.query.q || "").trim();
@@ -117,7 +112,7 @@ const getJobsAdmin = async (req, res) => {
 // @access  Private/Admin
 const createJob = async (req, res) => {
   try {
-    if (!isAdminUser(req.user)) {
+    if (!canAccessDataEntryApis(req.user)) {
       return res.status(403).json({ message: "Admin privileges required" });
     }
     const job = await Job.create({
@@ -155,7 +150,7 @@ const createJob = async (req, res) => {
 // @access  Private/Admin
 const updateJob = async (req, res) => {
   try {
-    if (!isAdminUser(req.user)) {
+    if (!canAccessDataEntryApis(req.user)) {
       return res.status(403).json({ message: "Admin privileges required" });
     }
     const job = await Job.findById(req.params.id);
@@ -221,7 +216,7 @@ const updateJob = async (req, res) => {
 // @access  Private/Admin
 const deleteJob = async (req, res) => {
   try {
-    if (!isAdminUser(req.user)) {
+    if (!canAccessDataEntryApis(req.user)) {
       return res.status(403).json({ message: "Admin privileges required" });
     }
     const job = await Job.findByIdAndDelete(req.params.id);

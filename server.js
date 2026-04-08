@@ -1,7 +1,10 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 require("dotenv").config();
+
+const User = require("./models/User");
 
 const app = express();
 
@@ -17,6 +20,28 @@ if (!process.env.MONGO_URI) {
 }
 
 connectDB();
+
+mongoose.connection.once("open", async () => {
+  try {
+    const result = await User.updateMany(
+      {
+        $or: [
+          { role: { $exists: false } },
+          { role: null },
+          { role: "" },
+        ],
+      },
+      { $set: { role: "user" } },
+    );
+    if (result.modifiedCount > 0) {
+      console.log(
+        `[migration] Default role=user applied to ${result.modifiedCount} user document(s)`,
+      );
+    }
+  } catch (e) {
+    console.error("[migration] user role:", e.message);
+  }
+});
 
 // Middleware - CORS: allow known frontends + localhost; mobile needs explicit origins
 const allowedOrigins = [
