@@ -49,6 +49,32 @@ export function getLocalizedField(item, field, dataLang = "normal") {
 }
 
 /**
+ * Primary + en + ar + ku variants of a field, deduplicated case-insensitively.
+ * Use for search so queries match regardless of UI/data language.
+ */
+export function getAllLocalizedFieldValues(item, field) {
+  if (!item) return [];
+  const langs = ["normal", "en", "ar", "ku"];
+  const seen = new Set();
+  const out = [];
+  for (const dataLang of langs) {
+    const v = getLocalizedField(
+      item,
+      field,
+      dataLang === "normal" ? "normal" : dataLang,
+    );
+    const s = v != null ? String(v).trim() : "";
+    if (!s) continue;
+    const k = s.toLowerCase();
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+/**
  * Legacy: map i18n UI language code to a content variant (used where UI lang
  * used to drive content). Prefer {@link getLocalizedField} + DataLanguageContext.
  */

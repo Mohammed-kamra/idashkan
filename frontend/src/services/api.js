@@ -55,6 +55,11 @@ export const storeAPI = {
   toggleVisibility: (id) => api.put(`/stores/${id}/toggle-visibility`),
 };
 
+// Cities (public list for filters; admin CRUD under adminAPI)
+export const cityAPI = {
+  getAll: () => api.get("/cities"),
+};
+
 // StoreType API calls
 export const storeTypeAPI = {
   getAll: () => api.get("/store-types"),
@@ -310,6 +315,10 @@ export const adminAPI = {
     api.post("/admin/products/translate-missing"),
   upsertTranslation: (data) => api.put("/admin/translations", data),
   deleteTranslation: (id) => api.delete(`/admin/translations/${id}`),
+  getCities: () => api.get("/admin/cities"),
+  createCity: (data) => api.post("/admin/cities", data),
+  updateCity: (id, data) => api.put(`/admin/cities/${id}`, data),
+  deleteCity: (id) => api.delete(`/admin/cities/${id}`),
 };
 
 export default api;

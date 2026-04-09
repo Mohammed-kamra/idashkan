@@ -9,6 +9,8 @@ import {
   Box,
   Chip,
   CircularProgress,
+  LinearProgress,
+  Fade,
   Alert,
   Dialog,
   DialogTitle,
@@ -72,6 +74,7 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
+import { cityStringsMatch } from "../utils/cityMatch";
 
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
@@ -107,7 +110,7 @@ const ProductCategory = () => {
   // Mobile layout states
   const [storeTypes, setStoreTypes] = useState([]);
   const [selectedStoreTypeId, setSelectedStoreTypeId] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth < 900 ? "first" : "all",
+    typeof window !== "undefined" && window.innerWidth < 900 ? null : "all",
   );
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -138,6 +141,16 @@ const ProductCategory = () => {
   // Track if we've applied nav state (category/categoryType from MainPage or ProductDetail link)
   const stateAppliedRef = useRef(false);
   const productViewRecordedRef = useRef(new Set());
+  /** categoryId -> { types, products } — avoids refetch / full reload when switching category */
+  const categoryDataCacheRef = useRef(new Map());
+
+  const putCategoryCache = useCallback((categoryId, types, products) => {
+    if (categoryId == null) return;
+    categoryDataCacheRef.current.set(String(categoryId), {
+      types: Array.isArray(types) ? types : [],
+      products: Array.isArray(products) ? products : [],
+    });
+  }, []);
 
   useEffect(() => {
     productViewRecordedRef.current = new Set();
@@ -179,6 +192,7 @@ const ProductCategory = () => {
         }
       } catch (e) {
         setStoreTypes([]);
+        setSelectedStoreTypeId((prev) => (prev == null ? "all" : prev));
       }
     })();
     // Intentionally omit location from deps: only read initial navigation state on first load
@@ -190,17 +204,50 @@ const ProductCategory = () => {
     fetchCategories();
   }, [selectedStoreTypeId, storeTypes]);
 
-  // On first mount on mobile, lock the store type to the first option
-  useEffect(() => {
-    // mobile default handled after store types load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Keep filtered list in sync when inputs change
   useEffect(() => {
     applyFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, selectedCategoryType, filters, selectedCity, dataLanguage]);
+
+  // Prefetch types + products for all categories in the current list (background; switching stays instant when cached)
+  useEffect(() => {
+    if (loading || !categories.length) return;
+    let cancelled = false;
+
+    const prefetchOne = async (category) => {
+      const id = String(category._id);
+      if (categoryDataCacheRef.current.has(id)) return;
+      try {
+        const [typesRes, prodRes] = await Promise.all([
+          categoryAPI.getTypes(category._id),
+          productAPI.getByCategory(category._id),
+        ]);
+        if (cancelled) return;
+        const types = typesRes.data || [];
+        const products = prodRes.data || [];
+        categoryDataCacheRef.current.set(id, { types, products });
+      } catch {
+        /* non-fatal */
+      }
+    };
+
+    const run = async () => {
+      const pending = categories.filter(
+        (c) => !categoryDataCacheRef.current.has(String(c._id)),
+      );
+      const batchSize = 3;
+      for (let i = 0; i < pending.length && !cancelled; i += batchSize) {
+        const batch = pending.slice(i, i + batchSize);
+        await Promise.all(batch.map((c) => prefetchOne(c)));
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [categories, loading]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -212,10 +259,30 @@ const ProductCategory = () => {
   };
 
   const fetchCategories = async () => {
+    const isMobile =
+      typeof window !== "undefined" && window.innerWidth < 900;
+    const pending = location.state?.category;
+    const hasCategoryNav =
+      pending &&
+      (typeof pending === "string"
+        ? pending.trim() && pending !== "All Categories"
+        : Boolean(pending._id || pending.name));
+
+    if (
+      isMobile &&
+      storeTypes.length === 0 &&
+      !hasCategoryNav &&
+      selectedStoreTypeId == null
+    ) {
+      return;
+    }
+
     try {
       setLoading(true);
       let response;
       if (selectedStoreTypeId === "all") {
+        response = await categoryAPI.getAll();
+      } else if (selectedStoreTypeId == null) {
         response = await categoryAPI.getAll();
       } else {
         const st = storeTypes.find((s) => s._id === selectedStoreTypeId);
@@ -261,7 +328,8 @@ const ProductCategory = () => {
             }
             setSelectedCategory(matchedCategory);
             const types = await fetchCategoryTypes(matchedCategory._id);
-            await fetchProductsByCategory(matchedCategory._id);
+            const prods = await fetchProductsByCategory(matchedCategory._id);
+            putCategoryCache(matchedCategory._id, types, prods);
             if (state.categoryType && types?.length > 0) {
               const typeName =
                 typeof state.categoryType === "string"
@@ -284,9 +352,11 @@ const ProductCategory = () => {
             navigate(location.pathname, { replace: true, state: {} });
           } else {
             if (window.innerWidth >= 900) {
-              setSelectedCategory(response.data[0]);
-              await fetchCategoryTypes(response.data[0]._id);
-              await fetchProductsByCategory(response.data[0]._id);
+              const first = response.data[0];
+              setSelectedCategory(first);
+              const types0 = await fetchCategoryTypes(first._id);
+              const prods0 = await fetchProductsByCategory(first._id);
+              putCategoryCache(first._id, types0, prods0);
             } else {
               setSelectedCategory(null);
               setCategoryTypes([]);
@@ -297,9 +367,11 @@ const ProductCategory = () => {
           }
         } else if (!stateAppliedRef.current) {
           if (window.innerWidth >= 900) {
-            setSelectedCategory(response.data[0]);
-            await fetchCategoryTypes(response.data[0]._id);
-            await fetchProductsByCategory(response.data[0]._id);
+            const first = response.data[0];
+            setSelectedCategory(first);
+            const types0 = await fetchCategoryTypes(first._id);
+            const prods0 = await fetchProductsByCategory(first._id);
+            putCategoryCache(first._id, types0, prods0);
           } else {
             setSelectedCategory(null);
             setCategoryTypes([]);
@@ -333,25 +405,37 @@ const ProductCategory = () => {
   const fetchProductsByCategory = async (categoryId) => {
     try {
       const response = await productAPI.getByCategory(categoryId);
-      setProducts(response.data);
-      setFilteredProducts(response.data);
+      const data = response.data || [];
+      setProducts(data);
+      setFilteredProducts(data);
+      return data;
     } catch (err) {
       console.error("Error fetching products:", err);
       setProducts([]);
       setFilteredProducts([]);
+      return [];
     }
   };
 
   const handleCategoryChange = async (category) => {
     setSelectedCategory(category);
     setSelectedCategoryType(null);
-    setCategoryProductsLoading(true);
     if (window.innerWidth < 900) {
       setMobileViewMode("products");
     }
+    const cid = String(category._id);
+    const cached = categoryDataCacheRef.current.get(cid);
+    if (cached) {
+      setCategoryTypes(cached.types);
+      setProducts(cached.products);
+      setFilteredProducts(cached.products);
+      return;
+    }
+    setCategoryProductsLoading(true);
     try {
-      await fetchCategoryTypes(category._id);
-      await fetchProductsByCategory(category._id);
+      const types = await fetchCategoryTypes(category._id);
+      const prods = await fetchProductsByCategory(category._id);
+      putCategoryCache(category._id, types, prods);
     } finally {
       setCategoryProductsLoading(false);
     }
@@ -363,6 +447,7 @@ const ProductCategory = () => {
 
   const handleStoreTypeChange = (storeTypeId) => {
     stateAppliedRef.current = false;
+    categoryDataCacheRef.current.clear();
     setSelectedStoreTypeId(storeTypeId);
     setSelectedCategory(null);
     setSelectedCategoryType(null);
@@ -466,9 +551,11 @@ const ProductCategory = () => {
       );
     }
 
-    // Filter by city
-    filtered = filtered.filter(
-      (product) => product.storeId?.storecity === selectedCity,
+    filtered = filtered.filter((product) =>
+      cityStringsMatch(
+        selectedCity,
+        product.storeId?.storecity || product.storeId?.city || "",
+      ),
     );
 
     setFilteredProducts(filtered);
@@ -925,41 +1012,20 @@ const ProductCategory = () => {
 
               {/* Products */}
               {categoryProductsLoading ? (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: 1,
-                    px: 1,
-                  }}
-                >
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Card
-                      key={i}
-                      sx={{
-                        borderRadius: 3,
-                        overflow: "hidden",
-                        backgroundColor: cardBg,
-                      }}
-                    >
-                      <Skeleton variant="rectangular" height={130} />
-                      <CardContent sx={{ p: 1 }}>
-                        <Skeleton variant="text" width="85%" height={16} />
-                        <Skeleton
-                          variant="text"
-                          width="55%"
-                          height={14}
-                          sx={{ mt: 0.5 }}
-                        />
-                        <Skeleton
-                          variant="text"
-                          width="65%"
-                          height={20}
-                          sx={{ mt: 0.5 }}
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
+                <Box sx={{ px: 1 }}>
+                  <LinearProgress
+                    sx={{ height: 3, borderRadius: 1, mb: 2, opacity: 0.95 }}
+                  />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: 200,
+                    }}
+                  >
+                    <CircularProgress size={36} />
+                  </Box>
                 </Box>
               ) : filteredProducts.length === 0 ? (
                 <Box
@@ -979,14 +1045,15 @@ const ProductCategory = () => {
                   </Typography>
                 </Box>
               ) : (
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: 1,
-                    px: 1,
-                  }}
-                >
+                <Fade in timeout={240} key={String(selectedCategory?._id)}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, 1fr)",
+                      gap: 1,
+                      px: 1,
+                    }}
+                  >
                   {filteredProducts.map((product) => {
                     const discountPct = calculateDiscount(
                       product.previousPrice,
@@ -1188,7 +1255,8 @@ const ProductCategory = () => {
                       </ProductViewTracker>
                     );
                   })}
-                </Box>
+                  </Box>
+                </Fade>
               )}
             </>
           )}
@@ -1453,18 +1521,28 @@ const ProductCategory = () => {
         {selectedCategory && (
           <>
             {categoryProductsLoading ? (
-              <Box
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                minHeight={320}
-              >
-                <CircularProgress
+              <Box sx={{ width: "100%" }}>
+                <LinearProgress
                   sx={{
-                    color:
-                      theme.palette.mode === "dark" ? "#4A90E2" : "#1E6FD9",
+                    height: 3,
+                    borderRadius: 1,
+                    mb: 2,
+                    opacity: 0.95,
                   }}
                 />
+                <Box
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  minHeight={280}
+                >
+                  <CircularProgress
+                    sx={{
+                      color:
+                        theme.palette.mode === "dark" ? "#4A90E2" : "#1E6FD9",
+                    }}
+                  />
+                </Box>
               </Box>
             ) : filteredProducts.length === 0 ? (
               <Box
@@ -1479,7 +1557,7 @@ const ProductCategory = () => {
                 <Typography variant="h6">{t("No products found")}</Typography>
               </Box>
             ) : (
-              <>
+              <Fade in timeout={240} key={String(selectedCategory?._id)}>
                 {/* Products Grid - enforce 2 columns via CSS grid */}
                 <Box
                   sx={{
@@ -1688,7 +1766,7 @@ const ProductCategory = () => {
                     </ProductViewTracker>
                   ))}
                 </Box>
-              </>
+              </Fade>
             )}
           </>
         )}
@@ -2349,6 +2427,10 @@ const ProductCategory = () => {
                   const related = products.filter(
                     (p) =>
                       p._id !== selectedProduct._id &&
+                      cityStringsMatch(
+                        selectedCity,
+                        p.storeId?.storecity || p.storeId?.city || "",
+                      ) &&
                       isExpiryStillValid(p.expireDate || null) !== false &&
                       isDiscountValid(p),
                   );

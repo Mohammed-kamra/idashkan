@@ -19,10 +19,12 @@ import {
   FormControl,
   Select,
   MenuItem,
-  Switch,
+  ToggleButton,
+  ToggleButtonGroup,
   useTheme,
   Alert,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   Person as PersonIcon,
   Login as LoginIcon,
@@ -43,6 +45,9 @@ import {
   Call as ViberIcon,
   Telegram as TelegramIcon,
   Language as LanguageIcon,
+  LightModeOutlined,
+  DarkModeOutlined,
+  BrightnessAutoRounded,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -99,7 +104,7 @@ const ProfilePage = () => {
     clearUserThemeOverride,
   } = useActiveTheme();
   const { dataLanguage, setDataLanguage } = useDataLanguage();
-  const { darkMode, toggleDarkMode } = useDarkMode();
+  const { darkMode, colorMode, setColorMode } = useDarkMode();
 
   const [guestNameDialogOpen, setGuestNameDialogOpen] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState("");
@@ -330,6 +335,16 @@ const ProfilePage = () => {
                     </ListItemIcon>
                     <ListItemText primary={t("Admin Dashboard")} />
                   </ListItemButton>
+                  <ListItemButton component={Link} to="/admin/cities">
+                    <ListItemIcon>
+                      <LocationOnIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={t("City management", {
+                        defaultValue: "City management",
+                      })}
+                    />
+                  </ListItemButton>
                 </>
               )}
             </>
@@ -379,63 +394,148 @@ const ProfilePage = () => {
           </Box> */}
 
           <Divider />
-          {/* ── Dark / Light mode toggle ──────────────────────── */}
-          <ListItemButton
-            onClick={toggleDarkMode}
-            sx={{
-              px: 2,
-              py: 1.5,
-              borderRadius: 0,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>
+          <Box sx={{ px: 2, py: 1.5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mb: 1.25,
+              }}
+            >
               <Box
                 sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "10px",
-                  background: darkMode
-                    ? "linear-gradient(135deg,#1e293b,#334155)"
-                    : "linear-gradient(135deg,#fde68a,#fbbf24)",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 2,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1rem",
-                  transition: "background 0.3s ease",
+                  background:
+                    theme.palette.mode === "dark"
+                      ? `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.2)}, ${alpha(theme.palette.secondary.main, 0.15)})`
+                      : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
+                  border: "1px solid",
+                  borderColor: alpha(theme.palette.divider, 0.9),
                 }}
               >
-                {darkMode ? "🌙" : "☀️"}
+                <PaletteIcon sx={{ fontSize: 20, color: "primary.main" }} />
               </Box>
-            </ListItemIcon>
-            <ListItemText
-              primary={darkMode ? t("Dark Mode") : t("Light Mode")}
-              secondary={
-                darkMode ? t("Switch to Light Mode") : t("Switch to Dark Mode")
-              }
-              primaryTypographyProps={{ fontWeight: 600, fontSize: "0.95rem" }}
-              secondaryTypographyProps={{ fontSize: "0.75rem" }}
-            />
-            <Switch
-              checked={darkMode}
-              onChange={toggleDarkMode}
-              onClick={(e) => e.stopPropagation()}
-              color="default"
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}
+              >
+                {t("Appearance", { defaultValue: "Appearance" })}
+              </Typography>
+            </Box>
+
+            <Paper
+              elevation={0}
               sx={{
-                "& .MuiSwitch-thumb": {
-                  background: darkMode
-                    ? "linear-gradient(135deg,#818cf8,#6366f1)"
-                    : "linear-gradient(135deg,#fbbf24,#f59e0b)",
-                },
-                "& .MuiSwitch-track": {
-                  bgcolor: darkMode
-                    ? "#4f46e5 !important"
-                    : "#d1d5db !important",
-                  opacity: "1 !important",
-                },
+                p: 0.25,
+                borderRadius: 3,
+                border: "1px solid",
+                borderColor: alpha(theme.palette.divider, 0.85),
+                background:
+                  theme.palette.mode === "dark"
+                    ? `linear-gradient(160deg, ${alpha("#fff", 0.05)} 0%, ${alpha("#fff", 0.02)} 100%)`
+                    : "linear-gradient(180deg, #ffffff 0%, #f4f6f9 100%)",
+                boxShadow:
+                  theme.palette.mode === "dark"
+                    ? "0 4px 24px rgba(0,0,0,0.25)"
+                    : "0 2px 12px rgba(15,23,42,0.06)",
               }}
-            />
-          </ListItemButton>
+            >
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                value={colorMode}
+                onChange={(_, v) => v != null && setColorMode(v)}
+                sx={{
+                  display: "flex",
+                  gap: 0.75,
+                  "& .MuiToggleButtonGroup-grouped": {
+                    margin: 0,
+                    border: 0,
+                    "&:not(:first-of-type)": { borderLeft: 0 },
+                  },
+                  "& .MuiToggleButton-root": {
+                    flex: 1,
+                    flexDirection: "column",
+                    py: 1,
+                    px: 0.5,
+                    borderRadius: "14px !important",
+                    textTransform: "none",
+                    gap: 0.65,
+                    border: "none",
+                    color: "text.secondary",
+                    transition:
+                      "background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
+                    "&:hover": {
+                      bgcolor: alpha(theme.palette.primary.main, 0.06),
+                    },
+                    "&.Mui-selected": {
+                      color: "primary.main",
+                      bgcolor: alpha(theme.palette.primary.main, 0.12),
+                      boxShadow: `0 2px 10px ${alpha(theme.palette.primary.main, 0.22)}`,
+                      "&:hover": {
+                        bgcolor: alpha(theme.palette.primary.main, 0.18),
+                      },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="light" aria-label={t("Light")}>
+                  <LightModeOutlined
+                    sx={{
+                      fontSize: 28,
+                      opacity: colorMode === "light" ? 1 : 0.85,
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{ lineHeight: 1.2, fontSize: "0.72rem" }}
+                  >
+                    {t("Light")}
+                  </Typography>
+                </ToggleButton>
+                <ToggleButton value="dark" aria-label={t("Dark")}>
+                  <DarkModeOutlined
+                    sx={{
+                      fontSize: 28,
+                      opacity: colorMode === "dark" ? 1 : 0.85,
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{ lineHeight: 1.2, fontSize: "0.72rem" }}
+                  >
+                    {t("Dark")}
+                  </Typography>
+                </ToggleButton>
+                <ToggleButton
+                  value="system"
+                  aria-label={t("System", { defaultValue: "System" })}
+                >
+                  <BrightnessAutoRounded
+                    sx={{
+                      fontSize: 28,
+                      opacity: colorMode === "system" ? 1 : 0.85,
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    fontWeight={800}
+                    sx={{ lineHeight: 1.2, fontSize: "0.72rem" }}
+                  >
+                    {t("System", { defaultValue: "System" })}
+                  </Typography>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Paper>
+          </Box>
           <Box sx={{ px: 2, py: 2 }}>
             <Typography
               variant="caption"

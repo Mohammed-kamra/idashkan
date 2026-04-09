@@ -15,6 +15,12 @@ const {
 } = require("../controllers/adminController");
 const { sendNotification } = require("../controllers/adminNotificationController");
 const { upsertTranslation, deleteTranslation } = require("../controllers/translationController");
+const {
+  getAdminCities,
+  createCity,
+  updateCity,
+  deleteCity,
+} = require("../controllers/cityController");
 const { protect } = require("../middleware/auth");
 
 // GET /api/admin/stats
@@ -40,6 +46,12 @@ router.get("/users", protect, getUsers);
 router.post("/users", protect, createUser);
 router.put("/users/:id", protect, updateUser);
 router.delete("/users/:id", protect, deleteUser);
+
+// Cities — admin-only CRUD (public list: GET /api/cities)
+router.get("/cities", protect, getAdminCities);
+router.post("/cities", protect, createCity);
+router.put("/cities/:id", protect, updateCity);
+router.delete("/cities/:id", protect, deleteCity);
 
 // Delete expired products - admin-only, requires auth
 router.delete("/products/expired", protect, deleteExpiredProducts);

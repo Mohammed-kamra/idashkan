@@ -87,6 +87,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { isAdminEmail } from "../utils/adminAccess";
+import { useCityFilter } from "../context/CityFilterContext";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
@@ -155,6 +156,7 @@ const DataEntryForm = () => {
   const { t } = useTranslation();
   const { getAuthHeaders, user } = useAuth();
   const isAdmin = isAdminEmail(user);
+  const { cities: publicCities, citiesNonce } = useCityFilter();
   const {
     contactWhatsAppNumber,
     setContactWhatsAppNumber,
@@ -363,6 +365,7 @@ const DataEntryForm = () => {
     storeId: "",
     brandId: "",
     companyId: "",
+    city: "Erbil",
     image: "",
     expireDate: "",
     active: true,
@@ -473,6 +476,101 @@ const DataEntryForm = () => {
 
   // Edit dialog form state
   const [editForm, setEditForm] = useState({});
+  const [adminCityRows, setAdminCityRows] = useState([]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminCityRows([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await adminAPI.getCities();
+        if (!cancelled && Array.isArray(res.data)) {
+          setAdminCityRows(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, citiesNonce]);
+
+  const baseStoreCityOptions = useMemo(() => {
+    const mapRow = (c) => ({
+      value: c.name,
+      flag: c.flag || "📍",
+      label: t(`city.${c.name}`, { defaultValue: c.name }),
+      inactive: c.isActive === false,
+    });
+    if (isAdmin && adminCityRows.length > 0) {
+      return [...adminCityRows]
+        .sort(
+          (a, b) =>
+            (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+            String(a.name).localeCompare(String(b.name)),
+        )
+        .map(mapRow);
+    }
+    return publicCities.map((c) => ({
+      ...c,
+      inactive: false,
+    }));
+  }, [isAdmin, adminCityRows, publicCities, t]);
+
+  const withLegacyCity = (options, current) => {
+    if (!current || options.some((o) => o.value === current)) {
+      return options;
+    }
+    return [
+      ...options,
+      {
+        value: current,
+        flag: "📍",
+        label: current,
+        inactive: true,
+      },
+    ];
+  };
+
+  const storeFormCityOptions = useMemo(
+    () => withLegacyCity(baseStoreCityOptions, storeForm.storecity),
+    [baseStoreCityOptions, storeForm.storecity],
+  );
+
+  const editFormCityOptions = useMemo(
+    () => withLegacyCity(baseStoreCityOptions, editForm.storecity),
+    [baseStoreCityOptions, editForm.storecity],
+  );
+
+  const jobFormCityOptions = useMemo(
+    () => withLegacyCity(baseStoreCityOptions, jobForm.city),
+    [baseStoreCityOptions, jobForm.city],
+  );
+
+  useEffect(() => {
+    const names = baseStoreCityOptions.map((o) => o.value);
+    if (!names.length) return;
+    setJobForm((prev) =>
+      !prev.city || names.includes(prev.city)
+        ? prev
+        : { ...prev, city: names[0] },
+    );
+  }, [baseStoreCityOptions]);
+
+  useEffect(() => {
+    const names = baseStoreCityOptions.map((o) => o.value);
+    if (!names.length) return;
+    setStoreForm((prev) =>
+      names.includes(prev.storecity)
+        ? prev
+        : { ...prev, storecity: names[0] },
+    );
+  }, [baseStoreCityOptions]);
+
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -1298,6 +1396,13 @@ const DataEntryForm = () => {
         });
         return;
       }
+      if (!String(jobForm.city || "").trim()) {
+        setMessage({
+          type: "error",
+          text: t("Please select a city."),
+        });
+        return;
+      }
 
       let imageUrl = jobForm.image || "";
       if (selectedJobImage) {
@@ -1330,6 +1435,7 @@ const DataEntryForm = () => {
         image: imageUrl || "",
         storeId: sid,
         brandId: bid,
+        city: String(jobForm.city).trim(),
         expireDate: normalizeExpiryInputForApi(jobForm.expireDate) || undefined,
         active: jobForm.active !== false,
       };
@@ -5659,6 +5765,15 @@ const DataEntryForm = () => {
                           color: "primary.contrastText",
                         }}
                       >
+                        {t("City")}
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Expire Date")}
                       </TableCell>
                       <TableCell
@@ -5704,6 +5819,13 @@ const DataEntryForm = () => {
                             <TableCell>{ownerName || "-"}</TableCell>
                             <TableCell>{gender}</TableCell>
                             <TableCell>
+                              {job.city
+                                ? t(`city.${job.city}`, {
+                                    defaultValue: job.city,
+                                  })
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
                               {job.expireDate
                                 ? new Date(job.expireDate).toLocaleDateString()
                                 : t("No expiry")}
@@ -5747,10 +5869,16 @@ const DataEntryForm = () => {
                                     descriptionAr: job.descriptionAr || "",
                                     descriptionKu: job.descriptionKu || "",
                                     gender: job.gender || "any",
+                                    city:
+                                      job.city && String(job.city).trim()
+                                        ? String(job.city).trim()
+                                        : "Erbil",
                                     storeId:
                                       job?.storeId?._id || job?.storeId || "",
                                     brandId:
                                       job?.brandId?._id || job?.brandId || "",
+                                    companyId:
+                                      job?.companyId?._id || job?.companyId || "",
                                     image: job.image || "",
                                     expireDate: job.expireDate
                                       ? toDatetimeLocalValue(job.expireDate)
@@ -6051,15 +6179,14 @@ const DataEntryForm = () => {
                       onChange={handleStoreFormChange}
                       label={t("Store City")}
                     >
-                      <MenuItem value="Erbil">🏛️ {t("city.Erbil")}</MenuItem>
-                      <MenuItem value="Sulaimani">
-                        🏔️ {t("city.Sulaimani")}
-                      </MenuItem>
-                      <MenuItem value="Duhok">🏞️ {t("city.Duhok")}</MenuItem>
-                      <MenuItem value="Kerkuk">🛢️ {t("city.Kerkuk")}</MenuItem>
-                      <MenuItem value="Halabja">
-                        🌸 {t("city.Halabja")}
-                      </MenuItem>
+                      {storeFormCityOptions.map((c) => (
+                        <MenuItem key={c.value} value={c.value}>
+                          {c.flag} {c.label}
+                          {c.inactive
+                            ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                            : ""}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -7962,6 +8089,30 @@ const DataEntryForm = () => {
                 </Grid>
 
                 <Grid xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>{t("City")}</InputLabel>
+                    <Select
+                      value={jobForm.city || ""}
+                      label={t("City")}
+                      onChange={(e) =>
+                        setJobForm((p) => ({ ...p, city: e.target.value }))
+                      }
+                    >
+                      {jobFormCityOptions.map((c) => (
+                        <MenuItem
+                          key={c.value}
+                          value={c.value}
+                          disabled={c.inactive}
+                        >
+                          {c.flag ? `${c.flag} ` : ""}
+                          {c.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel shrink>{t("Store")}</InputLabel>
                     <Select
@@ -9077,13 +9228,14 @@ const DataEntryForm = () => {
                     onChange={handleEditFormChange}
                     label={t("Store City")}
                   >
-                    <MenuItem value="Erbil">🏛️ {t("city.Erbil")}</MenuItem>
-                    <MenuItem value="Sulaimani">
-                      🏔️ {t("city.Sulaimani")}
-                    </MenuItem>
-                    <MenuItem value="Duhok">🏞️ {t("city.Duhok")}</MenuItem>
-                    <MenuItem value="Kerkuk">🛢️ {t("city.Kerkuk")}</MenuItem>
-                    <MenuItem value="Halabja">🌸 {t("city.Halabja")}</MenuItem>
+                    {editFormCityOptions.map((c) => (
+                      <MenuItem key={c.value} value={c.value}>
+                        {c.flag} {c.label}
+                        {c.inactive
+                          ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                          : ""}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

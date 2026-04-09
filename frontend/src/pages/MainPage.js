@@ -400,10 +400,24 @@ const MainPage = () => {
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
-    if (!cached) {
+    if (cached) {
+      fetchData({ silent: true });
+    } else {
       fetchData();
     }
   }, [refreshKey, fetchData]);
+
+  const prevSelectedCityRef = useRef(null);
+  useEffect(() => {
+    if (prevSelectedCityRef.current === null) {
+      prevSelectedCityRef.current = selectedCity;
+      return;
+    }
+    if (prevSelectedCityRef.current !== selectedCity) {
+      prevSelectedCityRef.current = selectedCity;
+      fetchData({ silent: true });
+    }
+  }, [selectedCity, fetchData]);
 
   useEffect(() => {
     const saveScrollPosition = () => {
@@ -1189,10 +1203,12 @@ const MainPage = () => {
   const showcaseEligibleJobs = useMemo(() => {
     return (jobs || []).filter((j) => {
       if (j?.active === false) return false;
-      if (!j?.expireDate) return true;
-      return isExpiryStillValid(j.expireDate);
+      if (j?.expireDate && !isExpiryStillValid(j.expireDate)) return false;
+      const jobCity = String(j?.city || "").trim();
+      if (!jobCity) return true;
+      return toCanonicalCity(jobCity) === selectedCityCanonical;
     });
-  }, [jobs]);
+  }, [jobs, selectedCityCanonical]);
 
   const storeCityById = useMemo(() => {
     const map = {};
@@ -2463,6 +2479,7 @@ const MainPage = () => {
                 (p) =>
                   p._id !== pid &&
                   (p.categoryId?._id || p.categoryId) === categoryId &&
+                  storeIdsInCity.has(getID(p.storeId)) &&
                   isExpiryStillValid(p.expireDate || null) !== false &&
                   isDiscountValid(p),
               );

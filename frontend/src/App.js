@@ -22,6 +22,7 @@ import MainPage from "./pages/MainPage";
 import ReelsPage from "./pages/reels";
 import StoreList from "./pages/StoreList";
 import BrandList from "./pages/BrandList";
+import CompanyList from "./pages/CompanyList";
 import BrandProfile from "./pages/BrandProfile";
 import ProductCategory from "./pages/ProductCategory";
 import DataEntryForm from "./pages/DataEntryForm";
@@ -32,12 +33,14 @@ import Gifts from "./pages/Gifts";
 import FavouritesPage from "./pages/FavouritesPage";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminCitiesPage from "./pages/AdminCitiesPage";
 import CustomizationPage from "./pages/CustomizationPage";
 import TranslationPage from "./pages/TranslationPage";
 import NavigationBar from "./NavigationBar";
 import BottomNavigationBar from "./components/BottomNavigation";
 import { AuthProvider } from "./context/AuthContext";
 import { CityFilterProvider } from "./context/CityFilterContext";
+import FirstVisitCityDialog from "./components/FirstVisitCityDialog";
 import { DataLanguageProvider } from "./context/DataLanguageContext";
 import { AppSettingsProvider } from "./context/AppSettingsContext";
 import { NotificationProvider } from "./context/NotificationContext";
@@ -115,6 +118,10 @@ function AppContent() {
     setSplashFinished(true);
   }, []);
 
+  useEffect(() => {
+    setLang(i18n.language || "en");
+  }, [i18n.language]);
+
   // RTL/LTR direction effect and language data attribute
   useEffect(() => {
     document.body.dir =
@@ -159,6 +166,7 @@ function AppContent() {
         {!splashFinished ? (
           <SplashScreen darkMode={darkMode} onComplete={handleSplashComplete} />
         ) : null}
+        {splashFinished ? <FirstVisitCityDialog /> : null}
         <Box
           aria-hidden={!splashFinished}
           sx={{
@@ -237,7 +245,7 @@ function AppContent() {
                 <Route path="/categories" element={<ProductCategory />} />
                 <Route path="/brands" element={<BrandList />} />
                 <Route path="/brands/:id" element={<BrandProfile />} />
-                <Route path="/companies" element={<BrandList />} />
+                <Route path="/companies" element={<CompanyList />} />
                 <Route path="/companies/:id" element={<BrandProfile />} />
                 <Route path="/gifts" element={<Gifts />} />
                 <Route path="/favourites" element={<FavouritesPage />} />
@@ -305,6 +313,19 @@ function AppContent() {
                     >
                       <TranslationPage />
                     </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/cities"
+                  element={
+                    <ProtectedAdminOnlyRoute
+                      allowedEmails={[
+                        "mshexani45@gmail.com",
+                        "admin@gmail.com",
+                      ]}
+                    >
+                      <AdminCitiesPage />
+                    </ProtectedAdminOnlyRoute>
                   }
                 />
                 <Route path="/search" element={<SearchPage />} />

@@ -23,6 +23,12 @@ connectDB();
 
 mongoose.connection.once("open", async () => {
   try {
+    const { seedCitiesIfEmpty } = require("./controllers/cityController");
+    await seedCitiesIfEmpty();
+  } catch (e) {
+    console.error("[migration] cities:", e.message);
+  }
+  try {
     const result = await User.updateMany(
       {
         $or: [
@@ -84,6 +90,7 @@ app.use("/api/gifts", require("./routes/gift"));
 app.use("/api/users", require("./routes/user"));
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/ads", require("./routes/ad"));
+app.use("/api/cities", require("./routes/city"));
 app.use("/api/store-types", require("./routes/storeType"));
 app.use("/api/brand-types", require("./routes/brandType"));
 app.use("/api/notifications", require("./routes/notification"));

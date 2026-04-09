@@ -26,6 +26,8 @@ const jobSchema = new mongoose.Schema(
     },
     expireDate: { type: Date, default: null },
     active: { type: Boolean, default: true },
+    /** Where the role is offered; must match app city filter (canonical names from City CRUD). Empty = visible in every city (legacy). */
+    city: { type: String, default: "", trim: true, maxlength: 80 },
   },
   { timestamps: true }
 );

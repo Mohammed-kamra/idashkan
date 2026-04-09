@@ -1,4 +1,10 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   useParams,
   useNavigate,
@@ -68,6 +74,8 @@ import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { useAuth } from "../context/AuthContext";
+import { useCityFilter } from "../context/CityFilterContext";
+import { cityStringsMatch } from "../utils/cityMatch";
 import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -132,7 +140,17 @@ const BrandProfile = () => {
   const { locName, locDescription, locTitle, locAddress } =
     useLocalizedContent();
   const { isAuthenticated } = useAuth();
+  const { selectedCity } = useCityFilter();
   const { toggleLike, isProductLiked, recordView } = useUserTracking();
+
+  const productMatchesSelectedCity = useCallback(
+    (product) =>
+      cityStringsMatch(
+        selectedCity,
+        product?.storeId?.storecity || product?.storeId?.city || "",
+      ),
+    [selectedCity],
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -179,6 +197,21 @@ const BrandProfile = () => {
     type: "",
   });
 
+  const productsInSelectedCityCount = useMemo(
+    () => products.filter(productMatchesSelectedCity).length,
+    [products, productMatchesSelectedCity],
+  );
+
+  const jobsInSelectedCity = useMemo(
+    () =>
+      jobs.filter((j) => {
+        const jc = String(j?.city || "").trim();
+        if (!jc) return true;
+        return cityStringsMatch(selectedCity, jc);
+      }),
+    [jobs, selectedCity],
+  );
+
   const productViewRecordedRef = useRef(new Set());
 
   useEffect(() => {
@@ -186,6 +219,7 @@ const BrandProfile = () => {
   }, [
     id,
     activeTabKey,
+    selectedCity,
     filters.name,
     filters.store,
     filters.barcode,
@@ -384,7 +418,13 @@ const BrandProfile = () => {
         !filters.type ||
         typeName.toLowerCase().includes(filters.type.toLowerCase());
 
-      return matchesName && matchesStore && matchesBarcode && matchesType;
+      return (
+        productMatchesSelectedCity(product) &&
+        matchesName &&
+        matchesStore &&
+        matchesBarcode &&
+        matchesType
+      );
     });
   };
 
@@ -414,7 +454,9 @@ const BrandProfile = () => {
   const getProductTypes = () => {
     const types = [
       ...new Set(
-        products.map((product) => getProductCategoryTypeName(product)),
+        products
+          .filter(productMatchesSelectedCity)
+          .map((product) => getProductCategoryTypeName(product)),
       ),
     ];
     return types.filter(Boolean).sort();
@@ -423,6 +465,7 @@ const BrandProfile = () => {
   // Get unique stores for filter dropdown
   const getStores = () => {
     const stores = products
+      .filter(productMatchesSelectedCity)
       .map((product) => product.storeId)
       .filter((store) => store && locName(store))
       .map((store) => locName(store));
@@ -1100,8 +1143,8 @@ const BrandProfile = () => {
     },
     {
       key: "jobs",
-      count: jobs.length,
-      label: `${t("Jobs")} (${jobs.length})`,
+      count: jobsInSelectedCity.length,
+      label: `${t("Jobs")} (${jobsInSelectedCity.length})`,
       icon: <WorkOutline />,
     },
   ];
@@ -1550,7 +1593,7 @@ const BrandProfile = () => {
               }}
                     />
                   }
-                label={`${products.length} ${t("Products")}`}
+                label={`${productsInSelectedCityCount} ${t("Products")}`}
                 size="small"
                 sx={{
                     height: 22,
@@ -1826,7 +1869,7 @@ const BrandProfile = () => {
         {activeTabKey === "jobs" && (
               <Box>
             <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 1.5 }}>
-              {jobs.map((job) => (
+              {jobsInSelectedCity.map((job) => (
                 <JobCardRow
                   key={job._id}
                   job={job}
@@ -1961,6 +2004,7 @@ const BrandProfile = () => {
               const related = products.filter(
                 (p) =>
                   p._id !== pid &&
+                  productMatchesSelectedCity(p) &&
                   (p.categoryId?._id || p.categoryId) === categoryId &&
                   isExpiryStillValid(p.expireDate || null) !== false &&
                   isDiscountValid(p),

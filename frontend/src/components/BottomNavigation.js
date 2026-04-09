@@ -267,7 +267,7 @@ const BottomNavigationBar = () => {
         elevation={8}
         style={{ background: BOTTOM_NAV_GRADIENT }}
         sx={{
-          borderRadius: "70px 70px",
+          // borderRadius: "70px 70px",
           backdropFilter: "blur(20px)",
           border: `1px solid ${
             theme.palette.mode === "dark"
@@ -397,7 +397,8 @@ const BottomNavigationBar = () => {
                     const now = Date.now();
                     const isDoubleTap = now - lastHomeTapTsRef.current <= 450;
                     lastHomeTapTsRef.current = now;
-                    const isAtTop = (window.scrollY || window.pageYOffset || 0) <= 8;
+                    const isAtTop =
+                      (window.scrollY || window.pageYOffset || 0) <= 8;
 
                     if (isDoubleTap || isAtTop) {
                       triggerRefresh?.();
@@ -408,7 +409,10 @@ const BottomNavigationBar = () => {
                     return;
                   }
 
-                  if (item.path === "/reels" && location.pathname === "/reels") {
+                  if (
+                    item.path === "/reels" &&
+                    location.pathname === "/reels"
+                  ) {
                     const now = Date.now();
                     const isDoubleTap = now - lastReelsTapTsRef.current <= 450;
                     lastReelsTapTsRef.current = now;

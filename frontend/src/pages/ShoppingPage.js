@@ -27,6 +27,8 @@ import {
 } from "../utils/draftCarts";
 import { ShoppingBag as ShoppingBagIcon } from "@mui/icons-material";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { useCityFilter } from "../context/CityFilterContext";
+import { cityStringsMatch } from "../utils/cityMatch";
 
 const getStoreTypeId = (store) =>
   String(store?.storeTypeId?._id ?? store?.storeTypeId ?? "");
@@ -37,6 +39,7 @@ const ShoppingPage = () => {
   const { locName } = useLocalizedContent();
   const navigate = useNavigate();
   const routerLocation = useLocation();
+  const { selectedCity } = useCityFilter();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storeTypes, setStoreTypes] = useState([]);
@@ -69,20 +72,28 @@ const ShoppingPage = () => {
     [stores],
   );
 
-  /** Only chips for store types that actually have a delivery store (same idea as MainPage). */
+  const cityDeliveryStores = useMemo(
+    () =>
+      deliveryStores.filter((s) =>
+        cityStringsMatch(selectedCity, s.storecity || s.city),
+      ),
+    [deliveryStores, selectedCity],
+  );
+
+  /** Only chips for store types that actually have a delivery store in the selected city. */
   const visibleStoreTypes = useMemo(() => {
     const idsInUse = new Set(
-      deliveryStores.map((s) => getStoreTypeId(s)).filter(Boolean),
+      cityDeliveryStores.map((s) => getStoreTypeId(s)).filter(Boolean),
     );
     return (storeTypes || []).filter((st) => idsInUse.has(String(st._id)));
-  }, [storeTypes, deliveryStores]);
+  }, [storeTypes, cityDeliveryStores]);
 
   const filteredStores = useMemo(() => {
-    if (selectedStoreTypeId === "all") return deliveryStores;
-    return deliveryStores.filter(
+    if (selectedStoreTypeId === "all") return cityDeliveryStores;
+    return cityDeliveryStores.filter(
       (s) => getStoreTypeId(s) === String(selectedStoreTypeId),
     );
-  }, [deliveryStores, selectedStoreTypeId]);
+  }, [cityDeliveryStores, selectedStoreTypeId]);
 
   useEffect(() => {
     if (selectedStoreTypeId === "all") return;

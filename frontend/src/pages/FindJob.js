@@ -38,6 +38,8 @@ import {
   isExpiryStillValid,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { useCityFilter } from "../context/CityFilterContext";
+import { cityStringsMatch } from "../utils/cityMatch";
 
 const FindJob = () => {
   const theme = useTheme();
@@ -45,6 +47,7 @@ const FindJob = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { locName, locDescription, locTitle } = useLocalizedContent();
+  const { selectedCity } = useCityFilter();
 
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
@@ -119,9 +122,12 @@ const FindJob = () => {
     () =>
       (jobs || []).filter((j) => {
         if (j?.active === false) return false;
-        return isExpiryStillValid(j?.expireDate);
+        if (!isExpiryStillValid(j?.expireDate)) return false;
+        const jobCity = String(j?.city || "").trim();
+        if (!jobCity) return true;
+        return cityStringsMatch(selectedCity, jobCity);
       }),
-    [jobs],
+    [jobs, selectedCity],
   );
 
   const filteredJobs = useMemo(() => {

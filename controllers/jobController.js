@@ -128,6 +128,10 @@ const createJob = async (req, res) => {
       image: req.body?.image || "",
       storeId: req.body?.storeId || null,
       brandId: req.body?.brandId || null,
+      city:
+        req.body?.city != null && String(req.body.city).trim() !== ""
+          ? String(req.body.city).trim()
+          : "",
       expireDate: req.body?.expireDate || null,
       active: req.body?.active !== undefined ? Boolean(req.body.active) : true,
     });
@@ -167,6 +171,7 @@ const updateJob = async (req, res) => {
       "descriptionKu",
       "gender",
       "image",
+      "city",
       "expireDate",
       "active",
     ];

@@ -42,6 +42,7 @@ import {
 } from "../utils/searchHistory";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
+import ProductDetailDialog from "../components/ProductDetailDialog";
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -82,6 +83,8 @@ const SearchPage = () => {
   const [searched, setSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [bannerAds, setBannerAds] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
 
   const userId = user?.id || user?._id || null;
   const deviceId = userId ? null : getDeviceId();
@@ -226,8 +229,9 @@ const SearchPage = () => {
     refreshRecentSearches();
   };
 
-  const handleProductClick = (id) => {
-    navigate(`/products/${id}`);
+  const handleProductClick = (product) => {
+    setSelectedProduct(product);
+    setProductDialogOpen(true);
   };
   const handleStoreClick = (id) => {
     navigate(`/stores/${id}`);
@@ -689,7 +693,7 @@ const SearchPage = () => {
                 {searchProducts.map((p, i) => (
                   <ListItemButton
                     key={p._id}
-                    onClick={() => handleProductClick(p._id)}
+                    onClick={() => handleProductClick(p)}
                     sx={{
                       py: 1.5,
                       "&:hover": {
@@ -945,6 +949,17 @@ const SearchPage = () => {
           )}
         </Paper>
       )}
+
+      <ProductDetailDialog
+        open={productDialogOpen}
+        onClose={() => {
+          setProductDialogOpen(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        candidateProducts={searchProducts}
+        onProductChange={setSelectedProduct}
+      />
     </Box>
   );
 };

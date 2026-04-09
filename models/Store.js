@@ -35,8 +35,8 @@ const storeSchema = new mongoose.Schema({
   },
   storecity: {
     type: String,
-    enum: ["Erbil", "Sulaimani", "Duhok", "Kerkuk", "Halabja"],
     required: true,
+    trim: true,
   },
   isVip: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },

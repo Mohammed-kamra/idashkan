@@ -18,6 +18,12 @@ export const resources = {
       Available: "Available",
       "Click to explore products": "Click to explore products",
       "No stores found": "No stores found",
+      "No stores match the current filters.":
+        "No stores match the current filters.",
+      "Scroll for more store types":
+        "Scroll sideways to see all store types",
+      "Scroll left": "Scroll left",
+      "Scroll right": "Scroll right",
       "Premium Store": "Premium Store",
       "Discover amazing products from this store":
         "Discover amazing products from this store",
@@ -622,6 +628,12 @@ export const resources = {
       "Please login to view history": "الرجاء تسجيل الدخول لعرض السجل",
       "Click to explore products": "اضغط لاستكشاف المنتجات",
       "No stores found": "لم يتم العثور على متاجر",
+      "No stores match the current filters.":
+        "لا توجد متاجر تطابق المرشحات الحالية.",
+      "Scroll for more store types":
+        "مرر أفقياً لرؤية جميع أنواع المتاجر",
+      "Scroll left": "التمرير لليسار",
+      "Scroll right": "التمرير لليمين",
       "Premium Store": "متجر مميز",
       "Create an account to save your favourites": "أنشئ حساباً لحفظ إعجاباتك",
       "Sign in to sync across devices": "تسجيل الدخول لمزامنة الأجهزة",
@@ -1369,6 +1381,12 @@ export const resources = {
       "Please login to view history": "پێویستە هەژمار دروست بکەى",
       "Click to explore products": "بەردەستکردنی کاڵاکان",
       "No stores found": "هیچ فرۆشگایەک نەدۆزرایەوە",
+      "No stores match the current filters.":
+        "هیچ فرۆشگایەک لەگەڵ فلتەرەکانی ئێستا ناگونجێت.",
+      "Scroll for more store types":
+        "بە ئاسۆیی بجوڵێرە بۆ بینینی هەموو جۆرەکانی فرۆشگا",
+      "Scroll left": "بجوڵێرە بۆ چەپ",
+      "Scroll right": "بجوڵێرە بۆ ڕاست",
       "Premium Store": "فرۆشگا",
       Electronic: "ئەلکترۆنیک",
       Cosmetic: "کۆسمێتیک",
@@ -1783,7 +1801,6 @@ export const resources = {
       "Failed to submit review": "هەڵسەنگاندن نەکرا",
       "Please login to leave reviews":
         "تکایە بچۆرە ژوورەوە بۆ بەجێهێنانی هەڵسەنگاندن",
-      "No stores match the current filters.": "هیچ فرۆشگایەک نەدۆزرایەوە.",
       "Search for products or stores...": "بگەڕێ بە پێی کاڵا یان فرۆشگا...",
       Login: "چوونەژوورەوە",
       Logout: "چوونە دەرەوە",

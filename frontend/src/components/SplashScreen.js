@@ -114,7 +114,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
           component="img"
           src={LOGO192_SRC}
           alt=""
-          fetchPriority="high"
+          fetchpriority="high"
           decoding="async"
           sx={{ width: { xs: 88, sm: 100 }, height: "auto", mb: 2 }}
         />
@@ -184,7 +184,7 @@ const SplashScreen = ({ onComplete, darkMode = false }) => {
             component="img"
             src={LOGO192_SRC}
             alt=""
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="async"
             sx={{
               width: { xs: 100, sm: 112 },
