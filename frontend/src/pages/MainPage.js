@@ -174,6 +174,7 @@ const MainPage = () => {
   const mainPageTabRef = useRef(0);
   const displayedStoresCountRef = useRef(0);
   const skipInitialSilentRefreshRef = useRef(false);
+  const lastScrollPersistRef = useRef({ y: 0, at: 0 });
 
   useEffect(() => {
     mainPageTabRef.current = mainPageTab;
@@ -478,6 +479,12 @@ const MainPage = () => {
   useEffect(() => {
     const saveScrollPosition = () => {
       const y = window.scrollY || window.pageYOffset || 0;
+      const now = Date.now();
+      const last = lastScrollPersistRef.current;
+      const yDelta = Math.abs(y - last.y);
+      // Throttle sessionStorage writes; frequent writes can cause scroll jank on mobile.
+      if (now - last.at < 250 && yDelta < 12) return;
+      lastScrollPersistRef.current = { y, at: now };
       try {
         sessionStorage.setItem(MAIN_PAGE_SCROLL_KEY, String(y));
         sessionStorage.setItem(
@@ -620,7 +627,8 @@ const MainPage = () => {
     const handleScroll = () => {
       const scrollTop =
         window.pageYOffset || document.documentElement.scrollTop;
-      setShowScrollTop(scrollTop > 200000);
+      const nextVisible = scrollTop > 600;
+      setShowScrollTop((prev) => (prev === nextVisible ? prev : nextVisible));
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -636,13 +644,17 @@ const MainPage = () => {
     }
 
     lastMainScrollYRef.current = window.scrollY || 0;
+    let rafId = 0;
 
     const handleMainTabsScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
       const currentY = window.scrollY || 0;
       const previousY = lastMainScrollYRef.current;
 
       if (currentY <= 0) {
-        setShowMainTabs(true);
+        setShowMainTabs((prev) => (prev ? prev : true));
         lastMainScrollYRef.current = 0;
         return;
       }
@@ -650,16 +662,20 @@ const MainPage = () => {
       if (Math.abs(currentY - previousY) < 4) return;
 
       if (currentY > previousY) {
-        setShowMainTabs(false);
+        setShowMainTabs((prev) => (prev ? false : prev));
       } else {
-        setShowMainTabs(true);
+        setShowMainTabs((prev) => (prev ? prev : true));
       }
 
       lastMainScrollYRef.current = currentY;
+      });
     };
 
     window.addEventListener("scroll", handleMainTabsScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleMainTabsScroll);
+    return () => {
+      window.removeEventListener("scroll", handleMainTabsScroll);
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
   }, [isMobile]);
 
   // Scroll to top function
