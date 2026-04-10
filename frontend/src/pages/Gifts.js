@@ -6,31 +6,22 @@ import {
   CardMedia,
   CardContent,
   Grid,
-  CircularProgress,
   Alert,
   Paper,
   Chip,
   useTheme,
   Tabs,
   Tab,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Dialog,
   DialogTitle,
-  CardgHeader,
   DialogContent,
   DialogActions,
   Button,
   Skeleton,
 } from "@mui/material";
-import { Search, FilterList, Store, Business } from "@mui/icons-material";
+import {  Store, Business } from "@mui/icons-material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import CardGiftcard from "@mui/icons-material/CardGiftcard";
 import { giftAPI, storeAPI, brandAPI, adAPI } from "../services/api";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -63,14 +54,14 @@ const Gifts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [stores, setStores] = useState([]);
-  const [brands, setBrands] = useState([]);
+  
+  const [, setStores] = useState([]);
+  const [, setBrands] = useState([]);
   const [bannerAds, setBannerAds] = useState([]);
   const { selectedCity } = useCityFilter();
 
   // Filter states
-  const [filters, setFilters] = useState({
+  const [filters] = useState({
     search: "",
     store: "",
     brand: "",
@@ -218,141 +209,9 @@ const Gifts = () => {
     });
 
     setFilteredGifts(filtered);
-  };
-
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const toggleFilters = () => {
-    setFiltersOpen(!filtersOpen);
-  };
-
-  const handleTabChange = (event, newValue) => {
+  };  const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
-
-  const renderFilters = () => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 1,
-        mb: 1,
-        borderRadius: { xs: 2, md: 3 },
-        background:
-          theme.palette.mode === "dark"
-            ? "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)"
-            : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-        border: `1px solid ${
-          theme.palette.mode === "dark" ? "#1E6FD9" : "#e9ecef"
-        }`,
-      }}
-    >
-      {/* Mobile Filter Toggle */}
-      <Box
-        onClick={toggleFilters}
-        sx={{
-          display: { xs: "flex", md: "none" },
-          mb: 2,
-          justifyContent: "space-between",
-          alignItems: "center",
-          cursor: "pointer",
-        }}
-      >
-        <Typography
-          variant="h6"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            color: theme.palette.text.primary,
-          }}
-        >
-          <FilterList sx={{ color: "var(--brand-accent-orange)" }} />
-          {t("Filters")}
-        </Typography>
-      </Box>
-
-      {/* Desktop Filter Header */}
-      <Typography
-        variant="h6"
-        sx={{
-          mb: 3,
-          display: { xs: "none", md: "flex" },
-          alignItems: "center",
-          gap: 1,
-          color: theme.palette.text.primary,
-        }}
-      >
-        <FilterList sx={{ color: "var(--brand-accent-orange)" }} />
-        {t("Filters")}
-      </Typography>
-
-      <Box
-        sx={{ display: { xs: filtersOpen ? "block" : "none", md: "block" } }}
-      >
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <TextField
-              fullWidth
-              sx={{ width: "300px" }}
-              label={t("Search Gifts")}
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <FormControl sx={{ width: "140px" }} fullWidth>
-              <InputLabel>{t("Store")}</InputLabel>
-              <Select
-                value={filters.store}
-                onChange={(e) => handleFilterChange("store", e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                label={t("Store")}
-              >
-                <MenuItem value="">{t("All Stores")}</MenuItem>
-                {stores.map((store) => (
-                  <MenuItem key={store._id} value={store._id}>
-                    {locName(store)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <FormControl sx={{ width: "140px" }} fullWidth>
-              <InputLabel>{t("Brand")}</InputLabel>
-              <Select
-                value={filters.brand}
-                onChange={(e) => handleFilterChange("brand", e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                label={t("Brand")}
-              >
-                <MenuItem value="">{t("All Brands")}</MenuItem>
-                {brands.map((brand) => (
-                  <MenuItem key={brand._id} value={brand._id}>
-                    {locName(brand)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Box>
-    </Paper>
-  );
-
   const renderGiftCard = (gift) => {
     // Safety check to ensure gift is a valid object
     if (!gift || typeof gift !== "object") {
@@ -739,7 +598,7 @@ const Gifts = () => {
     );
   }
 
-  const allGifts = Array.isArray(filteredGifts) ? filteredGifts : [];
+  
   const storeGifts = Array.isArray(filteredGifts)
     ? filteredGifts.filter(
         (gift) =>
@@ -871,7 +730,7 @@ const Gifts = () => {
         >
           {/* <Tab
             sx={{ width: { xs: "100px", sm: "100px", md: "100%" } }}
-            label={`${t("All Gifts")} (${allGifts.length})`}
+            label={`${t("All Gifts")} (${filteredGifts.length})`}
             icon={<CardGiftcard />}
             iconPosition="start"
           /> */}
@@ -892,7 +751,7 @@ const Gifts = () => {
       <Box>
         {/* {activeTab === 0 && (
           <Box>
-            {allGifts.length === 0 ? (
+            {filteredGifts.length === 0 ? (
               <Box
                 sx={{
                   textAlign: "center",
@@ -921,7 +780,7 @@ const Gifts = () => {
                   width: "100%",
                 }}
               >
-                {allGifts.map((gift) => (
+                {filteredGifts.map((gift) => (
                   <Box key={gift._id} sx={{ display: "flex" }}>
                     {renderGiftCard(gift)}
                   </Box>
@@ -1158,3 +1017,6 @@ const Gifts = () => {
 };
 
 export default Gifts;
+
+
+

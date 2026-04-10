@@ -10,12 +10,10 @@ import {
   Chip,
   Grid,
   Paper,
-  CircularProgress,
   Alert,
   Divider,
   IconButton,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
 } from "@mui/material";
@@ -29,10 +27,8 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CategoryIcon from "@mui/icons-material/Category";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import StarIcon from "@mui/icons-material/Star";
 import { useTranslation } from "react-i18next";
-import { Link as RouterLink } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -51,7 +47,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const { t } = useTranslation();
@@ -63,7 +59,7 @@ const ProductDetail = () => {
 
   // State for tracking like count locally
   const [localLikeCount, setLocalLikeCount] = useState(0);
-  const [localLikeState, setLocalLikeState] = useState(false);
+  const [, setLocalLikeState] = useState(false);
   const [optimisticLiked, setOptimisticLiked] = useState(null);
   const [likeLoading, setLikeLoading] = useState(false);
   const viewRecordedRef = useRef(false); // Use ref to track if view has been recorded for this product
@@ -244,30 +240,6 @@ const ProductDetail = () => {
   };
 
   // Helper function to get category type name from categoryTypeId
-  const getCategoryTypeName = (categoryTypeId, categoryId) => {
-    if (!categoryTypeId || !categoryId) return "N/A";
-
-    const category =
-      typeof categoryId === "object" && Array.isArray(categoryId.types)
-        ? categoryId
-        : categories.find(
-            (cat) =>
-              String(cat._id) === String(categoryId?._id ?? categoryId),
-          );
-
-    if (!category?.types?.length) return "N/A";
-
-    const ctId = String(categoryTypeId);
-    let type = category.types.find((t) => String(t._id) === ctId);
-    if (!type) {
-      type = category.types.find(
-        (t) => t.name === categoryTypeId || String(t._id) === ctId,
-      );
-    }
-
-    return type ? locName(type) : "N/A";
-  };
-
   const formatPrice = (price) => {
     if (typeof price !== "number") return `0 ${t("ID")}`;
     return ` ${price.toLocaleString(undefined, {
@@ -310,7 +282,6 @@ const ProductDetail = () => {
         alignItems="center"
         minHeight="400px"
       >
-        <CircularProgress />
       </Box>
     );
   }
@@ -783,7 +754,6 @@ const ProductDetail = () => {
                           minWidth: { xs: "fit-content", sm: "auto" },
                         }}
                       >
-                        <VisibilityIcon
                           sx={{
                             color: "text.secondary",
                             fontSize: { xs: "1rem", sm: "1.2rem" },
@@ -941,7 +911,6 @@ const ProductDetail = () => {
 
           {relatedLoading ? (
             <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress />
             </Box>
           ) : (
             <Box
@@ -970,7 +939,6 @@ const ProductDetail = () => {
               {relatedProducts.map((relatedProduct) => (
                 <Card
                   key={relatedProduct._id}
-                  component={RouterLink}
                   to={`/products/${relatedProduct._id}`}
                   sx={{
                     minWidth: { xs: "180px", sm: "220px", md: "250px" },
@@ -1188,13 +1156,11 @@ const ProductDetail = () => {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <Typography variant="h6" component="span">
               {t("Login Required")}
             </Typography>
           </Box>
-        </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             {loginNotificationReason === "review"
@@ -1236,3 +1202,13 @@ const ProductDetail = () => {
 };
 
 export default ProductDetail;
+
+
+
+
+
+
+
+
+
+

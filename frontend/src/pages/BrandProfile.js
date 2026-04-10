@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useState,
   useEffect,
   useRef,
@@ -8,7 +8,6 @@
 import {
   useParams,
   useNavigate,
-  Link,
   useSearchParams,
   useLocation,
 } from "react-router-dom";
@@ -73,7 +72,6 @@ import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
-import { useAuth } from "../context/AuthContext";
 import { useCityFilter } from "../context/CityFilterContext";
 import { cityStringsMatch } from "../utils/cityMatch";
 import JobCardRow from "../components/JobCardRow";
@@ -139,7 +137,6 @@ const BrandProfile = () => {
   const isCompanyMode = location.pathname.startsWith("/companies");
   const { locName, locDescription, locTitle, locAddress } =
     useLocalizedContent();
-  const { isAuthenticated } = useAuth();
   const { selectedCity } = useCityFilter();
   const { toggleLike, isProductLiked, recordView } = useUserTracking();
 
@@ -182,20 +179,21 @@ const BrandProfile = () => {
   });
   const [selectedGift, setSelectedGift] = useState(null);
   const [displayCounts, setDisplayCounts] = useState({});
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Like functionality states
   const [likeCounts, setLikeCounts] = useState({});
   const [likeStates, setLikeStates] = useState({});
   const [likeLoading, setLikeLoading] = useState({});
 
-  // Filter states
-  const [filters, setFilters] = useState({
+  const [filters] = useState({
     name: "",
     store: "",
     barcode: "",
     type: "",
   });
+  
+
+  // Filter states
 
   const productsInSelectedCityCount = useMemo(
     () => products.filter(productMatchesSelectedCity).length,
@@ -449,42 +447,6 @@ const BrandProfile = () => {
     });
     return grouped;
   };
-
-  // Get unique product category types for filter dropdown
-  const getProductTypes = () => {
-    const types = [
-      ...new Set(
-        products
-          .filter(productMatchesSelectedCity)
-          .map((product) => getProductCategoryTypeName(product)),
-      ),
-    ];
-    return types.filter(Boolean).sort();
-  };
-
-  // Get unique stores for filter dropdown
-  const getStores = () => {
-    const stores = products
-      .filter(productMatchesSelectedCity)
-      .map((product) => product.storeId)
-      .filter((store) => store && locName(store))
-      .map((store) => locName(store));
-    return [...new Set(stores)].sort();
-  };
-
-  // Handle filter changes
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // Toggle filters visibility
-  const toggleFilters = () => {
-    setFiltersOpen(!filtersOpen);
-  };
-
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     const next = visibleTabs[newValue]?.key || "";
@@ -537,7 +499,7 @@ const BrandProfile = () => {
     }
   };
 
-  // Render gift card â€” premium modern style
+  // Render gift card — premium modern style
   const renderGiftCard = (gift) => {
     const giftExp = getExpiryRemainingInfo(gift.expireDate);
     const isDark = theme.palette.mode === "dark";
@@ -688,7 +650,7 @@ const BrandProfile = () => {
     );
   };
 
-  // Render product card â€” modern premium style
+  // Render product card — modern premium style
   const renderProductCard = (product, index, showPrice = true) => {
     const discount = calculateDiscount(product.previousPrice, product.newPrice);
     const hasPreviousPrice =
@@ -953,7 +915,7 @@ const BrandProfile = () => {
     );
   };
 
-  // Render products grouped by type â€” horizontal scroll per category
+  // Render products grouped by type — horizontal scroll per category
   const renderProductsByType = (productList, showPrice = true) => {
     const groupedProducts = groupProductsByType(productList);
     const isDark = theme.palette.mode === "dark";
@@ -1710,7 +1672,7 @@ const BrandProfile = () => {
         {/* Filter Section */}
         {/* {renderFilters()} */}
 
-        {/* Tabs â€” pill style */}
+        {/* Tabs — pill style */}
         {visibleTabs.length > 0 && (
           <Box
           sx={{
@@ -2459,3 +2421,8 @@ const BrandProfile = () => {
 };
 
 export default BrandProfile;
+
+
+
+
+

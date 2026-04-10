@@ -32,8 +32,6 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import SearchIcon from "@mui/icons-material/Search";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Loader from "../components/Loader";
 import { useTranslation } from "react-i18next";
 import { useCityFilter } from "../context/CityFilterContext";
@@ -41,6 +39,9 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { cityStringsMatch } from "../utils/cityMatch";
 import { getAllLocalizedFieldValues } from "../utils/localize";
+import useCachedData from "../hooks/useCachedData";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import OfflineCacheChip from "../components/OfflineCacheChip";
 
 function getID(id) {
   if (typeof id === "string") return id;
@@ -309,6 +310,10 @@ const StoreList = () => {
   const storeTypeParam = searchParams.get("type");
   const [selectedTypeId, setSelectedTypeId] = useState(storeTypeParam || "all");
   const [storeTypes, setStoreTypes] = useState([]);
+  const isOnline = useOnlineStatus();
+  const { items: cachedStores } = useCachedData("stores");
+  const { items: cachedStoreTypes } = useCachedData("store-types");
+  const { items: cachedAds } = useCachedData("ads");
 
   useEffect(() => {
     setSelectedTypeId(storeTypeParam || "all");
@@ -350,6 +355,29 @@ const StoreList = () => {
       }
     })();
   }, [fetchStores]);
+
+  useEffect(() => {
+    if (isOnline) return;
+    if (!stores.length && cachedStores.length) {
+      setStores(cachedStores);
+      setError("");
+      setLoading(false);
+    }
+    if (!storeTypes.length && cachedStoreTypes.length) {
+      setStoreTypes(cachedStoreTypes);
+    }
+    if (!bannerAds.length && cachedAds.length) {
+      setBannerAds(cachedAds.filter((ad) => ad?.page === "stores"));
+    }
+  }, [
+    isOnline,
+    stores.length,
+    storeTypes.length,
+    bannerAds.length,
+    cachedStores,
+    cachedStoreTypes,
+    cachedAds,
+  ]);
 
   const filteredStores = useMemo(() => {
     let list = stores;
@@ -425,6 +453,7 @@ const StoreList = () => {
         })),
     [bannerAds],
   );
+  const showCacheChip = !isOnline && filteredStores.length > 0;
 
   const handleStoreClick = (store) => navigate(`/stores/${store._id}`);
 
@@ -434,8 +463,8 @@ const StoreList = () => {
     (theme.palette.mode === "light" ? "#1565c0" : accent);
 
   const storeTypeScrollRef = useRef(null);
-  const [showScrollLeft, setShowScrollLeft] = useState(false);
-  const [showScrollRight, setShowScrollRight] = useState(false);
+  const [, setShowScrollLeft] = useState(false);
+  const [, setShowScrollRight] = useState(false);
 
   const updateStoreTypeScrollHints = useCallback(() => {
     const el = storeTypeScrollRef.current;
@@ -454,14 +483,6 @@ const StoreList = () => {
     setShowScrollLeft(scrollLeft > 8);
     setShowScrollRight(scrollLeft < max - 8);
   }, []);
-
-  const scrollStoreTypesBy = useCallback((direction) => {
-    const el = storeTypeScrollRef.current;
-    if (!el) return;
-    const step = Math.min(280, el.clientWidth * 0.72);
-    el.scrollBy({ left: direction * step, behavior: "smooth" });
-  }, []);
-
   useEffect(() => {
     updateStoreTypeScrollHints();
     const el = storeTypeScrollRef.current;
@@ -594,6 +615,11 @@ const StoreList = () => {
       }}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2 } }}>
+        {showCacheChip && (
+          <Box sx={{ mb: 1, mt: { xs: 2, md: 3 } }}>
+            <OfflineCacheChip />
+          </Box>
+        )}
         {/* Banner */}
         <Box sx={{ mb: 3, mt: { xs: 4, md: 5 } }}>
           <Box
@@ -882,3 +908,8 @@ const StoreList = () => {
 };
 
 export default StoreList;
+
+
+
+
+

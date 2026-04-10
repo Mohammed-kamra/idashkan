@@ -1,4 +1,8 @@
 import axios from "axios";
+import { enqueueOfflineAction } from "../offline/offlineQueue";
+import { isCacheableRead, isQueueableWrite } from "../offline/cachePolicy";
+import { isOnlineNow } from "../offline/network";
+import { getApiCache, pruneApiCache, saveApiCache } from "./offlineApiCache";
 
 // Proxy mode: use same-origin /api (avoids CORS, works on mobile). Set REACT_APP_USE_PROXY=true in Vercel.
 const USE_PROXY = process.env.REACT_APP_USE_PROXY === "true";
@@ -25,19 +29,76 @@ api.interceptors.request.use((config) => {
 
 // Retry failed requests (helps with flaky mobile networks)
 api.interceptors.response.use(
-  (response) => response,
+  async (response) => {
+    try {
+      if (isCacheableRead(response.config)) {
+        await saveApiCache(response.config, response.data);
+      }
+    } catch {
+      // Ignore cache write failures to avoid breaking API flow.
+    }
+    return response;
+  },
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config || {};
     const isNetworkError =
       !error.response &&
       (error.message === "Network Error" ||
         error.code === "ERR_NETWORK" ||
         error.code === "ECONNABORTED");
+
+    // GET fallback: serve stale cached data while offline.
+    if (isCacheableRead(originalRequest) && isNetworkError) {
+      const cached = await getApiCache(originalRequest);
+      if (cached?.data) {
+        return {
+          data: cached.data,
+          status: 200,
+          statusText: cached.stale ? "STALE_CACHE" : "CACHE",
+          headers: { "x-offline-cache": "1" },
+          config: originalRequest,
+          request: null,
+        };
+      }
+    }
+
+    // Write fallback: queue pending action when offline, return optimistic ACK.
+    if (
+      isQueueableWrite(originalRequest) &&
+      isNetworkError &&
+      !originalRequest._skipOfflineQueue &&
+      !isOnlineNow()
+    ) {
+      await enqueueOfflineAction({
+        method: originalRequest.method || "post",
+        url: originalRequest.url || "",
+        baseURL: originalRequest.baseURL || API_BASE_URL,
+        params: originalRequest.params || null,
+        data: originalRequest.data || null,
+        headers: originalRequest.headers || {},
+      });
+      return {
+        data: {
+          success: true,
+          offlineQueued: true,
+          message: "Action queued offline. It will sync automatically.",
+        },
+        status: 202,
+        statusText: "QUEUED_OFFLINE",
+        headers: { "x-offline-queued": "1" },
+        config: originalRequest,
+        request: null,
+      };
+    }
+
     const retryCount = originalRequest._retryCount || 0;
     if (isNetworkError && retryCount < 2) {
       originalRequest._retryCount = retryCount + 1;
       await new Promise((r) => setTimeout(r, 2000 * (retryCount + 1)));
       return api(originalRequest);
+    }
+    if (isNetworkError) {
+      pruneApiCache().catch(() => {});
     }
     return Promise.reject(error);
   }

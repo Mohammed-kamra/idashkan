@@ -29,12 +29,9 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Container,
   Chip,
   Avatar,
   Fade,
-  Slide,
-  Divider,
   useTheme,
   TablePagination,
   Checkbox,
@@ -62,7 +59,6 @@ import {
   toDatetimeLocalValue,
 } from "../utils/expiryDate";
 
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import BusinessIcon from "@mui/icons-material/Business";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SaveIcon from "@mui/icons-material/Save";
@@ -175,7 +171,6 @@ const DataEntryForm = () => {
     viber: "",
     telegram: "",
   });
-  const [activeTab, setActiveTab] = useState(0);
   const [activeListTab, setActiveListTab] = useState(0); // State for list tabs
   const [stores, setStores] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -238,10 +233,7 @@ const DataEntryForm = () => {
   // Refs for file inputs
   const brandLogoFileRef = useRef(null);
   const productImageFileRef = useRef(null);
-  const editProductImageFileRef = useRef(null);
-  const storeLogoFileRef = useRef(null);
   const giftImageFileRef = useRef(null);
-  const editGiftImageFileRef = useRef(null);
   const adImageFileRef = useRef(null);
   const editAdImageFileRef = useRef(null);
   const videoFileRef = useRef(null);
@@ -454,7 +446,6 @@ const DataEntryForm = () => {
   });
   const [addDialog, setAddDialog] = useState({ open: false, type: "" });
   const [bulkDialog, setBulkDialog] = useState({ open: false, type: "" });
-  const showTopAdd = false;
 
   // Load store types for dynamic selects
   useEffect(() => {
@@ -755,12 +746,6 @@ const DataEntryForm = () => {
     // Return N/A if no valid category type found
     return "N/A";
   };
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-    setMessage({ type: "", text: "" });
-  };
-
   const handleStoreFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setStoreForm({
@@ -2049,7 +2034,7 @@ const DataEntryForm = () => {
         expireDate: normalizeExpiryInputForApi(giftForm.expireDate),
       };
 
-      const response = await giftAPI.create(giftData);
+      await giftAPI.create(giftData);
       setMessage({ type: "success", text: t("Gift created successfully!") });
       setGiftForm({
         image: "",
@@ -2137,7 +2122,7 @@ const DataEntryForm = () => {
         types: validTypes,
       };
 
-      const response = await categoryAPI.create(categoryData);
+      await categoryAPI.create(categoryData);
       setMessage({
         type: "success",
         text: t("Category created successfully!"),
@@ -3900,8 +3885,7 @@ const DataEntryForm = () => {
                     onClick={async () => {
                       try {
                         setMessage({ type: "", text: "" });
-                        const headers = getAuthHeaders();
-                        const num = settingsContactNumber.trim();
+                                                const num = settingsContactNumber.trim();
                         await settingsAPI.update(
                           {
                             contactWhatsAppNumber: num,
@@ -5135,7 +5119,7 @@ const DataEntryForm = () => {
                                     text || `Upload failed (${res.status})`,
                                   );
                                 }
-                                const json = await res.json();
+                                await res.json();
                                 setMessage({
                                   type: "success",
                                   text: t("Image uploaded"),
@@ -10666,3 +10650,6 @@ const DataEntryForm = () => {
 };
 
 export default DataEntryForm;
+
+
+

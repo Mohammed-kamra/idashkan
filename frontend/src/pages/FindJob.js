@@ -8,7 +8,6 @@ import {
   Container,
   Dialog,
   DialogContent,
-  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -671,3 +670,4 @@ const FindJob = () => {
 };
 
 export default FindJob;
+

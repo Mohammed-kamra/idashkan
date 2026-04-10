@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   useParams,
   useNavigate,
-  Link,
   useSearchParams,
 } from "react-router-dom";
 import {
@@ -12,7 +11,6 @@ import {
   CardMedia,
   CardContent,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   Button,
@@ -63,7 +61,6 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
@@ -144,7 +141,7 @@ const StoreProfile = () => {
   });
   const [expandedTypes, setExpandedTypes] = useState({});
   const [displayCounts, setDisplayCounts] = useState({});
-  const [filtersOpen] = useState(false);
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedGift, setSelectedGift] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -1064,7 +1061,6 @@ const StoreProfile = () => {
                     backdropFilter: "blur(4px)",
                   }}
                 >
-                  <VisibilityIcon sx={{ fontSize: "0.75rem" }} />
                   {product.viewCount}
                 </Box>
               )}
@@ -2239,9 +2235,7 @@ const StoreProfile = () => {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>
           {locTitle(selectedJob) || t("Job")}
-        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <Box
@@ -2591,7 +2585,6 @@ const StoreProfile = () => {
                       <Box sx={{ width: "1px", height: 20, backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", flexShrink: 0 }} />
 
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <VisibilityIcon sx={{ fontSize: "1.1rem", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.35)" }} />
                         <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }}>
                           {viewCount > 0 ? viewCount.toLocaleString() : "0"}
                         </Typography>
@@ -2700,14 +2693,12 @@ const StoreProfile = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <ShoppingCartIcon color="primary" />
             <Typography variant="h6" component="span">
               {t("Gift Information")}
             </Typography>
           </Box>
-        </DialogTitle>
         <DialogContent>
           {selectedGift && (
             <Paper
@@ -2786,13 +2777,11 @@ const StoreProfile = () => {
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <Typography variant="h6" component="span">
               {t("Login Required")}
             </Typography>
           </Box>
-        </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             {t("You must login to like products. Do you want to login?")}
@@ -2834,9 +2823,7 @@ const StoreProfile = () => {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>
           {t("Cart")} ({cartCount})
-        </DialogTitle>
         <DialogContent sx={{ overflowX: "hidden" }}>
           {cartSyncing ? (
             <Typography color="text.secondary" sx={{ py: 2 }}>
@@ -2971,3 +2958,9 @@ const StoreProfile = () => {
 };
 
 export default StoreProfile;
+
+
+
+
+
+

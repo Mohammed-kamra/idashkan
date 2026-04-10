@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useState,
   useEffect,
   useLayoutEffect,
@@ -7,8 +7,6 @@
   useCallback,
 } from "react";
 import {
-  Card,
-  CardContent,
   CardMedia,
   Typography,
   Button,
@@ -23,9 +21,6 @@ import {
   DialogContent,
   DialogActions,
   Fab,
-  Grid,
-  Paper,
-  Divider,
   Tabs,
   Tab,
   Skeleton,
@@ -47,8 +42,6 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import BusinessIcon from "@mui/icons-material/Business";
 import CategoryIcon from "@mui/icons-material/Category";
 import SearchIcon from "@mui/icons-material/Search";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import DescriptionIcon from "@mui/icons-material/Description";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import StarIcon from "@mui/icons-material/Star";
@@ -56,10 +49,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import Loader from "../components/Loader";
 import BrandShowcase from "../components/BrandShowcase";
 import CompanyShowcase from "../components/CompanyShowcase";
@@ -81,7 +71,6 @@ import {
   isExpiryStillValid,
   getExpiryRemainingInfo,
   formatExpiryChipLabel,
-  shouldShowExpiryChip,
   expiryChipBg,
   formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
@@ -92,6 +81,9 @@ import {
   writeMainPageCache,
   buildMainPagePayload,
 } from "../utils/mainPageCache";
+import useCachedData from "../hooks/useCachedData";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import OfflineCacheChip from "../components/OfflineCacheChip";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
@@ -101,10 +93,11 @@ const MainPage = () => {
   const isMobile = useIsMobileLayout();
   const location = useLocation();
   const navigate = useNavigate();
-  const { locName, locDescription, locAddress } = useLocalizedContent();
+  const { locName, locDescription } = useLocalizedContent();
   const [stores, setStores] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
-  const [productsByStore, setProductsByStore] = useState({});
+  const [, setProductsByStore] = useState({});
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { t } = useTranslation();
@@ -123,14 +116,13 @@ const MainPage = () => {
 
   // Notification dialog state
   const [loginNotificationOpen, setLoginNotificationOpen] = useState(false);
-  const [loginNotificationReason, setLoginNotificationReason] =
-    useState("like");
+  const [loginNotificationReason] = useState("like");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [productImageFullscreen, setProductImageFullscreen] = useState(null);
 
   // Filter toggle state for mobile
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen] = useState(false);
 
   // Scroll to top state
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -139,7 +131,7 @@ const MainPage = () => {
 
   // Stores pagination state
   const [displayedStores, setDisplayedStores] = useState([]);
-  const [storesPage, setStoresPage] = useState(1);
+  const [, setStoresPage] = useState(1);
   const [storesPerPage] = useState(8);
   const [hasMoreStores, setHasMoreStores] = useState(true);
   const [sortByNewestDiscount, setSortByNewestDiscount] = useState(false);
@@ -181,6 +173,7 @@ const MainPage = () => {
   const mainPageScrollRestoredRef = useRef(false);
   const mainPageTabRef = useRef(0);
   const displayedStoresCountRef = useRef(0);
+  const skipInitialSilentRefreshRef = useRef(false);
 
   useEffect(() => {
     mainPageTabRef.current = mainPageTab;
@@ -290,6 +283,16 @@ const MainPage = () => {
   };
 
   const [bannerAds, setBannerAds] = useState([]);
+  const isOnline = useOnlineStatus();
+  const { items: cachedStores } = useCachedData("stores");
+  const { items: cachedProducts } = useCachedData("products");
+  const { items: cachedCategories } = useCachedData("categories");
+  const { items: cachedAds } = useCachedData("ads");
+  const { items: cachedStoreTypes } = useCachedData("store-types");
+  const { items: cachedBrands } = useCachedData("brands");
+  const { items: cachedCompanies } = useCachedData("companies");
+  const { items: cachedGifts } = useCachedData("gifts");
+  const { items: cachedJobs } = useCachedData("jobs");
 
   const bannerAdsWithImages = useMemo(
     () =>
@@ -304,6 +307,7 @@ const MainPage = () => {
         })),
     [bannerAds],
   );
+  const showCacheChip = !isOnline && (allProducts.length > 0 || stores.length > 0);
 
   const applyMainPagePayload = useCallback((payload) => {
     setStores(payload.stores);
@@ -395,17 +399,69 @@ const MainPage = () => {
       applyMainPagePayload(cached);
       setLoading(false);
       setError("");
+      // If we have a saved scroll position, user likely returned from another page.
+      // Keep store cards exactly where they were by skipping the immediate silent refresh.
+      try {
+        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+        const parsed = rawState ? JSON.parse(rawState) : null;
+        const savedY = Number(parsed?.y ?? sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY));
+        skipInitialSilentRefreshRef.current = Number.isFinite(savedY) && savedY > 0;
+      } catch {
+        skipInitialSilentRefreshRef.current = false;
+      }
     }
   }, [refreshKey, applyMainPagePayload]);
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
     if (cached) {
-      fetchData({ silent: true });
+      if (skipInitialSilentRefreshRef.current) {
+        skipInitialSilentRefreshRef.current = false;
+      } else {
+        fetchData({ silent: true });
+      }
     } else {
       fetchData();
     }
   }, [refreshKey, fetchData]);
+
+  useEffect(() => {
+    if (isOnline) return;
+    const hasOfflineContent =
+      cachedStores.length ||
+      cachedProducts.length ||
+      cachedCategories.length ||
+      cachedAds.length;
+    if (!hasOfflineContent) return;
+
+    applyMainPagePayload(
+      buildMainPagePayload({
+        storesData: cachedStores,
+        categoriesData: cachedCategories,
+        productsData: cachedProducts,
+        adsData: cachedAds.filter((ad) => ad?.page === "home"),
+        storeTypesData: cachedStoreTypes,
+        brandsData: cachedBrands,
+        companiesData: cachedCompanies,
+        giftsData: cachedGifts,
+        jobsData: cachedJobs,
+      })
+    );
+    setLoading(false);
+    setError("");
+  }, [
+    isOnline,
+    cachedStores,
+    cachedProducts,
+    cachedCategories,
+    cachedAds,
+    cachedStoreTypes,
+    cachedBrands,
+    cachedCompanies,
+    cachedGifts,
+    cachedJobs,
+    applyMainPagePayload,
+  ]);
 
   const prevSelectedCityRef = useRef(null);
   useEffect(() => {
@@ -1386,7 +1442,7 @@ const MainPage = () => {
     filteredFollowedStoresWithProducts.length,
   ]);
 
-  // Effect for pagination â€” on mobile, preload two chunks (16 stores) so rows after the
+  // Effect for pagination ? on mobile, preload two chunks (16 stores) so rows after the
   // first BrandShowcase block exist without depending on the infinite-scroll sentinel
   // (it often misses after route return / overlay / browser chrome). Reset rotating
   // showcase picks whenever the store list identity changes.
@@ -1485,7 +1541,7 @@ const MainPage = () => {
           height={160}
           sx={{ mb: 2, borderRadius: "16px" }}
         />
-        {/* Filter chips skeleton — scroll row, fixed chip widths (matches FilterChips) */}
+        {/* Filter chips skeleton ? scroll row, fixed chip widths (matches FilterChips) */}
         <Box
           sx={{
             display: "flex",
@@ -1560,7 +1616,7 @@ const MainPage = () => {
                 </Box>
               </Box>
             </Box>
-            {/* Products row — horizontal scroll + non-shrinking cards (matches StoreGroupSection / ProductCard) */}
+            {/* Products row ? horizontal scroll + non-shrinking cards (matches StoreGroupSection / ProductCard) */}
             <Box
               sx={{
                 p: "12px 14px",
@@ -1693,6 +1749,12 @@ const MainPage = () => {
         </Tabs>
       </Box>
       {/* --- */}
+      {showCacheChip && (
+        <Box sx={{ mb: 1.25, mt: 0.25 }}>
+          <OfflineCacheChip />
+        </Box>
+      )}
+      {/* --- */}
       <BannerCarousel
         banners={bannerAdsWithImages}
         onBannerClick={(ad) => {
@@ -1736,7 +1798,7 @@ const MainPage = () => {
           productLayout={productLayout}
           onLayoutChange={setProductLayout}
         />
-        {/* legacy filter content â€” hidden, kept for price-range state wiring */}
+        {/* legacy filter content ? hidden, kept for price-range state wiring */}
         <Box sx={{ display: "none" }}>
           {/* Search and Basic Filters */}
           <Box
@@ -1956,7 +2018,7 @@ const MainPage = () => {
                     }}
                   >
                     <span style={{ marginRight: "4px", flexShrink: 0 }}>
-                      {type.icon || "ًںڈھ"}
+                      {type.icon || "??"}
                     </span>
                     <span
                       style={{
@@ -2248,7 +2310,7 @@ const MainPage = () => {
                 (p) => getID(p.storeId) === getID(store._id),
               );
 
-              // Every 8 store cards: Brand (8) → Company (8) → Store (random 20) → Gift (last 5) (repeat).
+              // Every 8 store cards: Brand (8) ? Company (8) ? Store (random 20) ? Gift (last 5) (repeat).
               const rotatingShowcase =
                 (index + 1) % 8 === 0
                   ? (() => {
@@ -3240,3 +3302,8 @@ const MainPage = () => {
 };
 
 export default MainPage;
+
+
+
+
+

@@ -13,8 +13,26 @@
       "type": "image/png"
     }
   ],
-  "start_url": ".",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "description": "Central discounts, stores, products, jobs and reels - available offline",
+  "shortcuts": [
+    {
+      "name": "Products",
+      "url": "/categories"
+    },
+    {
+      "name": "Stores",
+      "url": "/stores"
+    },
+    {
+      "name": "Reels",
+      "url": "/reels"
+    }
+  ]
 }

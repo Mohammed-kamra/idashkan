@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -17,7 +17,6 @@ import {
   Button,
   useTheme,
 } from "@mui/material";
-import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import SearchIcon from "@mui/icons-material/Search";
@@ -27,7 +26,7 @@ import CategoryIcon from "@mui/icons-material/Category";
 import HistoryIcon from "@mui/icons-material/History";
 import ClearIcon from "@mui/icons-material/Clear";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-import { searchAPI, adAPI } from "../services/api";
+import { searchAPI } from "../services/api";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useCityFilter } from "../context/CityFilterContext";
@@ -43,6 +42,9 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
+import useCachedData from "../hooks/useCachedData";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import OfflineCacheChip from "../components/OfflineCacheChip";
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -82,9 +84,14 @@ const SearchPage = () => {
   });
   const [searched, setSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [bannerAds, setBannerAds] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const isOnline = useOnlineStatus();
+  const { items: cachedProducts } = useCachedData("products");
+  const { items: cachedStores } = useCachedData("stores");
+  const { items: cachedBrands } = useCachedData("brands");
+  const { items: cachedCompanies } = useCachedData("companies");
+  const { items: cachedCategories } = useCachedData("categories");
 
   const userId = user?.id || user?._id || null;
   const deviceId = userId ? null : getDeviceId();
@@ -96,26 +103,6 @@ const SearchPage = () => {
   useEffect(() => {
     refreshRecentSearches();
   }, [refreshRecentSearches]);
-
-  useEffect(() => {
-    const fetchBannerAds = async () => {
-      try {
-        const res = await adAPI.getAll({ page: "search" });
-        const ads = Array.isArray(res?.data) ? res.data : [];
-        if (ads.length > 0) {
-          setBannerAds(ads);
-          return;
-        }
-        const fallbackRes = await adAPI.getAll({ page: "home" });
-        setBannerAds(Array.isArray(fallbackRes?.data) ? fallbackRes.data : []);
-      } catch (err) {
-        console.error("Error loading search banners:", err);
-        setBannerAds([]);
-      }
-    };
-    fetchBannerAds();
-  }, []);
-
   const performSearch = useCallback(
     async (q) => {
       const trimmed = (q || "").trim();
@@ -148,6 +135,19 @@ const SearchPage = () => {
       setLoading(true);
       setSearched(true);
       try {
+        if (!isOnline) {
+          const local = buildOfflineSearchResults(trimmed, {
+            products: cachedProducts,
+            stores: cachedStores,
+            brands: cachedBrands,
+            companies: cachedCompanies,
+            categories: cachedCategories,
+          });
+          setResults(local);
+          addToSearchHistory(trimmed, userId, deviceId);
+          refreshRecentSearches();
+          return;
+        }
         const res = await searchAPI.search(trimmed, selectedCity || null);
         const data = res?.data?.data || res?.data || {};
         const visibleProducts = (data.products || []).filter((product) => {
@@ -178,7 +178,19 @@ const SearchPage = () => {
         setLoading(false);
       }
     },
-    [userId, deviceId, refreshRecentSearches, selectedCity, navigate],
+    [
+      userId,
+      deviceId,
+      refreshRecentSearches,
+      selectedCity,
+      navigate,
+      isOnline,
+      cachedProducts,
+      cachedStores,
+      cachedBrands,
+      cachedCompanies,
+      cachedCategories,
+    ],
   );
 
   useEffect(() => {
@@ -320,9 +332,15 @@ const SearchPage = () => {
     searchCompanies.length > 0 ||
     searchCategories.length > 0 ||
     searchCategoryTypes.length > 0;
+  const showCacheChip = !isOnline && hasResults;
 
   return (
     <Box sx={{ pt: 5 }}>
+      {showCacheChip && (
+        <Box sx={{ mb: 1.25, display: "flex", justifyContent: "flex-start" }}>
+          <OfflineCacheChip />
+        </Box>
+      )}
       {/* {bannerAdsWithImages.length > 0 && (
         <Box
           sx={{
@@ -965,3 +983,46 @@ const SearchPage = () => {
 };
 
 export default SearchPage;
+
+function includesLocalizedText(item, query, fields) {
+  const q = query.toLowerCase();
+  return fields.some((field) => {
+    const value = getLocalizedField(item, field, "en") || item?.[field];
+    return String(value || "").toLowerCase().includes(q);
+  });
+}
+
+function buildOfflineSearchResults(query, datasets) {
+  const products = (datasets.products || []).filter((p) => {
+    if (p?.expireDate && !isExpiryStillValid(p.expireDate)) return false;
+    return (
+      includesLocalizedText(p, query, ["name", "description"]) ||
+      includesLocalizedText(p?.storeId || {}, query, ["name"]) ||
+      includesLocalizedText(p?.brandId || p?.companyId || {}, query, ["name"])
+    );
+  });
+  const stores = (datasets.stores || []).filter((s) =>
+    includesLocalizedText(s, query, ["name", "address"])
+  );
+  const brands = (datasets.brands || []).filter((b) =>
+    includesLocalizedText(b, query, ["name"])
+  );
+  const companies = (datasets.companies || []).filter((c) =>
+    includesLocalizedText(c, query, ["name"])
+  );
+  const categories = (datasets.categories || []).filter((c) =>
+    includesLocalizedText(c, query, ["name"])
+  );
+
+  return {
+    products,
+    stores,
+    brands,
+    companies,
+    categories,
+    categoryTypes: [],
+  };
+}
+
+
+

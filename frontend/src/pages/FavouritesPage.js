@@ -12,7 +12,6 @@ import {
   CardMedia,
   Typography,
   IconButton,
-  CircularProgress,
   Alert,
   Chip,
   Button,
@@ -22,10 +21,8 @@ import { Link, useNavigate } from "react-router-dom";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import { aiAPI } from "../services/api";
 
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import ArrowBack from "@mui/icons-material/ArrowBack";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
@@ -158,17 +155,6 @@ const FavouritesPage = () => {
       setLikeLoading((prev) => ({ ...prev, [productId]: false }));
     }
   };
-
-  const formatExpireDate = (expireDate) => {
-    if (!expireDate) return null;
-    const d = new Date(expireDate);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const getMarketInfo = (product) => {
     const store = product.storeId;
     const brand = product.brandId;
@@ -504,7 +490,6 @@ const FavouritesPage = () => {
                         zIndex: 1,
                       }}
                     >
-                      <VisibilityIcon sx={{ fontSize: "0.75rem" }} />
                       {product.viewCount}
                     </Box>
                   )} */}
@@ -645,3 +630,5 @@ const FavouritesPage = () => {
 };
 
 export default FavouritesPage;
+
+

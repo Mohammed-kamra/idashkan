@@ -17,44 +17,20 @@ import {
   DialogContent,
   DialogActions,
   Paper,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  InputAdornment,
-  FormControlLabel,
-  Checkbox,
-  Divider,
   Avatar,
-  Badge,
   IconButton,
-  Rating,
-  Tooltip,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   Skeleton,
 } from "@mui/material";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { productAPI, categoryAPI, storeTypeAPI } from "../services/api";
 import CategoryIcon from "@mui/icons-material/Category";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import BusinessIcon from "@mui/icons-material/Business";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import StarIcon from "@mui/icons-material/Star";
-import MenuIcon from "@mui/icons-material/Menu";
-import StoreIcon from "@mui/icons-material/Store";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useTranslation } from "react-i18next";
@@ -75,6 +51,9 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 import { cityStringsMatch } from "../utils/cityMatch";
+import useCachedData from "../hooks/useCachedData";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import OfflineCacheChip from "../components/OfflineCacheChip";
 
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
@@ -100,6 +79,7 @@ const ProductCategory = () => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCategoryType, setSelectedCategoryType] = useState(null);
+  const [, setPage] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
@@ -112,8 +92,8 @@ const ProductCategory = () => {
   const [selectedStoreTypeId, setSelectedStoreTypeId] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 900 ? null : "all",
   );
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  
   // Mobile view mode: 'categories' → list categories, 'products' → show products of selected category
   const [mobileViewMode, setMobileViewMode] = useState("categories");
 
@@ -126,7 +106,7 @@ const ProductCategory = () => {
   const [likeLoading, setLikeLoading] = useState({});
 
   // Filter states
-  const [filters, setFilters] = useState({
+  const [filters] = useState({
     name: "",
     brand: "",
     store: "",
@@ -135,14 +115,18 @@ const ProductCategory = () => {
   });
 
   // Pagination states
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   // Track if we've applied nav state (category/categoryType from MainPage or ProductDetail link)
   const stateAppliedRef = useRef(false);
   const productViewRecordedRef = useRef(new Set());
   /** categoryId -> { types, products } — avoids refetch / full reload when switching category */
   const categoryDataCacheRef = useRef(new Map());
+  const isOnline = useOnlineStatus();
+  const { items: cachedCategories } = useCachedData("categories");
+  const { items: cachedProducts } = useCachedData("products");
+  const { items: cachedStoreTypes } = useCachedData("store-types");
+  const showCacheChip =
+    !isOnline && (filteredProducts.length > 0 || categories.length > 0);
 
   const putCategoryCache = useCallback((categoryId, types, products) => {
     if (categoryId == null) return;
@@ -201,6 +185,40 @@ const ProductCategory = () => {
   }, []);
 
   useEffect(() => {
+    if (isOnline) return;
+    if (!storeTypes.length && cachedStoreTypes.length) {
+      setStoreTypes(cachedStoreTypes);
+      if (typeof window !== "undefined" && window.innerWidth < 900) {
+        setSelectedStoreTypeId(
+          (prev) => prev ?? (cachedStoreTypes[0]?._id || "all")
+        );
+      }
+    }
+    if (!categories.length && cachedCategories.length) {
+      setCategories(cachedCategories);
+      if (window.innerWidth >= 900 && !selectedCategory) {
+        const first = cachedCategories[0];
+        setSelectedCategory(first);
+        const nextProducts = cachedProducts.filter(
+          (p) => String(p.categoryId?._id || p.categoryId) === String(first._id)
+        );
+        setProducts(nextProducts);
+        setFilteredProducts(nextProducts);
+      }
+      setLoading(false);
+      setError(null);
+    }
+  }, [
+    isOnline,
+    storeTypes.length,
+    categories.length,
+    selectedCategory,
+    cachedStoreTypes,
+    cachedCategories,
+    cachedProducts,
+  ]);
+
+  useEffect(() => {
     fetchCategories();
   }, [selectedStoreTypeId, storeTypes]);
 
@@ -248,16 +266,6 @@ const ProductCategory = () => {
       cancelled = true;
     };
   }, [categories, loading]);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
   const fetchCategories = async () => {
     const isMobile =
       typeof window !== "undefined" && window.innerWidth < 900;
@@ -411,9 +419,12 @@ const ProductCategory = () => {
       return data;
     } catch (err) {
       console.error("Error fetching products:", err);
-      setProducts([]);
-      setFilteredProducts([]);
-      return [];
+      const offlineProducts = cachedProducts.filter(
+        (p) => String(p.categoryId?._id || p.categoryId) === String(categoryId)
+      );
+      setProducts(offlineProducts);
+      setFilteredProducts(offlineProducts);
+      return offlineProducts;
     }
   };
 
@@ -440,11 +451,6 @@ const ProductCategory = () => {
       setCategoryProductsLoading(false);
     }
   };
-
-  const handleCategoryTypeChange = (categoryType) => {
-    setSelectedCategoryType(categoryType);
-  };
-
   const handleStoreTypeChange = (storeTypeId) => {
     stateAppliedRef.current = false;
     categoryDataCacheRef.current.clear();
@@ -561,29 +567,6 @@ const ProductCategory = () => {
     setFilteredProducts(filtered);
     setPage(0);
   };
-
-  const handleFilterChange = (field, value) => {
-    setFilters({ ...filters, [field]: value });
-  };
-
-  const toggleFilters = () => {
-    setFiltersOpen(!filtersOpen);
-  };
-
-  const getBrands = () => {
-    const brands = products
-      .map((product) => locName(product.companyId || product.brandId))
-      .filter(Boolean);
-    return [...new Set(brands)];
-  };
-
-  const getStores = () => {
-    const stores = products
-      .map((product) => locName(product.storeId))
-      .filter(Boolean);
-    return [...new Set(stores)];
-  };
-
   const formatPrice = (price) => {
     if (typeof price !== "number") return `${t("ID")} 0`;
     return ` ${price.toLocaleString(undefined, {
@@ -614,17 +597,6 @@ const ProductCategory = () => {
     const discount = ((prev - next) / prev) * 100;
     return Math.round(discount);
   };
-
-  const getCategoryTypeName = (categoryTypeId, categoryId) => {
-    if (!categoryTypeId || !categoryId) return "";
-    const category = categories.find((cat) => cat._id === categoryId);
-    if (!category) return "";
-    const categoryType = category.types.find(
-      (type) => type._id === categoryTypeId,
-    );
-    return categoryType ? locName(categoryType) : "";
-  };
-
   const renderMobileLayout = () => {
     const isDark = theme.palette.mode === "dark";
     const railBg = isDark ? "rgba(18,24,38,0.98)" : "rgba(248,249,252,0.98)";
@@ -635,6 +607,11 @@ const ProductCategory = () => {
 
     return (
       <Box sx={{ display: { xs: "block", md: "none" } }}>
+        {showCacheChip && (
+          <Box sx={{ position: "fixed", top: 64, right: 8, zIndex: 20 }}>
+            <OfflineCacheChip />
+          </Box>
+        )}
         {/* --- Left vertical rail: Store types --- */}
         <Box
           sx={{
@@ -1062,8 +1039,6 @@ const ProductCategory = () => {
                     const hasDiscount = isDiscountValid(product);
                     const discountLabel =
                       discountPct !== null ? `-${discountPct}%` : t("Discount");
-                    const isLiked =
-                      likeStates[product._id] ?? isProductLiked(product._id);
 
                     return (
                       <ProductViewTracker
@@ -1269,6 +1244,11 @@ const ProductCategory = () => {
     <Box sx={{ display: { xs: "none", md: "block" } }}>
       {/* Desktop layout - keeping existing design */}
       <Box sx={{ py: 8, px: 3 }}>
+        {showCacheChip && (
+          <Box sx={{ mb: 2 }}>
+            <OfflineCacheChip />
+          </Box>
+        )}
         {/* Store Type Filter */}
         <Box sx={{ mb: 3 }}>
           {/* <Typography variant="h6" sx={{ mb: 2 }}>
@@ -2639,3 +2619,8 @@ const ProductCategory = () => {
 };
 
 export default ProductCategory;
+
+
+
+
+

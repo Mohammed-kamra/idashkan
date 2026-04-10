@@ -15,7 +15,6 @@ import {
   Skeleton,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import ShareIcon from "@mui/icons-material/Share";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -30,6 +29,9 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useContentRefresh } from "../context/ContentRefreshContext";
+import useCachedData from "../hooks/useCachedData";
+import useOnlineStatus from "../hooks/useOnlineStatus";
+import OfflineCacheChip from "../components/OfflineCacheChip";
 
 const MotionBox = motion.create(Box);
 const MotionIconButton = motion.create(IconButton);
@@ -500,6 +502,9 @@ const ReelsPage = () => {
   } = useUserTracking();
   const { selectedCity } = useCityFilter();
   const { triggerRefresh } = useContentRefresh();
+  const isOnline = useOnlineStatus();
+  const { items: cachedReels } = useCachedData("videos");
+  const showCacheChip = !isOnline && reels.length > 0;
 
   useEffect(() => {
     isPausedRef.current = isPaused;
@@ -885,6 +890,15 @@ const ReelsPage = () => {
     fetchReels(false);
   }, [fetchReels]);
 
+  useEffect(() => {
+    if (isOnline) return;
+    if (!reels.length && cachedReels.length) {
+      setReels(cachedReels);
+      setLoading(false);
+      setError("");
+    }
+  }, [isOnline, reels.length, cachedReels]);
+
   // Pull-to-refresh on the reels scroll container.
   useEffect(() => {
     const container = containerRef.current;
@@ -1019,34 +1033,6 @@ const ReelsPage = () => {
     },
     [isVideoLiked, likeLoadingById, toggleVideoLike],
   );
-
-  const handleShare = useCallback(async (reel) => {
-    const shareUrl = `${window.location.origin}/reels/${reel._id}`;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: reel.title || "Reel",
-          text: reel.title || "Check out this reel",
-          url: shareUrl,
-        });
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      }
-
-      setReels((prev) =>
-        prev.map((item) =>
-          item._id === reel._id
-            ? { ...item, shares: (item.shares || 0) + 1 }
-            : item,
-        ),
-      );
-      videoAPI.incrementShare(reel._id).catch(() => {});
-    } catch (error) {
-      // User canceled share flow.
-    }
-  }, []);
-
   useEffect(() => {
     if (mainPageTab !== 1) return;
     const loadFollowedStores = async () => {
@@ -1208,6 +1194,20 @@ const ReelsPage = () => {
           Following
         </Button>
       </Box>
+      {showCacheChip && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: isMobile
+              ? "calc(122px + env(safe-area-inset-top))"
+              : "calc(130px + env(safe-area-inset-top))",
+            right: 12,
+            zIndex: 20,
+          }}
+        >
+          <OfflineCacheChip />
+        </Box>
+      )}
 
       <Box
         ref={containerRef}
@@ -1310,3 +1310,5 @@ const ReelsPage = () => {
 };
 
 export default ReelsPage;
+
+

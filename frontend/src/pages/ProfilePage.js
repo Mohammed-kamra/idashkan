@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -12,7 +12,6 @@ import {
   Divider,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
@@ -22,7 +21,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   useTheme,
-  Alert,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
@@ -54,7 +52,6 @@ import { useAuth } from "../context/AuthContext";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { useCityFilter } from "../context/CityFilterContext";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { useActiveTheme } from "../context/ActiveThemeContext";
 import kurdishFlag from "../styles/kurdish_flag.jpg";
 import {
   normalizeWhatsAppUrl,
@@ -70,25 +67,6 @@ import {
 import { useDarkMode } from "../context/DarkModeContext";
 import { isAdminEmail, canAccessDataEntry } from "../utils/adminAccess";
 
-const THEME_OPTIONS = [
-  { id: "default", label: "Default Theme" },
-  { id: "blackWhite", label: "Black & White Theme" },
-  { id: "ramadan", label: "Ramadan Theme" },
-  { id: "rain", label: "Rain Theme" },
-  { id: "neon1", label: "Neon Theme 1" },
-  { id: "neon2", label: "Neon Theme 2" },
-  { id: "flash-sale", label: "Flash Sale" },
-  { id: "luxury", label: "Luxury" },
-  { id: "eco-green", label: "Eco Green" },
-  { id: "ice", label: "Ice" },
-  { id: "festival", label: "Festival" },
-  { id: "tech", label: "Tech" },
-  { id: "minimal", label: "Minimal" },
-  { id: "sunset", label: "Sunset" },
-  { id: "middle-east", label: "Middle East" },
-  { id: "marketplace", label: "Marketplace" },
-];
-
 const ProfilePage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -97,14 +75,8 @@ const ProfilePage = () => {
   const { user: guestUser, updateGuestName } = useUserTracking();
   const { selectedCity, changeCity, cities } = useCityFilter();
   const { contactInfo } = useAppSettings();
-  const {
-    activeTheme,
-    userThemeOverride,
-    setUserThemeOverride,
-    clearUserThemeOverride,
-  } = useActiveTheme();
   const { dataLanguage, setDataLanguage } = useDataLanguage();
-  const { darkMode, colorMode, setColorMode } = useDarkMode();
+  const { colorMode, setColorMode } = useDarkMode();
 
   const [guestNameDialogOpen, setGuestNameDialogOpen] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState("");
@@ -115,41 +87,6 @@ const ProfilePage = () => {
   const changeNameButtonRef = useRef(null);
   const deactivateButtonRef = useRef(null);
   const deactivateCancelButtonRef = useRef(null);
-
-  const [countdown, setCountdown] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-    expired: false,
-  });
-
-  useEffect(() => {
-    const target = new Date(2026, 4, 30, 0, 0, 0); // 30/05/2026
-    const update = () => {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) {
-        setCountdown((prev) => ({ ...prev, expired: true }));
-        return;
-      }
-      const totalSeconds = Math.floor(diff / 1000);
-      const days = Math.floor(totalSeconds / (24 * 3600));
-      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      setCountdown({
-        days,
-        hours,
-        minutes,
-        seconds,
-        expired: false,
-      });
-    };
-    update();
-    const id = window.setInterval(update, 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const displayName =
     user?.displayName ||
@@ -814,7 +751,6 @@ const ProfilePage = () => {
           },
         }}
       >
-        <DialogTitle>{t("Change Your Account Name")}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -853,7 +789,6 @@ const ProfilePage = () => {
           },
         }}
       >
-        <DialogTitle>{t("Change Your Account Name")}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -895,7 +830,6 @@ const ProfilePage = () => {
           },
         }}
       >
-        <DialogTitle>{t("Deactivate Account")}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {t(

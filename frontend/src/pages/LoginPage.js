@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, useLocation, Link as RouterLink } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   TextField,
@@ -20,7 +20,6 @@ import {
   Person,
   Email,
   Lock,
-  ArrowBackIosNew,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
@@ -245,11 +244,9 @@ const LoginPage = () => {
               },
             }}
           >
-            <ArrowBackIosNew sx={{ fontSize: 18, ml: 0.5 }} />
           </IconButton>
           <Typography
             variant="body2"
-            component={RouterLink}
             to="/"
             sx={{
               color: isDark ? "rgba(255,255,255,0.65)" : "text.secondary",
@@ -642,3 +639,5 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+

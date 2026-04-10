@@ -1,25 +1,11 @@
+import { registerAppServiceWorker } from "../offline/serviceWorkerRegistration";
+
 /**
  * Register the service worker for push notifications
  * Safe on iOS - will not throw; returns null if unsupported
  */
 export const registerServiceWorker = async () => {
-  try {
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-      return null;
-    }
-    const base = (process.env.PUBLIC_URL || "").replace(/\/$/, "") || "";
-    const swPath = base ? `${base}/sw.js` : "/sw.js";
-    const reg = await Promise.race([
-      navigator.serviceWorker.register(swPath, { scope: "/" }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("SW registration timeout")), 8000)
-      ),
-    ]);
-    return reg;
-  } catch (err) {
-    console.warn("Service worker registration failed:", err);
-    return null;
-  }
+  return registerAppServiceWorker();
 };
 
 /**
