@@ -1,30 +1,91 @@
-import React from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  Stack,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Box, Button, Stack, Typography, useTheme } from "@mui/material";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
+import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { useTranslation } from "react-i18next";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 
+const RESTORED_MS = 3000;
+
 /**
- * Shown when the browser reports offline. Encourages retry once the connection returns.
+ * Offline: error banner with retry. After reconnecting from offline, shows a short success banner.
  */
 export default function ConnectionLostBanner() {
   const theme = useTheme();
   const { t } = useTranslation();
   const isOnline = useOnlineStatus();
+  const [showRestored, setShowRestored] = useState(false);
+  const wasOfflineRef = useRef(false);
 
-  if (isOnline) return null;
+  useEffect(() => {
+    if (!isOnline) {
+      wasOfflineRef.current = true;
+      setShowRestored(false);
+      return;
+    }
+    if (wasOfflineRef.current) {
+      wasOfflineRef.current = false;
+      setShowRestored(true);
+      const id = window.setTimeout(() => setShowRestored(false), RESTORED_MS);
+      return () => window.clearTimeout(id);
+    }
+  }, [isOnline]);
 
-  const handleRetry = () => {
-    window.location.reload();
-  };
+  if (!isOnline) {
+    return (
+      <Box
+        role="status"
+        aria-live="polite"
+        sx={{
+          position: "sticky",
+          top: 0,
+          zIndex: (z) => z.zIndex.appBar + 2,
+          px: 0,
+        }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          icon={<WifiOffRoundedIcon sx={{ fontSize: 28 }} />}
+          sx={{
+            borderRadius: 0,
+            py: 1.5,
+            px: { xs: 2, sm: 3 },
+            alignItems: "center",
+            background: `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 2 }}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="space-between"
+            sx={{ width: "100%", gap: { xs: 1, sm: 2 } }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  opacity: 0.95,
+                  mt: 0.25,
+                  lineHeight: 1.45,
+                  fontWeight: 500,
+                }}
+              >
+                {t(
+                  "You are not connected to the internet. Check your connection, then try again.",
+                )}
+              </Typography>
+            </Box>
+          </Stack>
+        </Alert>
+      </Box>
+    );
+  }
+
+  if (!showRestored) return null;
 
   return (
     <Box
@@ -38,67 +99,21 @@ export default function ConnectionLostBanner() {
       }}
     >
       <Alert
-        severity="error"
+        severity="success"
         variant="filled"
-        icon={<WifiOffRoundedIcon sx={{ fontSize: 28 }} />}
+        icon={<WifiRoundedIcon sx={{ fontSize: 28 }} />}
         sx={{
           borderRadius: 0,
-          py: 1.5,
+          py: 1.25,
           px: { xs: 2, sm: 3 },
           alignItems: "center",
-          background: `linear-gradient(135deg, ${theme.palette.error.dark} 0%, ${theme.palette.error.main} 100%)`,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          background: `linear-gradient(135deg, ${theme.palette.success.dark} 0%, ${theme.palette.success.main} 100%)`,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
         }}
       >
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={{ xs: 1.5, sm: 2 }}
-          alignItems={{ xs: "stretch", sm: "center" }}
-          justifyContent="space-between"
-          sx={{ width: "100%", gap: { xs: 1.5, sm: 2 } }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 800, letterSpacing: 0.2 }}
-            >
-              {t("Connection lost")}
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                opacity: 0.95,
-                mt: 0.25,
-                lineHeight: 1.45,
-                fontWeight: 500,
-              }}
-            >
-              {t(
-                "You are not connected to the internet. Check your connection, then try again.",
-              )}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            color="inherit"
-            size="medium"
-            onClick={handleRetry}
-            startIcon={<RefreshRoundedIcon />}
-            sx={{
-              flexShrink: 0,
-              alignSelf: { xs: "stretch", sm: "center" },
-              fontWeight: 800,
-              borderRadius: 2,
-              py: 1,
-              px: 2,
-              color: theme.palette.error.dark,
-              bgcolor: "rgba(255,255,255,0.95)",
-              "&:hover": { bgcolor: "#fff" },
-            }}
-          >
-            {t("Try again")}
-          </Button>
-        </Stack>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          {t("Your internet connection was restored.")}
+        </Typography>
       </Alert>
     </Box>
   );
