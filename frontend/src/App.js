@@ -56,8 +56,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotificationEnableBanner from "./components/NotificationEnableBanner";
 import SplashScreen from "./components/SplashScreen";
-import OfflineBanner from "./components/OfflineBanner";
-import OfflineFallback from "./pages/OfflineFallback";
+import ConnectionLostBanner from "./components/ConnectionLostBanner";
 import {
   ContentRefreshProvider,
   useContentRefresh,
@@ -215,7 +214,7 @@ function AppContent() {
               {t("All data is just test, nothing is real yet")}
             </Alert>
           </Collapse>
-          <OfflineBanner />
+          <ConnectionLostBanner />
           <NavigationBar
             darkMode={darkMode}
             setDarkMode={setDarkMode}
@@ -338,7 +337,6 @@ function AppContent() {
                 <Route path="/findjob" element={<FindJob />} />
                 <Route path="/shopping" element={<ShoppingPage />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/offline-fallback" element={<OfflineFallback />} />
               </Routes>
             </Container>
           </Box>

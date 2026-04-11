@@ -29,10 +29,6 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useContentRefresh } from "../context/ContentRefreshContext";
-import useCachedData from "../hooks/useCachedData";
-import useOnlineStatus from "../hooks/useOnlineStatus";
-import OfflineCacheChip from "../components/OfflineCacheChip";
-
 const MotionBox = motion.create(Box);
 const MotionIconButton = motion.create(IconButton);
 
@@ -502,9 +498,6 @@ const ReelsPage = () => {
   } = useUserTracking();
   const { selectedCity } = useCityFilter();
   const { triggerRefresh } = useContentRefresh();
-  const isOnline = useOnlineStatus();
-  const { items: cachedReels } = useCachedData("videos");
-  const showCacheChip = !isOnline && reels.length > 0;
 
   useEffect(() => {
     isPausedRef.current = isPaused;
@@ -890,15 +883,6 @@ const ReelsPage = () => {
     fetchReels(false);
   }, [fetchReels]);
 
-  useEffect(() => {
-    if (isOnline) return;
-    if (!reels.length && cachedReels.length) {
-      setReels(cachedReels);
-      setLoading(false);
-      setError("");
-    }
-  }, [isOnline, reels.length, cachedReels]);
-
   // Pull-to-refresh on the reels scroll container.
   useEffect(() => {
     const container = containerRef.current;
@@ -1194,20 +1178,6 @@ const ReelsPage = () => {
           Following
         </Button>
       </Box>
-      {showCacheChip && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: isMobile
-              ? "calc(122px + env(safe-area-inset-top))"
-              : "calc(130px + env(safe-area-inset-top))",
-            right: 12,
-            zIndex: 20,
-          }}
-        >
-          <OfflineCacheChip />
-        </Box>
-      )}
 
       <Box
         ref={containerRef}

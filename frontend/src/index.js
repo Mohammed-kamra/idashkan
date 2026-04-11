@@ -5,10 +5,7 @@ import "./index.css";
 import Root from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { mergeRemoteTranslations } from "./mergeRemoteTranslations";
-import {
-  listenForConnectionRestore,
-  registerAppServiceWorker,
-} from "./offline/serviceWorkerRegistration";
+import { registerAppServiceWorker } from "./serviceWorkerRegistration";
 
 // Let MainPage/sessionStorage control scroll on back/forward and client nav; avoids the
 // browser fighting React after route changes (often read scrollY as 0 when leaving home).
@@ -26,7 +23,6 @@ root.render(
 );
 mergeRemoteTranslations().catch(() => {});
 registerAppServiceWorker().catch(() => {});
-listenForConnectionRestore();
 
 // If you want to start measuring web vitals in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

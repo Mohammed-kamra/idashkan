@@ -53,18 +53,6 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 import { cityStringsMatch } from "../utils/cityMatch";
-import { useCachedDatasets } from "../hooks/useCachedData";
-import useOnlineStatus from "../hooks/useOnlineStatus";
-import OfflineCacheChip from "../components/OfflineCacheChip";
-
-const PRODUCT_CATEGORY_OFFLINE_DATASETS = [
-  "categories",
-  "products",
-  "store-types",
-];
-
-const EMPTY_OFFLINE_LIST = [];
-
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
   if (typeof storeTypeId === "object" && storeTypeId._id != null) {
@@ -132,15 +120,6 @@ const ProductCategory = () => {
   const productViewRecordedRef = useRef(new Set());
   /** categoryId -> { types, products } — avoids refetch / full reload when switching category */
   const categoryDataCacheRef = useRef(new Map());
-  const isOnline = useOnlineStatus();
-  const { itemsByDataset: offlineCache } = useCachedDatasets(
-    PRODUCT_CATEGORY_OFFLINE_DATASETS,
-  );
-  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
-  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
-  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
-  const showCacheChip =
-    !isOnline && (filteredProducts.length > 0 || categories.length > 0);
 
   const putCategoryCache = useCallback((categoryId, types, products) => {
     if (categoryId == null) return;
@@ -197,40 +176,6 @@ const ProductCategory = () => {
     // so clearing state later does not reset the rail to the first store type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (isOnline) return;
-    if (!storeTypes.length && cachedStoreTypes.length) {
-      setStoreTypes(cachedStoreTypes);
-      if (typeof window !== "undefined" && window.innerWidth < 900) {
-        setSelectedStoreTypeId(
-          (prev) => prev ?? (cachedStoreTypes[0]?._id || "all")
-        );
-      }
-    }
-    if (!categories.length && cachedCategories.length) {
-      setCategories(cachedCategories);
-      if (window.innerWidth >= 900 && !selectedCategory) {
-        const first = cachedCategories[0];
-        setSelectedCategory(first);
-        const nextProducts = cachedProducts.filter(
-          (p) => String(p.categoryId?._id || p.categoryId) === String(first._id)
-        );
-        setProducts(nextProducts);
-        setFilteredProducts(nextProducts);
-      }
-      setLoading(false);
-      setError(null);
-    }
-  }, [
-    isOnline,
-    storeTypes.length,
-    categories.length,
-    selectedCategory,
-    cachedStoreTypes,
-    cachedCategories,
-    cachedProducts,
-  ]);
 
   useEffect(() => {
     fetchCategories();
@@ -439,12 +384,9 @@ const ProductCategory = () => {
       return data;
     } catch (err) {
       console.error("Error fetching products:", err);
-      const offlineProducts = cachedProducts.filter(
-        (p) => String(p.categoryId?._id || p.categoryId) === String(categoryId)
-      );
-      setProducts(offlineProducts);
-      setFilteredProducts(offlineProducts);
-      return offlineProducts;
+      setProducts([]);
+      setFilteredProducts([]);
+      return [];
     }
   };
 
@@ -627,11 +569,6 @@ const ProductCategory = () => {
 
     return (
       <Box sx={{ display: { xs: "block", md: "none" } }}>
-        {showCacheChip && (
-          <Box sx={{ position: "fixed", top: 64, right: 8, zIndex: 20 }}>
-            <OfflineCacheChip />
-          </Box>
-        )}
         {/* --- Left vertical rail: Store types --- */}
         <Box
           sx={{
@@ -1264,11 +1201,6 @@ const ProductCategory = () => {
     <Box sx={{ display: { xs: "none", md: "block" } }}>
       {/* Desktop layout - keeping existing design */}
       <Box sx={{ py: 8, px: 3 }}>
-        {showCacheChip && (
-          <Box sx={{ mb: 2 }}>
-            <OfflineCacheChip />
-          </Box>
-        )}
         {/* Store Type Filter */}
         <Box sx={{ mb: 3 }}>
           {/* <Typography variant="h6" sx={{ mb: 2 }}>
@@ -1959,7 +1891,7 @@ const ProductCategory = () => {
           >
             {isNetwork
               ? t(
-                  "You are offline or the network is unavailable. Connect to load categories, or open this page once while online so it can be cached for offline browsing.",
+                  "You are offline or the network is unavailable. Connect to the internet and try again.",
                 )
               : t(
                   "Something went wrong while loading categories. Please try again in a moment.",

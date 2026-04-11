@@ -81,9 +81,7 @@ import {
   writeMainPageCache,
   buildMainPagePayload,
 } from "../utils/mainPageCache";
-import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
-import OfflineCacheChip from "../components/OfflineCacheChip";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
@@ -103,21 +101,6 @@ function getInitialMainPageTabFromSession() {
   }
   return 0;
 }
-
-/** Stable ref — one IndexedDB read for all main-page offline datasets (not 8× full cache scans). */
-const MAIN_PAGE_OFFLINE_DATASETS = [
-  "stores",
-  "products",
-  "categories",
-  "ads",
-  "store-types",
-  "brands",
-  "companies",
-  "gifts",
-  "jobs",
-];
-
-const EMPTY_OFFLINE_LIST = [];
 
 /** Apply scroll position (some WebViews need documentElement/body as well as window). */
 function applyWindowScrollY(y) {
@@ -368,18 +351,6 @@ const MainPage = () => {
 
   const [bannerAds, setBannerAds] = useState([]);
   const isOnline = useOnlineStatus();
-  const { itemsByDataset: offlineCache } = useCachedDatasets(
-    MAIN_PAGE_OFFLINE_DATASETS,
-  );
-  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
-  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
-  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
-  const cachedAds = offlineCache.ads ?? EMPTY_OFFLINE_LIST;
-  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
-  const cachedBrands = offlineCache.brands ?? EMPTY_OFFLINE_LIST;
-  const cachedCompanies = offlineCache.companies ?? EMPTY_OFFLINE_LIST;
-  const cachedGifts = offlineCache.gifts ?? EMPTY_OFFLINE_LIST;
-  const cachedJobs = offlineCache.jobs ?? EMPTY_OFFLINE_LIST;
 
   const bannerAdsWithImages = useMemo(
     () =>
@@ -394,8 +365,6 @@ const MainPage = () => {
         })),
     [bannerAds],
   );
-  const showCacheChip =
-    !isOnline && (allProducts.length > 0 || stores.length > 0);
 
   const applyMainPagePayload = useCallback((payload) => {
     setStores(payload.stores);
@@ -506,47 +475,6 @@ const MainPage = () => {
     }
   }, [refreshKey, fetchData]);
 
-  useEffect(() => {
-    if (isOnline) return;
-    const hasOfflineContent =
-      cachedStores.length ||
-      cachedProducts.length ||
-      cachedCategories.length ||
-      cachedAds.length;
-    if (!hasOfflineContent) return;
-
-    applyMainPagePayload(
-      buildMainPagePayload(
-        {
-          storesData: cachedStores,
-          categoriesData: cachedCategories,
-          productsData: cachedProducts,
-          adsData: cachedAds.filter((ad) => ad?.page === "home"),
-          storeTypesData: cachedStoreTypes,
-          brandsData: cachedBrands,
-          companiesData: cachedCompanies,
-          giftsData: cachedGifts,
-          jobsData: cachedJobs,
-        },
-        { shuffleNonVip: false },
-      ),
-    );
-    setLoading(false);
-    setError("");
-  }, [
-    isOnline,
-    cachedStores,
-    cachedProducts,
-    cachedCategories,
-    cachedAds,
-    cachedStoreTypes,
-    cachedBrands,
-    cachedCompanies,
-    cachedGifts,
-    cachedJobs,
-    applyMainPagePayload,
-  ]);
-
   const prevSelectedCityRef = useRef(null);
   useEffect(() => {
     if (prevSelectedCityRef.current === null) {
@@ -563,7 +491,6 @@ const MainPage = () => {
     const saveScrollPosition = () => {
       const y = window.scrollY || window.pageYOffset || 0;
       lastKnownScrollYRef.current = y;
-      if (!isOnline) return;
       const now = Date.now();
       const last = lastScrollPersistRef.current;
       const yDelta = Math.abs(y - last.y);
@@ -589,7 +516,7 @@ const MainPage = () => {
     return () => {
       window.removeEventListener("scroll", saveScrollPosition);
     };
-  }, [isOnline]);
+  }, []);
 
   // Handle scroll to show/hide scroll to top button
   useEffect(() => {
@@ -1890,12 +1817,6 @@ const MainPage = () => {
           <Tab label={t("Following")} />
         </Tabs>
       </Box>
-      {/* --- */}
-      {showCacheChip && (
-        <Box sx={{ mb: 1.25, mt: 0.25 }}>
-          <OfflineCacheChip />
-        </Box>
-      )}
       {/* --- */}
       <BannerCarousel
         banners={bannerAdsWithImages}

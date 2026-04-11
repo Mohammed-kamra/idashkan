@@ -42,19 +42,7 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
-import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
-import OfflineCacheChip from "../components/OfflineCacheChip";
-
-const SEARCH_PAGE_OFFLINE_DATASETS = [
-  "products",
-  "stores",
-  "brands",
-  "companies",
-  "categories",
-];
-
-const EMPTY_OFFLINE_LIST = [];
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -97,14 +85,6 @@ const SearchPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const isOnline = useOnlineStatus();
-  const { itemsByDataset: offlineCache } = useCachedDatasets(
-    SEARCH_PAGE_OFFLINE_DATASETS,
-  );
-  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
-  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
-  const cachedBrands = offlineCache.brands ?? EMPTY_OFFLINE_LIST;
-  const cachedCompanies = offlineCache.companies ?? EMPTY_OFFLINE_LIST;
-  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
 
   const userId = user?.id || user?._id || null;
   const deviceId = userId ? null : getDeviceId();
@@ -149,16 +129,14 @@ const SearchPage = () => {
       setSearched(true);
       try {
         if (!isOnline) {
-          const local = buildOfflineSearchResults(trimmed, {
-            products: cachedProducts,
-            stores: cachedStores,
-            brands: cachedBrands,
-            companies: cachedCompanies,
-            categories: cachedCategories,
+          setResults({
+            products: [],
+            stores: [],
+            brands: [],
+            companies: [],
+            categories: [],
+            categoryTypes: [],
           });
-          setResults(local);
-          addToSearchHistory(trimmed, userId, deviceId);
-          refreshRecentSearches();
           return;
         }
         const res = await searchAPI.search(trimmed, selectedCity || null);
@@ -198,11 +176,6 @@ const SearchPage = () => {
       selectedCity,
       navigate,
       isOnline,
-      cachedProducts,
-      cachedStores,
-      cachedBrands,
-      cachedCompanies,
-      cachedCategories,
     ],
   );
 
@@ -345,15 +318,9 @@ const SearchPage = () => {
     searchCompanies.length > 0 ||
     searchCategories.length > 0 ||
     searchCategoryTypes.length > 0;
-  const showCacheChip = !isOnline && hasResults;
 
   return (
     <Box sx={{ pt: 5 }}>
-      {showCacheChip && (
-        <Box sx={{ mb: 1.25, display: "flex", justifyContent: "flex-start" }}>
-          <OfflineCacheChip />
-        </Box>
-      )}
       {/* {bannerAdsWithImages.length > 0 && (
         <Box
           sx={{
@@ -996,46 +963,4 @@ const SearchPage = () => {
 };
 
 export default SearchPage;
-
-function includesLocalizedText(item, query, fields) {
-  const q = query.toLowerCase();
-  return fields.some((field) => {
-    const value = getLocalizedField(item, field, "en") || item?.[field];
-    return String(value || "").toLowerCase().includes(q);
-  });
-}
-
-function buildOfflineSearchResults(query, datasets) {
-  const products = (datasets.products || []).filter((p) => {
-    if (p?.expireDate && !isExpiryStillValid(p.expireDate)) return false;
-    return (
-      includesLocalizedText(p, query, ["name", "description"]) ||
-      includesLocalizedText(p?.storeId || {}, query, ["name"]) ||
-      includesLocalizedText(p?.brandId || p?.companyId || {}, query, ["name"])
-    );
-  });
-  const stores = (datasets.stores || []).filter((s) =>
-    includesLocalizedText(s, query, ["name", "address"])
-  );
-  const brands = (datasets.brands || []).filter((b) =>
-    includesLocalizedText(b, query, ["name"])
-  );
-  const companies = (datasets.companies || []).filter((c) =>
-    includesLocalizedText(c, query, ["name"])
-  );
-  const categories = (datasets.categories || []).filter((c) =>
-    includesLocalizedText(c, query, ["name"])
-  );
-
-  return {
-    products,
-    stores,
-    brands,
-    companies,
-    categories,
-    categoryTypes: [],
-  };
-}
-
-
 

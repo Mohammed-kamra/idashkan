@@ -39,14 +39,6 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { cityStringsMatch } from "../utils/cityMatch";
 import { getAllLocalizedFieldValues } from "../utils/localize";
-import { useCachedDatasets } from "../hooks/useCachedData";
-import useOnlineStatus from "../hooks/useOnlineStatus";
-import OfflineCacheChip from "../components/OfflineCacheChip";
-
-const STORE_LIST_OFFLINE_DATASETS = ["stores", "store-types", "ads"];
-
-const EMPTY_OFFLINE_LIST = [];
-
 function getID(id) {
   if (typeof id === "string") return id;
   if (id && typeof id === "object") {
@@ -314,13 +306,6 @@ const StoreList = () => {
   const storeTypeParam = searchParams.get("type");
   const [selectedTypeId, setSelectedTypeId] = useState(storeTypeParam || "all");
   const [storeTypes, setStoreTypes] = useState([]);
-  const isOnline = useOnlineStatus();
-  const { itemsByDataset: offlineCache } = useCachedDatasets(
-    STORE_LIST_OFFLINE_DATASETS,
-  );
-  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
-  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
-  const cachedAds = offlineCache.ads ?? EMPTY_OFFLINE_LIST;
 
   useEffect(() => {
     setSelectedTypeId(storeTypeParam || "all");
@@ -362,29 +347,6 @@ const StoreList = () => {
       }
     })();
   }, [fetchStores]);
-
-  useEffect(() => {
-    if (isOnline) return;
-    if (!stores.length && cachedStores.length) {
-      setStores(cachedStores);
-      setError("");
-      setLoading(false);
-    }
-    if (!storeTypes.length && cachedStoreTypes.length) {
-      setStoreTypes(cachedStoreTypes);
-    }
-    if (!bannerAds.length && cachedAds.length) {
-      setBannerAds(cachedAds.filter((ad) => ad?.page === "stores"));
-    }
-  }, [
-    isOnline,
-    stores.length,
-    storeTypes.length,
-    bannerAds.length,
-    cachedStores,
-    cachedStoreTypes,
-    cachedAds,
-  ]);
 
   const filteredStores = useMemo(() => {
     let list = stores;
@@ -460,7 +422,6 @@ const StoreList = () => {
         })),
     [bannerAds],
   );
-  const showCacheChip = !isOnline && filteredStores.length > 0;
 
   const handleStoreClick = (store) => navigate(`/stores/${store._id}`);
 
@@ -622,11 +583,6 @@ const StoreList = () => {
       }}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2 } }}>
-        {showCacheChip && (
-          <Box sx={{ mb: 1, mt: { xs: 2, md: 3 } }}>
-            <OfflineCacheChip />
-          </Box>
-        )}
         {/* Banner */}
         <Box sx={{ mb: 3, mt: { xs: 4, md: 5 } }}>
           <Box

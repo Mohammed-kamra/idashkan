@@ -1,4 +1,4 @@
-import { registerAppServiceWorker } from "../offline/serviceWorkerRegistration";
+import { registerAppServiceWorker } from "../serviceWorkerRegistration";
 
 /**
  * Register the service worker for push notifications

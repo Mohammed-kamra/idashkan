@@ -32,7 +32,7 @@ export function writeMainPageCache(refreshKey, payload) {
 
 /**
  * @param {object} data - API / cache blobs
- * @param {{ shuffleNonVip?: boolean }} [options] - pass `shuffleNonVip: false` for offline rebuilds; omit to use reload-only default
+ * @param {{ shuffleNonVip?: boolean }} [options] - pass `shuffleNonVip: false` for deterministic order; omit to use reload-only default
  */
 export function buildMainPagePayload(
   {
