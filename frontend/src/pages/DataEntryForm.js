@@ -85,6 +85,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { isAdminEmail } from "../utils/adminAccess";
 import { useCityFilter } from "../context/CityFilterContext";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 
@@ -4906,12 +4907,12 @@ const DataEntryForm = () => {
                         </TableCell>
                         <TableCell>
                           {product.previousPrice
-                            ? `${t("ID")} ${product.previousPrice.toFixed(2)}`
+                            ? `${t("ID")} ${formatPriceDigits(Number(product.previousPrice))}`
                             : ""}
                         </TableCell>
                         <TableCell>
                           {product.newPrice
-                            ? `${t("ID")} ${product.newPrice.toFixed(2)}`
+                            ? `${t("ID")} ${formatPriceDigits(Number(product.newPrice))}`
                             : ""}
                         </TableCell>
                         <TableCell>{product.weight || ""}</TableCell>

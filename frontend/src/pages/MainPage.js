@@ -83,6 +83,7 @@ import {
   buildMainPagePayload,
 } from "../utils/mainPageCache";
 import useOnlineStatus from "../hooks/useOnlineStatus";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
@@ -1717,10 +1718,7 @@ const MainPage = () => {
   const formatPrice = useCallback(
     (price) => {
       if (typeof price !== "number") return `${t("ID")} 0`;
-      return ` ${price.toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      })} ${t("ID")}`;
+      return ` ${formatPriceDigits(price)} ${t("ID")}`;
     },
     [t],
   );

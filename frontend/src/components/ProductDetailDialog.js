@@ -36,6 +36,7 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import FullScreenImageModal from "./FullScreenImageModal";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 /**
  * Same product quick-view pattern as MainPage / BrandProfile / StoreProfile.
@@ -86,10 +87,7 @@ const ProductDetailDialog = ({
 
   const formatPrice = (price) => {
     if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
 
   const isDiscountValid = (p) => {

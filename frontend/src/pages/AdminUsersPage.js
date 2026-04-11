@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   CircularProgress,
   Alert,
   Chip,
@@ -34,41 +35,61 @@ const AdminUsersPage = () => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  /** Bumps after create/update/delete so we refetch even when page stays 0. */
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const isAdmin = isAdminEmail(user);
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const res = await adminAPI.getUsers();
-        if (res.data?.success) {
-          setUsers(res.data.data || []);
-        } else {
-          setError(res.data?.message || "Failed to load users");
+  const fetchUsers = useCallback(async () => {
+    if (!isAuthenticated || !isAdmin) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await adminAPI.getUsers({
+        page: page + 1,
+        limit: rowsPerPage,
+      });
+      if (res.data?.success) {
+        const list = res.data.data || [];
+        const total =
+          typeof res.data.total === "number" ? res.data.total : list.length;
+        const serverPage =
+          typeof res.data.page === "number" ? res.data.page : page + 1;
+        setUsers(list);
+        setTotalUsers(total);
+        if (serverPage >= 1 && serverPage - 1 !== page) {
+          setPage(serverPage - 1);
         }
-      } catch (err) {
-        console.error("Error loading users:", err);
-        setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to load users",
-        );
-      } finally {
-        setLoading(false);
+      } else {
+        setError(res.data?.message || "Failed to load users");
       }
-    };
-
-    if (isAuthenticated && isAdmin) {
-      loadUsers();
-    } else {
+    } catch (err) {
+      console.error("Error loading users:", err);
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load users",
+      );
+    } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, page, rowsPerPage, refreshKey]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      setLoading(false);
+      return;
+    }
+    fetchUsers();
+  }, [isAuthenticated, isAdmin, fetchUsers]);
 
   if (!isAuthenticated) {
     return (
@@ -90,7 +111,7 @@ const AdminUsersPage = () => {
     );
   }
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <Box
         display="flex"
@@ -161,16 +182,11 @@ const AdminUsersPage = () => {
       }
 
       if (res.data?.success) {
-        const updatedUser = res.data.data;
-        setUsers((prev) => {
-          if (editingUser._id) {
-            return prev.map((u) =>
-              u._id === updatedUser._id ? updatedUser : u,
-            );
-          }
-          return [updatedUser, ...prev];
-        });
+        if (!editingUser._id) {
+          setPage(0);
+        }
         closeEditDialog();
+        setRefreshKey((k) => k + 1);
       } else {
         setError(res.data?.message || "Failed to save user");
       }
@@ -192,7 +208,7 @@ const AdminUsersPage = () => {
     try {
       const res = await adminAPI.deleteUser(id);
       if (res.data?.success) {
-        setUsers((prev) => prev.filter((u) => u._id !== id));
+        setRefreshKey((k) => k + 1);
       } else {
         setError(res.data?.message || "Failed to delete user");
       }
@@ -231,6 +247,11 @@ const AdminUsersPage = () => {
       )}
 
       <TableContainer component={Paper} variant="outlined">
+        {loading && users.length > 0 && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+            <CircularProgress size={28} />
+          </Box>
+        )}
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -321,6 +342,22 @@ const AdminUsersPage = () => {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalUsers}
+          page={page}
+          onPageChange={(e, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+          labelRowsPerPage={t("translationPage.rowsPerPage")}
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} of ${count !== -1 ? count : `more than ${to}`}`
+          }
+        />
       </TableContainer>
       <Dialog
         open={editDialogOpen}

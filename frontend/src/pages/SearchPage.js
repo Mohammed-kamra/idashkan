@@ -33,6 +33,7 @@ import { useCityFilter } from "../context/CityFilterContext";
 import { getLocalizedField } from "../utils/localize";
 import { useDataLanguage } from "../context/DataLanguageContext";
 import { getDeviceId } from "../utils/deviceId";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 import {
   getSearchHistory,
   addToSearchHistory,
@@ -169,14 +170,7 @@ const SearchPage = () => {
         setLoading(false);
       }
     },
-    [
-      userId,
-      deviceId,
-      refreshRecentSearches,
-      selectedCity,
-      navigate,
-      isOnline,
-    ],
+    [userId, deviceId, refreshRecentSearches, selectedCity, navigate, isOnline],
   );
 
   useEffect(() => {
@@ -293,7 +287,7 @@ const SearchPage = () => {
   const formatPrice = (value) => {
     const n = Number(value);
     if (!Number.isFinite(n)) return null;
-    return `${n.toLocaleString()} ${t("ID")}`;
+    return `${formatPriceDigits(n)} ${t("ID")}`;
   };
 
   const searchProducts = Array.isArray(results.products)
@@ -388,9 +382,7 @@ const SearchPage = () => {
           <TextField
             fullWidth
             autoFocus
-            placeholder={t(
-              "Search products, stores, brands, companies, categories — any language",
-            )}
+            placeholder={t("Search for products, stores and more...")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -963,4 +955,3 @@ const SearchPage = () => {
 };
 
 export default SearchPage;
-

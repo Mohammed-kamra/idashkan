@@ -53,6 +53,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 import { cityStringsMatch } from "../utils/cityMatch";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
   if (typeof storeTypeId === "object" && storeTypeId._id != null) {
@@ -531,10 +532,7 @@ const ProductCategory = () => {
   };
   const formatPrice = (price) => {
     if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
 
   const calculateDiscount = (previousPrice, newPrice) => {

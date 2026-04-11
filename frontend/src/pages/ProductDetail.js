@@ -40,6 +40,7 @@ import {
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -242,10 +243,7 @@ const ProductDetail = () => {
   // Helper function to get category type name from categoryTypeId
   const formatPrice = (price) => {
     if (typeof price !== "number") return `0 ${t("ID")}`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
 
   /** DD/MM/YYYY, then 24h time (local). */

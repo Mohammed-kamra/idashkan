@@ -91,6 +91,7 @@ import {
   formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 /** test */
 /** When scrolled near this row, load the next chunk for that product-type section (same idea as MainPage store sentinel). */
 const ProductTypeLoadSentinel = ({ typeKey, hasMore, onLoadMore }) => {
@@ -360,10 +361,7 @@ const BrandProfile = () => {
 
   const formatPrice = (price) => {
     if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
 
   const isDiscountValid = (product) => {

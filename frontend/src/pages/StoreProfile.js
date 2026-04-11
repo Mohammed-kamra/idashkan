@@ -85,6 +85,7 @@ import {
 } from "../utils/expiryDate";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 /** Cart/localStorage snapshot: include name* so `locName` respects data language. */
 function cartProductSnapshot(p) {
@@ -328,10 +329,7 @@ const StoreProfile = () => {
 
   const formatPrice = (price) => {
     if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
 
   const cartCount = Object.values(cartItems || {}).reduce(

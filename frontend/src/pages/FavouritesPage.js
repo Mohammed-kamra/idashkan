@@ -37,6 +37,7 @@ import {
 } from "../utils/expiryDate";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 const FavouritesPage = () => {
   const theme = useTheme();
@@ -126,10 +127,7 @@ const FavouritesPage = () => {
   const formatPrice = (price) => {
     const num = typeof price === "number" ? price : parseFloat(price);
     if (!Number.isFinite(num)) return `${t("ID")} 0`;
-    return ` ${num.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
+    return ` ${formatPriceDigits(num)} ${t("ID")}`;
   };
 
   const handleLikeClick = async (productId, e) => {

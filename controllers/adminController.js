@@ -73,14 +73,34 @@ const getUsers = async (req, res) => {
       });
     }
 
+    const pageRaw = parseInt(String(req.query.page || "1"), 10);
+    const page = Math.max(1, Number.isFinite(pageRaw) ? pageRaw : 1);
+    const limitRaw = parseInt(String(req.query.limit || "20"), 10);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20),
+    );
+    const skip = (page - 1) * limit;
+
+    const total = await User.countDocuments({});
+
+    const maxPage = Math.max(1, Math.ceil(total / limit) || 1);
+    const safePage = Math.min(page, maxPage);
+    const safeSkip = (safePage - 1) * limit;
+
     const users = await User.find({})
       .select("username email displayName deviceId isActive createdAt role")
       .sort({ createdAt: -1 })
+      .skip(safeSkip)
+      .limit(limit)
       .lean();
 
     res.json({
       success: true,
       data: users,
+      total,
+      page: safePage,
+      limit,
     });
   } catch (err) {
     console.error("Admin getUsers error:", err.message);

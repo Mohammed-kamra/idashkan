@@ -307,7 +307,7 @@ export const adminAPI = {
   getStoreReport: (params = {}) => api.get("/admin/reports/stores", { params }),
   getBrandReport: (params = {}) => api.get("/admin/reports/brands", { params }),
   sendNotification: (data) => api.post("/admin/notifications/send", data),
-  getUsers: () => api.get("/admin/users"),
+  getUsers: (params) => api.get("/admin/users", { params }),
   createUser: (data) => api.post("/admin/users", data),
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
