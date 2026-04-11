@@ -42,9 +42,19 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
-import useCachedData from "../hooks/useCachedData";
+import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import OfflineCacheChip from "../components/OfflineCacheChip";
+
+const SEARCH_PAGE_OFFLINE_DATASETS = [
+  "products",
+  "stores",
+  "brands",
+  "companies",
+  "categories",
+];
+
+const EMPTY_OFFLINE_LIST = [];
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -87,11 +97,14 @@ const SearchPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const isOnline = useOnlineStatus();
-  const { items: cachedProducts } = useCachedData("products");
-  const { items: cachedStores } = useCachedData("stores");
-  const { items: cachedBrands } = useCachedData("brands");
-  const { items: cachedCompanies } = useCachedData("companies");
-  const { items: cachedCategories } = useCachedData("categories");
+  const { itemsByDataset: offlineCache } = useCachedDatasets(
+    SEARCH_PAGE_OFFLINE_DATASETS,
+  );
+  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
+  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
+  const cachedBrands = offlineCache.brands ?? EMPTY_OFFLINE_LIST;
+  const cachedCompanies = offlineCache.companies ?? EMPTY_OFFLINE_LIST;
+  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
 
   const userId = user?.id || user?._id || null;
   const deviceId = userId ? null : getDeviceId();

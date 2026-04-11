@@ -26,7 +26,7 @@ import {
   Skeleton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   storeAPI,
   productAPI,
@@ -81,23 +81,69 @@ import {
   writeMainPageCache,
   buildMainPagePayload,
 } from "../utils/mainPageCache";
-import useCachedData from "../hooks/useCachedData";
+import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import OfflineCacheChip from "../components/OfflineCacheChip";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
 
+/** Restore For You / Following tab from session before first paint (must not run in scroll restore effect — that aborted async scroll). */
+function getInitialMainPageTabFromSession() {
+  try {
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+      if (rawState) {
+        const tab = Number(JSON.parse(rawState).tab);
+        if (Number.isFinite(tab) && tab >= 0 && tab <= 1) return tab;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
+
+/** Stable ref — one IndexedDB read for all main-page offline datasets (not 8× full cache scans). */
+const MAIN_PAGE_OFFLINE_DATASETS = [
+  "stores",
+  "products",
+  "categories",
+  "ads",
+  "store-types",
+  "brands",
+  "companies",
+  "gifts",
+  "jobs",
+];
+
+const EMPTY_OFFLINE_LIST = [];
+
+/** Apply scroll position (some WebViews need documentElement/body as well as window). */
+function applyWindowScrollY(y) {
+  const top = Math.max(0, Number(y) || 0);
+  try {
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+  } catch {
+    window.scrollTo(0, top);
+  }
+  try {
+    if (document.documentElement) document.documentElement.scrollTop = top;
+    if (document.body) document.body.scrollTop = top;
+  } catch {
+    // ignore
+  }
+}
+
 const MainPage = () => {
   const theme = useTheme();
   const isMobile = useIsMobileLayout();
-  const location = useLocation();
   const navigate = useNavigate();
   const { locName, locDescription } = useLocalizedContent();
   const [stores, setStores] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [, setProductsByStore] = useState({});
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { t } = useTranslation();
@@ -166,7 +212,9 @@ const MainPage = () => {
   const [likeStates, setLikeStates] = useState({}); // Track like state per product
   const [likeLoading, setLikeLoading] = useState({}); // Track loading state per product
   const [followLoading, setFollowLoading] = useState({}); // Track follow state per store
-  const [mainPageTab, setMainPageTab] = useState(0); // 0 = For You, 1 = Following
+  const [mainPageTab, setMainPageTab] = useState(
+    getInitialMainPageTabFromSession,
+  ); // 0 = For You, 1 = Following
   const [followedStores, setFollowedStores] = useState([]);
   const [productsByFollowedStore, setProductsByFollowedStore] = useState({});
   const [followLoadingTab, setFollowLoadingTab] = useState(false);
@@ -175,6 +223,47 @@ const MainPage = () => {
   const displayedStoresCountRef = useRef(0);
   const skipInitialSilentRefreshRef = useRef(false);
   const lastScrollPersistRef = useRef({ y: 0, at: 0 });
+  /** Last window scrollY (always updated) so unmount save is correct when layout collapses before useEffect. */
+  const lastKnownScrollYRef = useRef(0);
+
+  useLayoutEffect(() => {
+    return () => {
+      try {
+        const winY = Math.max(
+          lastKnownScrollYRef.current || 0,
+          window.scrollY || 0,
+          window.pageYOffset || 0,
+        );
+        let y = winY;
+        // After route change the window can read 0 before paint; keep the last deep scroll.
+        try {
+          const raw = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+          if (raw) {
+            const prevY = Number(JSON.parse(raw).y);
+            if (Number.isFinite(prevY) && prevY > 24 && y < 16) y = prevY;
+          }
+          if (y < 16) {
+            const plain = sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY);
+            const py = plain != null ? Number(plain) : NaN;
+            if (Number.isFinite(py) && py > 24) y = Math.max(y, py);
+          }
+        } catch {
+          /* ignore */
+        }
+        sessionStorage.setItem(MAIN_PAGE_SCROLL_KEY, String(y));
+        sessionStorage.setItem(
+          MAIN_PAGE_SCROLL_STATE_KEY,
+          JSON.stringify({
+            y,
+            tab: mainPageTabRef.current,
+            displayedCount: displayedStoresCountRef.current,
+          }),
+        );
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
 
   useEffect(() => {
     mainPageTabRef.current = mainPageTab;
@@ -183,12 +272,6 @@ const MainPage = () => {
   useEffect(() => {
     displayedStoresCountRef.current = displayedStores.length;
   }, [displayedStores.length]);
-
-  useEffect(() => {
-    if (location.pathname === "/") {
-      mainPageScrollRestoredRef.current = false;
-    }
-  }, [location.pathname]);
 
   // Handle like button click (works for both logged-in and guest/device users)
   const handleLikeClick = async (productId, e) => {
@@ -285,15 +368,18 @@ const MainPage = () => {
 
   const [bannerAds, setBannerAds] = useState([]);
   const isOnline = useOnlineStatus();
-  const { items: cachedStores } = useCachedData("stores");
-  const { items: cachedProducts } = useCachedData("products");
-  const { items: cachedCategories } = useCachedData("categories");
-  const { items: cachedAds } = useCachedData("ads");
-  const { items: cachedStoreTypes } = useCachedData("store-types");
-  const { items: cachedBrands } = useCachedData("brands");
-  const { items: cachedCompanies } = useCachedData("companies");
-  const { items: cachedGifts } = useCachedData("gifts");
-  const { items: cachedJobs } = useCachedData("jobs");
+  const { itemsByDataset: offlineCache } = useCachedDatasets(
+    MAIN_PAGE_OFFLINE_DATASETS,
+  );
+  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
+  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
+  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
+  const cachedAds = offlineCache.ads ?? EMPTY_OFFLINE_LIST;
+  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
+  const cachedBrands = offlineCache.brands ?? EMPTY_OFFLINE_LIST;
+  const cachedCompanies = offlineCache.companies ?? EMPTY_OFFLINE_LIST;
+  const cachedGifts = offlineCache.gifts ?? EMPTY_OFFLINE_LIST;
+  const cachedJobs = offlineCache.jobs ?? EMPTY_OFFLINE_LIST;
 
   const bannerAdsWithImages = useMemo(
     () =>
@@ -308,7 +394,8 @@ const MainPage = () => {
         })),
     [bannerAds],
   );
-  const showCacheChip = !isOnline && (allProducts.length > 0 || stores.length > 0);
+  const showCacheChip =
+    !isOnline && (allProducts.length > 0 || stores.length > 0);
 
   const applyMainPagePayload = useCallback((payload) => {
     setStores(payload.stores);
@@ -400,16 +487,9 @@ const MainPage = () => {
       applyMainPagePayload(cached);
       setLoading(false);
       setError("");
-      // If we have a saved scroll position, user likely returned from another page.
-      // Keep store cards exactly where they were by skipping the immediate silent refresh.
-      try {
-        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
-        const parsed = rawState ? JSON.parse(rawState) : null;
-        const savedY = Number(parsed?.y ?? sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY));
-        skipInitialSilentRefreshRef.current = Number.isFinite(savedY) && savedY > 0;
-      } catch {
-        skipInitialSilentRefreshRef.current = false;
-      }
+      // Skip the follow-up silent refetch whenever we hydrate from memory: refetch rebuilds
+      // the payload and would change non‑VIP order (shuffle is reload-only) or fight scroll restore.
+      skipInitialSilentRefreshRef.current = true;
     }
   }, [refreshKey, applyMainPagePayload]);
 
@@ -436,17 +516,20 @@ const MainPage = () => {
     if (!hasOfflineContent) return;
 
     applyMainPagePayload(
-      buildMainPagePayload({
-        storesData: cachedStores,
-        categoriesData: cachedCategories,
-        productsData: cachedProducts,
-        adsData: cachedAds.filter((ad) => ad?.page === "home"),
-        storeTypesData: cachedStoreTypes,
-        brandsData: cachedBrands,
-        companiesData: cachedCompanies,
-        giftsData: cachedGifts,
-        jobsData: cachedJobs,
-      })
+      buildMainPagePayload(
+        {
+          storesData: cachedStores,
+          categoriesData: cachedCategories,
+          productsData: cachedProducts,
+          adsData: cachedAds.filter((ad) => ad?.page === "home"),
+          storeTypesData: cachedStoreTypes,
+          brandsData: cachedBrands,
+          companiesData: cachedCompanies,
+          giftsData: cachedGifts,
+          jobsData: cachedJobs,
+        },
+        { shuffleNonVip: false },
+      ),
     );
     setLoading(false);
     setError("");
@@ -479,6 +562,8 @@ const MainPage = () => {
   useEffect(() => {
     const saveScrollPosition = () => {
       const y = window.scrollY || window.pageYOffset || 0;
+      lastKnownScrollYRef.current = y;
+      if (!isOnline) return;
       const now = Date.now();
       const last = lastScrollPersistRef.current;
       const yDelta = Math.abs(y - last.y);
@@ -504,123 +589,7 @@ const MainPage = () => {
     return () => {
       window.removeEventListener("scroll", saveScrollPosition);
     };
-  }, []);
-
-  useEffect(() => {
-    if (loading || mainPageScrollRestoredRef.current) return;
-
-    let attempts = 0;
-    let cancelled = false;
-
-    const restoreScroll = () => {
-      if (cancelled) return;
-
-      let targetY = 0;
-      let targetTab = 0;
-      let targetDisplayedCount = 0;
-      try {
-        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
-        if (rawState) {
-          const parsedState = JSON.parse(rawState);
-          const parsedY = Number(parsedState?.y);
-          const parsedTab = Number(parsedState?.tab);
-          const parsedDisplayedCount = Number(parsedState?.displayedCount);
-          if (Number.isFinite(parsedY) && parsedY > 0) {
-            targetY = parsedY;
-          }
-          if (Number.isFinite(parsedTab) && parsedTab >= 0) {
-            targetTab = parsedTab;
-          }
-          if (
-            Number.isFinite(parsedDisplayedCount) &&
-            parsedDisplayedCount > 0
-          ) {
-            targetDisplayedCount = parsedDisplayedCount;
-          }
-        }
-
-        // Backward compatibility with old key (plain number).
-        if (targetY <= 0) {
-          const raw = sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY);
-          const parsed = Number(raw);
-          if (Number.isFinite(parsed) && parsed > 0) {
-            targetY = parsed;
-          }
-        }
-      } catch {
-        targetY = 0;
-        targetTab = 0;
-        targetDisplayedCount = 0;
-      }
-
-      if (mainPageTab !== targetTab) {
-        setMainPageTab(targetTab);
-      }
-
-      const countReady =
-        targetDisplayedCount <= 0 ||
-        displayedStores.length >= targetDisplayedCount;
-      if (!countReady && hasMoreStores) {
-        loadMoreStoresRef.current?.();
-        attempts += 1;
-        if (attempts >= 40) {
-          mainPageScrollRestoredRef.current = true;
-          return;
-        }
-        window.setTimeout(restoreScroll, 120);
-        return;
-      }
-
-      if (targetY <= 0) {
-        mainPageScrollRestoredRef.current = true;
-        return;
-      }
-
-      const scrollHeight =
-        document.documentElement?.scrollHeight ||
-        document.body?.scrollHeight ||
-        0;
-      const viewportHeight = window.innerHeight || 0;
-      const maxReachableY = Math.max(0, scrollHeight - viewportHeight);
-      const pageTallEnough = maxReachableY >= targetY - 8;
-
-      // If the page is still too short to reach the old position, keep loading
-      // more store blocks before attempting the final restoration.
-      if (!pageTallEnough && hasMoreStores) {
-        loadMoreStoresRef.current?.();
-        attempts += 1;
-        if (attempts >= 40) {
-          mainPageScrollRestoredRef.current = true;
-          return;
-        }
-        window.setTimeout(restoreScroll, 120);
-        return;
-      }
-
-      window.scrollTo(0, targetY);
-
-      const currentY = window.scrollY || window.pageYOffset || 0;
-      const reached = Math.abs(currentY - targetY) <= 2;
-      attempts += 1;
-
-      if (reached || attempts >= 40 || (!hasMoreStores && !pageTallEnough)) {
-        mainPageScrollRestoredRef.current = true;
-        return;
-      }
-
-      window.setTimeout(restoreScroll, 120);
-    };
-
-    try {
-      restoreScroll();
-    } catch {
-      mainPageScrollRestoredRef.current = true;
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, hasMoreStores, displayedStores.length, mainPageTab]);
+  }, [isOnline]);
 
   // Handle scroll to show/hide scroll to top button
   useEffect(() => {
@@ -631,7 +600,7 @@ const MainPage = () => {
       setShowScrollTop((prev) => (prev === nextVisible ? prev : nextVisible));
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -650,24 +619,24 @@ const MainPage = () => {
       if (rafId) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
-      const currentY = window.scrollY || 0;
-      const previousY = lastMainScrollYRef.current;
+        const currentY = window.scrollY || 0;
+        const previousY = lastMainScrollYRef.current;
 
-      if (currentY <= 0) {
-        setShowMainTabs((prev) => (prev ? prev : true));
-        lastMainScrollYRef.current = 0;
-        return;
-      }
+        if (currentY <= 0) {
+          setShowMainTabs((prev) => (prev ? prev : true));
+          lastMainScrollYRef.current = 0;
+          return;
+        }
 
-      if (Math.abs(currentY - previousY) < 4) return;
+        if (Math.abs(currentY - previousY) < 4) return;
 
-      if (currentY > previousY) {
-        setShowMainTabs((prev) => (prev ? false : prev));
-      } else {
-        setShowMainTabs((prev) => (prev ? prev : true));
-      }
+        if (currentY > previousY) {
+          setShowMainTabs((prev) => (prev ? false : prev));
+        } else {
+          setShowMainTabs((prev) => (prev ? prev : true));
+        }
 
-      lastMainScrollYRef.current = currentY;
+        lastMainScrollYRef.current = currentY;
       });
     };
 
@@ -1462,15 +1431,42 @@ const MainPage = () => {
   // first BrandShowcase block exist without depending on the infinite-scroll sentinel
   // (it often misses after route return / overlay / browser chrome). Reset rotating
   // showcase picks whenever the store list identity changes.
-  useEffect(() => {
+  useLayoutEffect(() => {
     randomShowcaseStoresRef.current = {};
     const chunk = storesPerPage;
     const initialMax = isMobile ? chunk * 2 : chunk;
-    const initialCount = Math.min(sortedFilteredStores.length, initialMax);
+    let initialCount = Math.min(sortedFilteredStores.length, initialMax);
+
+    // When returning online, pre-expand the first slice to match saved scroll depth so
+    // restoration does not race this effect resetting to 8–16 rows (fixes scroll restore).
+    if (isOnline) {
+      try {
+        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+        if (rawState) {
+          const parsed = JSON.parse(rawState);
+          const need = Number(parsed?.displayedCount);
+          const savedY = Number(parsed?.y);
+          if (
+            Number.isFinite(need) &&
+            need > 0 &&
+            Number.isFinite(savedY) &&
+            savedY > 0
+          ) {
+            initialCount = Math.min(
+              sortedFilteredStores.length,
+              Math.max(initialCount, need),
+            );
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     setDisplayedStores(sortedFilteredStores.slice(0, initialCount));
     setStoresPage(Math.max(1, Math.ceil(initialCount / chunk)));
     setHasMoreStores(initialCount < sortedFilteredStores.length);
-  }, [sortedFilteredStores, storesPerPage, isMobile]);
+  }, [sortedFilteredStores, storesPerPage, isMobile, isOnline]);
 
   const loadMoreStores = useCallback(() => {
     setStoresPage((prevPage) => {
@@ -1506,6 +1502,134 @@ const MainPage = () => {
     observer.observe(el);
     return () => observer.disconnect();
   }, [mainPageTab, hasMoreStores]);
+
+  // Runs after store pagination has applied (above) so displayedStores/hasMoreStores match list depth.
+  useLayoutEffect(() => {
+    if (loading || mainPageScrollRestoredRef.current) return;
+
+    // Use navigator.onLine so a brief useOnline flicker doesn't skip restore or cancel timers.
+    const onlineNow =
+      typeof navigator === "undefined" ? true : navigator.onLine;
+
+    // Offline: never restore a previous scroll offset — always start at the top.
+    if (!onlineNow) {
+      applyWindowScrollY(0);
+      mainPageScrollRestoredRef.current = true;
+      return;
+    }
+
+    let attempts = 0;
+    let cancelled = false;
+
+    const restoreScroll = () => {
+      if (cancelled) return;
+
+      let targetY = 0;
+      let targetDisplayedCount = 0;
+      try {
+        const rawState = sessionStorage.getItem(MAIN_PAGE_SCROLL_STATE_KEY);
+        if (rawState) {
+          const parsedState = JSON.parse(rawState);
+          const parsedY = Number(parsedState?.y);
+          const parsedDisplayedCount = Number(parsedState?.displayedCount);
+          if (Number.isFinite(parsedY) && parsedY > 0) {
+            targetY = parsedY;
+          }
+          if (
+            Number.isFinite(parsedDisplayedCount) &&
+            parsedDisplayedCount > 0
+          ) {
+            targetDisplayedCount = parsedDisplayedCount;
+          }
+        }
+
+        // Backward compatibility with old key (plain number).
+        if (targetY <= 0) {
+          const raw = sessionStorage.getItem(MAIN_PAGE_SCROLL_KEY);
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            targetY = parsed;
+          }
+        }
+      } catch {
+        targetY = 0;
+        targetDisplayedCount = 0;
+      }
+
+      // Tab is applied via getInitialMainPageTabFromSession on mount — do not setMainPageTab
+      // here (it was in the effect deps and cancelled pending restoreScroll timeouts).
+
+      const countReady =
+        targetDisplayedCount <= 0 ||
+        displayedStores.length >= targetDisplayedCount;
+      if (!countReady && hasMoreStores) {
+        loadMoreStoresRef.current?.();
+        attempts += 1;
+        if (attempts >= 40) {
+          mainPageScrollRestoredRef.current = true;
+          return;
+        }
+        window.setTimeout(restoreScroll, 120);
+        return;
+      }
+
+      if (targetY <= 0) {
+        mainPageScrollRestoredRef.current = true;
+        return;
+      }
+
+      const scrollHeight =
+        document.documentElement?.scrollHeight ||
+        document.body?.scrollHeight ||
+        0;
+      const viewportHeight = window.innerHeight || 0;
+      const maxReachableY = Math.max(0, scrollHeight - viewportHeight);
+      const pageTallEnough = maxReachableY >= targetY - 8;
+
+      // If the page is still too short to reach the old position, keep loading
+      // more store blocks before attempting the final restoration.
+      if (!pageTallEnough && hasMoreStores) {
+        loadMoreStoresRef.current?.();
+        attempts += 1;
+        if (attempts >= 40) {
+          mainPageScrollRestoredRef.current = true;
+          return;
+        }
+        window.setTimeout(restoreScroll, 120);
+        return;
+      }
+
+      applyWindowScrollY(targetY);
+      requestAnimationFrame(() => applyWindowScrollY(targetY));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => applyWindowScrollY(targetY)),
+      );
+      window.setTimeout(() => applyWindowScrollY(targetY), 0);
+      window.setTimeout(() => applyWindowScrollY(targetY), 80);
+      window.setTimeout(() => applyWindowScrollY(targetY), 250);
+
+      const currentY = window.scrollY || window.pageYOffset || 0;
+      const reached = Math.abs(currentY - targetY) <= 2;
+      attempts += 1;
+
+      if (reached || attempts >= 40 || (!hasMoreStores && !pageTallEnough)) {
+        mainPageScrollRestoredRef.current = true;
+        return;
+      }
+
+      window.setTimeout(restoreScroll, 120);
+    };
+
+    try {
+      restoreScroll();
+    } catch {
+      mainPageScrollRestoredRef.current = true;
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, hasMoreStores, displayedStores.length, stores.length]);
 
   const requestUserLocation = () => {
     if (!navigator?.geolocation) return;
@@ -1616,7 +1740,9 @@ const MainPage = () => {
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Skeleton variant="text" width="45%" height={24} />
                 <Skeleton variant="text" width="70%" height={18} />
-                <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
+                <Box
+                  sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}
+                >
                   <Skeleton
                     variant="rounded"
                     width={100}
@@ -3286,7 +3412,7 @@ const MainPage = () => {
       />
 
       {/* Scroll to Top Button */}
-      {showScrollTop && (
+      {/* {showScrollTop && (
         <Fab
           color="primary"
           aria-label="scroll to top"
@@ -3312,14 +3438,9 @@ const MainPage = () => {
         >
           <KeyboardArrowUpIcon sx={{ fontSize: { xs: "20px", sm: "24px" } }} />
         </Fab>
-      )}
+      )} */}
     </Box>
   );
 };
 
 export default MainPage;
-
-
-
-
-

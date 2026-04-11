@@ -8,7 +8,7 @@ import PrivacyTipIcon from "@mui/icons-material/PrivacyTip";
 
 const ltrCache = createCache({ key: "muiltr-policy", stylisPlugins: [] });
 
-const CONTACT_EMAIL = "zryanabdulsalam86@gmail.com";
+const CONTACT_EMAIL = "idashkan2026@gmail.com";
 
 const PrivacyPolicy = () => {
   const theme = useTheme();

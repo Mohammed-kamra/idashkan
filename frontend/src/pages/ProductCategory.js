@@ -11,7 +11,6 @@ import {
   CircularProgress,
   LinearProgress,
   Fade,
-  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -20,6 +19,7 @@ import {
   Avatar,
   IconButton,
   Skeleton,
+  Stack,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { productAPI, categoryAPI, storeTypeAPI } from "../services/api";
@@ -33,6 +33,8 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
@@ -51,9 +53,17 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import FullScreenImageModal from "../components/FullScreenImageModal";
 import { cityStringsMatch } from "../utils/cityMatch";
-import useCachedData from "../hooks/useCachedData";
+import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import OfflineCacheChip from "../components/OfflineCacheChip";
+
+const PRODUCT_CATEGORY_OFFLINE_DATASETS = [
+  "categories",
+  "products",
+  "store-types",
+];
+
+const EMPTY_OFFLINE_LIST = [];
 
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
@@ -83,6 +93,7 @@ const ProductCategory = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
+  /** null | "network" | "generic" */
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [productImageFullscreen, setProductImageFullscreen] = useState(null);
@@ -122,9 +133,12 @@ const ProductCategory = () => {
   /** categoryId -> { types, products } — avoids refetch / full reload when switching category */
   const categoryDataCacheRef = useRef(new Map());
   const isOnline = useOnlineStatus();
-  const { items: cachedCategories } = useCachedData("categories");
-  const { items: cachedProducts } = useCachedData("products");
-  const { items: cachedStoreTypes } = useCachedData("store-types");
+  const { itemsByDataset: offlineCache } = useCachedDatasets(
+    PRODUCT_CATEGORY_OFFLINE_DATASETS,
+  );
+  const cachedCategories = offlineCache.categories ?? EMPTY_OFFLINE_LIST;
+  const cachedProducts = offlineCache.products ?? EMPTY_OFFLINE_LIST;
+  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
   const showCacheChip =
     !isOnline && (filteredProducts.length > 0 || categories.length > 0);
 
@@ -287,6 +301,7 @@ const ProductCategory = () => {
 
     try {
       setLoading(true);
+      setError(null);
       let response;
       if (selectedStoreTypeId === "all") {
         response = await categoryAPI.getAll();
@@ -391,7 +406,12 @@ const ProductCategory = () => {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      setError("Failed to fetch categories");
+      const isNetwork =
+        !err?.response &&
+        (err?.message === "Network Error" ||
+          err?.code === "ERR_NETWORK" ||
+          err?.code === "ECONNABORTED");
+      setError(isNetwork ? "network" : "generic");
     } finally {
       setLoading(false);
     }
@@ -1884,10 +1904,97 @@ const ProductCategory = () => {
   }
 
   if (error) {
+    const isNetwork = error === "network";
     return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
+      <Box
+        sx={{
+          minHeight: { xs: "60vh", sm: "50vh" },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          px: 2,
+          py: 4,
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: 440,
+            width: "100%",
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor:
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.04)"
+                : "grey.50",
+          }}
+        >
+          {isNetwork ? (
+            <WifiOffRoundedIcon
+              sx={{
+                fontSize: 56,
+                color: "warning.main",
+                mb: 2,
+                opacity: 0.95,
+              }}
+            />
+          ) : (
+            <ErrorOutlineRoundedIcon
+              color="error"
+              sx={{ fontSize: 56, mb: 2, opacity: 0.9 }}
+            />
+          )}
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+            {isNetwork
+              ? t("No connection")
+              : t("Could not load categories")}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 3, lineHeight: 1.65 }}
+          >
+            {isNetwork
+              ? t(
+                  "You are offline or the network is unavailable. Connect to load categories, or open this page once while online so it can be cached for offline browsing.",
+                )
+              : t(
+                  "Something went wrong while loading categories. Please try again in a moment.",
+                )}
+          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            justifyContent="center"
+            alignItems="stretch"
+          >
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              onClick={() => {
+                setError(null);
+                fetchCategories();
+              }}
+              sx={{ borderRadius: 2, py: 1.25, fontWeight: 700 }}
+            >
+              {t("Try again")}
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              fullWidth
+              onClick={() => navigate("/")}
+              sx={{ borderRadius: 2, py: 1.25 }}
+            >
+              {t("Back to home")}
+            </Button>
+          </Stack>
+        </Paper>
+      </Box>
     );
   }
 

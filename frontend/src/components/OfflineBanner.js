@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Chip, Stack, Typography } from "@mui/material";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
 import useOnlineStatus from "../hooks/useOnlineStatus";
@@ -7,14 +7,21 @@ import useOfflineQueue from "../hooks/useOfflineQueue";
 export default function OfflineBanner() {
   const isOnline = useOnlineStatus();
   const queue = useOfflineQueue();
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (isOnline) setDismissed(false);
+  }, [isOnline]);
 
   if (isOnline && queue.pending === 0) return null;
+  if (dismissed) return null;
 
   return (
     <Alert
       severity={isOnline ? "info" : "warning"}
       variant="filled"
       icon={<WifiOffRoundedIcon />}
+      onClose={() => setDismissed(true)}
       sx={{
         borderRadius: 0,
         position: "sticky",

@@ -39,9 +39,13 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { cityStringsMatch } from "../utils/cityMatch";
 import { getAllLocalizedFieldValues } from "../utils/localize";
-import useCachedData from "../hooks/useCachedData";
+import { useCachedDatasets } from "../hooks/useCachedData";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import OfflineCacheChip from "../components/OfflineCacheChip";
+
+const STORE_LIST_OFFLINE_DATASETS = ["stores", "store-types", "ads"];
+
+const EMPTY_OFFLINE_LIST = [];
 
 function getID(id) {
   if (typeof id === "string") return id;
@@ -311,9 +315,12 @@ const StoreList = () => {
   const [selectedTypeId, setSelectedTypeId] = useState(storeTypeParam || "all");
   const [storeTypes, setStoreTypes] = useState([]);
   const isOnline = useOnlineStatus();
-  const { items: cachedStores } = useCachedData("stores");
-  const { items: cachedStoreTypes } = useCachedData("store-types");
-  const { items: cachedAds } = useCachedData("ads");
+  const { itemsByDataset: offlineCache } = useCachedDatasets(
+    STORE_LIST_OFFLINE_DATASETS,
+  );
+  const cachedStores = offlineCache.stores ?? EMPTY_OFFLINE_LIST;
+  const cachedStoreTypes = offlineCache["store-types"] ?? EMPTY_OFFLINE_LIST;
+  const cachedAds = offlineCache.ads ?? EMPTY_OFFLINE_LIST;
 
   useEffect(() => {
     setSelectedTypeId(storeTypeParam || "all");
