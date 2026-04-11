@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
   Box,
   Typography,
@@ -20,7 +20,7 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductCard from "./ProductCard";
 
-const StoreGroupSection = ({
+const StoreGroupSection = memo(function StoreGroupSection({
   store,
   products,
   onProductOpen,
@@ -33,7 +33,7 @@ const StoreGroupSection = ({
   likeLoading,
   formatPrice,
   productLayout = "row",
-}) => {
+}) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName, locAddress } = useLocalizedContent();
@@ -97,6 +97,12 @@ const StoreGroupSection = ({
           <Avatar
             src={store.logo ? resolveMediaUrl(store.logo) : undefined}
             alt={locName(store)}
+            slotProps={{
+              img: {
+                loading: "lazy",
+                decoding: "async",
+              },
+            }}
             sx={{
               width: { xs: 52, sm: 64 },
               height: { xs: 52, sm: 64 },
@@ -327,6 +333,6 @@ const StoreGroupSection = ({
       )}
     </Box>
   );
-};
+});
 
 export default StoreGroupSection;

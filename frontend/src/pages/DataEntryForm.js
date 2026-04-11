@@ -358,6 +358,8 @@ const DataEntryForm = () => {
     brandId: "",
     companyId: "",
     city: "Erbil",
+    whatsapp: "",
+    email: "",
     image: "",
     expireDate: "",
     active: true,
@@ -1372,12 +1374,23 @@ const DataEntryForm = () => {
         setMessage({ type: "error", text: t("Please enter a description.") });
         return;
       }
-      const hasStore = Boolean(jobForm.storeId);
-      const hasBrand = Boolean(jobForm.brandId);
-      if (hasStore === hasBrand) {
+      const hasStore = Boolean(
+        jobForm.storeId && String(jobForm.storeId).trim(),
+      );
+      const hasBrand = Boolean(
+        jobForm.brandId && String(jobForm.brandId).trim(),
+      );
+      const hasCompany = Boolean(
+        jobForm.companyId && String(jobForm.companyId).trim(),
+      );
+      const ownerCount = [hasStore, hasBrand, hasCompany].filter(Boolean)
+        .length;
+      if (ownerCount !== 1) {
         setMessage({
           type: "error",
-          text: t("Please select exactly one owner (Store or Brand)."),
+          text: t(
+            "Please select exactly one owner (Store, Brand, or Company).",
+          ),
         });
         return;
       }
@@ -1407,6 +1420,10 @@ const DataEntryForm = () => {
         jobForm.brandId && String(jobForm.brandId).trim()
           ? jobForm.brandId
           : null;
+      const cid =
+        jobForm.companyId && String(jobForm.companyId).trim()
+          ? jobForm.companyId
+          : null;
       const payload = {
         title: jobForm.title.trim(),
         titleEn: jobForm.titleEn?.trim() || "",
@@ -1420,6 +1437,9 @@ const DataEntryForm = () => {
         image: imageUrl || "",
         storeId: sid,
         brandId: bid,
+        companyId: cid,
+        whatsapp: (jobForm.whatsapp || "").trim(),
+        email: (jobForm.email || "").trim(),
         city: String(jobForm.city).trim(),
         expireDate: normalizeExpiryInputForApi(jobForm.expireDate) || undefined,
         active: jobForm.active !== false,
@@ -5863,6 +5883,8 @@ const DataEntryForm = () => {
                                       job?.brandId?._id || job?.brandId || "",
                                     companyId:
                                       job?.companyId?._id || job?.companyId || "",
+                                    whatsapp: job.whatsapp || "",
+                                    email: job.email || "",
                                     image: job.image || "",
                                     expireDate: job.expireDate
                                       ? toDatetimeLocalValue(job.expireDate)
@@ -8181,6 +8203,32 @@ const DataEntryForm = () => {
                       ))}
                     </Select>
                   </FormControl>
+                </Grid>
+
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Job WhatsApp")}
+                    placeholder={t(
+                      "WhatsApp number for applicants (with country code)",
+                    )}
+                    value={jobForm.whatsapp || ""}
+                    onChange={(e) =>
+                      setJobForm((p) => ({ ...p, whatsapp: e.target.value }))
+                    }
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    type="email"
+                    label={t("Job contact email")}
+                    placeholder="name@example.com"
+                    value={jobForm.email || ""}
+                    onChange={(e) =>
+                      setJobForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                  />
                 </Grid>
 
                 <Grid xs={12} sm={6}>

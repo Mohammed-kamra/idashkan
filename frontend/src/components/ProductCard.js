@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
   Box,
   Card,
@@ -22,7 +22,7 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
-const ProductCard = ({
+const ProductCard = memo(function ProductCard({
   product,
   onOpen,
   isLiked,
@@ -32,7 +32,7 @@ const ProductCard = ({
   storeName,
   compact = false,
   t,
-}) => {
+}) {
   const theme = useTheme();
   const { locName } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
@@ -109,6 +109,8 @@ const ProductCard = ({
             component="img"
             image={resolveMediaUrl(product.image)}
             alt={locName(product)}
+            loading="lazy"
+            decoding="async"
             sx={{
               width: "100%",
               height: "100%",
@@ -183,7 +185,7 @@ const ProductCard = ({
               width: 28,
               height: 28,
               bgcolor: "rgba(255,255,255,0.92)",
-              backdropFilter: "blur(8px)",
+              backdropFilter: "blur(4px)",
               color: isLiked ? "#ef4444" : "#9ca3af",
               boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
               transition: "all 0.2s ease",
@@ -306,6 +308,6 @@ const ProductCard = ({
       </CardContent>
     </Card>
   );
-};
+});
 
 export default ProductCard;

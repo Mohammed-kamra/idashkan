@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, Avatar, Paper, Button } from "@mui/material";
+import { Box, Typography, Avatar, Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -128,7 +128,10 @@ const BrandShowcase = ({ brands }) => {
           size="small"
           endIcon={
             <ArrowForwardIosIcon
-              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
+              sx={{
+                fontSize: "0.6rem !important",
+                transform: "rotate(180deg)",
+              }}
             />
           }
           sx={{
@@ -140,7 +143,9 @@ const BrandShowcase = ({ brands }) => {
             py: 0.5,
             borderRadius: 2,
             "&:hover": {
-              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(30,111,217,0.06)",
+              background: isDark
+                ? "rgba(255,255,255,0.06)"
+                : "rgba(30,111,217,0.06)",
             },
           }}
         >

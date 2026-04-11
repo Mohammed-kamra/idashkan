@@ -13,26 +13,13 @@ import {
   Box,
   IconButton,
   useTheme,
-  Select,
   MenuItem,
   Avatar,
-  Paper,
   Menu,
   ListItemIcon,
   ListItemText,
-  Divider,
-  ClickAwayListener,
   Badge,
   ListItemButton,
-  Switch,
-  FormControlLabel,
-  Snackbar,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
 } from "@mui/material";
 import {
   Home as HomeIcon,
@@ -40,25 +27,17 @@ import {
   Category as CategoryIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
   Dashboard as DashboardIcon,
-  Brightness4 as Brightness4Icon,
-  Brightness7 as Brightness7Icon,
   Store as StoreIcon,
-  Login as LoginIcon,
-  Logout as LogoutIcon,
   CardGiftcard as CardGiftcardIcon,
   Person as PersonIcon,
   Language as LanguageIcon,
   Favorite as FavoriteIcon,
   Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
   LocationOn as LocationOnIcon,
-  PrivacyTip as PrivacyTipIcon,
-  ContactSupport as ContactSupportIcon,
   Notifications as NotificationsIcon,
   Search as SearchIcon,
   People as PeopleIcon,
-  Block as BlockIcon,
   Refresh as RefreshIcon,
   VideoLibrary as VideoLibraryIcon,
   ShoppingBag as ShoppingBagIcon,
@@ -99,7 +78,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const { user, logout, deactivate } = useAuth();
   const { user: guestUser, updateGuestName } = useUserTracking();
   const { selectedCity, changeCity, cities } = useCityFilter();
-  const { openWhatsApp } = useAppSettings();
+
   const {
     notifications,
     unreadCount,
@@ -1203,81 +1182,87 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     {t("Admin")}
                   </Button>
                   {isFullAdmin && (
-                  <Menu
-                    anchorEl={adminAnchorEl}
-                    open={Boolean(adminAnchorEl)}
-                    onClose={handleAdminMenuClose}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                    transformOrigin={{ vertical: "top", horizontal: "center" }}
-                    PaperProps={{
-                      sx: {
-                        mt: 1.5,
-                        minWidth: 180,
-                        backgroundColor:
-                          theme.palette.mode === "dark"
-                            ? "var(--brand-primary-blue)"
-                            : "#fff",
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 2,
-                      },
-                    }}
-                  >
-                    <MenuItem
-                      component={Link}
-                      to="/admin"
-                      onClick={handleAdminMenuClose}
-                      selected={location.pathname === "/admin"}
+                    <Menu
+                      anchorEl={adminAnchorEl}
+                      open={Boolean(adminAnchorEl)}
+                      onClose={handleAdminMenuClose}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "center",
+                      }}
+                      transformOrigin={{
+                        vertical: "top",
+                        horizontal: "center",
+                      }}
+                      PaperProps={{
+                        sx: {
+                          mt: 1.5,
+                          minWidth: 180,
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "var(--brand-primary-blue)"
+                              : "#fff",
+                          border: `1px solid ${theme.palette.divider}`,
+                          borderRadius: 2,
+                        },
+                      }}
                     >
-                      <ListItemIcon>
-                        <AdminPanelSettingsIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={t("Data Entry")} />
-                    </MenuItem>
-                    <MenuItem
-                      component={Link}
-                      to="/admin/users"
-                      onClick={handleAdminMenuClose}
-                      selected={location.pathname === "/admin/users"}
-                    >
-                      <ListItemIcon>
-                        <PeopleIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={t("Users")} />
-                    </MenuItem>
-                    <MenuItem
-                      component={Link}
-                      to="/admin/translations"
-                      onClick={handleAdminMenuClose}
-                      selected={location.pathname === "/admin/translations"}
-                    >
-                      <ListItemIcon>
-                        <LanguageIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={t("translationPage.title")} />
-                    </MenuItem>
-                    <MenuItem
-                      component={Link}
-                      to="/admin/dashboard"
-                      onClick={handleAdminMenuClose}
-                      selected={location.pathname === "/admin/dashboard"}
-                    >
-                      <ListItemIcon>
-                        <DashboardIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={t("Admin Dashboard")} />
-                    </MenuItem>
-                    <MenuItem
-                      component={Link}
-                      to="/admin/customization"
-                      onClick={handleAdminMenuClose}
-                      selected={location.pathname === "/admin/customization"}
-                    >
-                      <ListItemIcon>
-                        <SettingsIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={t("Customization")} />
-                    </MenuItem>
-                  </Menu>
+                      <MenuItem
+                        component={Link}
+                        to="/admin"
+                        onClick={handleAdminMenuClose}
+                        selected={location.pathname === "/admin"}
+                      >
+                        <ListItemIcon>
+                          <AdminPanelSettingsIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={t("Data Entry")} />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/admin/users"
+                        onClick={handleAdminMenuClose}
+                        selected={location.pathname === "/admin/users"}
+                      >
+                        <ListItemIcon>
+                          <PeopleIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={t("Users")} />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/admin/translations"
+                        onClick={handleAdminMenuClose}
+                        selected={location.pathname === "/admin/translations"}
+                      >
+                        <ListItemIcon>
+                          <LanguageIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={t("translationPage.title")} />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/admin/dashboard"
+                        onClick={handleAdminMenuClose}
+                        selected={location.pathname === "/admin/dashboard"}
+                      >
+                        <ListItemIcon>
+                          <DashboardIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={t("Admin Dashboard")} />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/admin/customization"
+                        onClick={handleAdminMenuClose}
+                        selected={location.pathname === "/admin/customization"}
+                      >
+                        <ListItemIcon>
+                          <SettingsIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={t("Customization")} />
+                      </MenuItem>
+                    </Menu>
                   )}
                 </>
               )}

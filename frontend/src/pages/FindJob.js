@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   CardMedia,
@@ -19,7 +20,9 @@ import {
   useTheme,
 } from "@mui/material";
 import BusinessIcon from "@mui/icons-material/Business";
+import EmailIcon from "@mui/icons-material/Email";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +42,30 @@ import {
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useCityFilter } from "../context/CityFilterContext";
 import { cityStringsMatch } from "../utils/cityMatch";
+import { openWhatsAppLink } from "../utils/openWhatsAppLink";
+
+function jobWhatsAppDigits(raw) {
+  return String(raw ?? "").replace(/\D/g, "");
+}
+
+function buildJobWhatsAppApiUrl(digits) {
+  if (!digits || digits.length < 8) return "";
+  return `https://api.whatsapp.com/send?phone=${digits}`;
+}
+
+function buildJobMailtoUrl(emailRaw, titleLine) {
+  const email = String(emailRaw ?? "").trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "";
+  const subject = encodeURIComponent(
+    titleLine ? `Job: ${titleLine}` : "Job inquiry",
+  );
+  const body = encodeURIComponent(
+    titleLine
+      ? `Hello,\n\nI am interested in: ${titleLine}\n\n`
+      : "Hello,\n\nI am interested in this job posting.\n\n",
+  );
+  return `mailto:${email}?subject=${subject}&body=${body}`;
+}
 
 const FindJob = () => {
   const theme = useTheme();
@@ -140,18 +167,20 @@ const FindJob = () => {
   }, [publicJobs, selectedType]);
 
   const getOwner = (job) => {
+    if (job?.companyId?._id) return { type: "company", ...job.companyId };
     if (job?.brandId?._id) return { type: "brand", ...job.brandId };
     if (job?.storeId?._id) return { type: "store", ...job.storeId };
     return null;
   };
 
   const getOwnerName = (job) => locName(getOwner(job)) || "";
-  const getOwnerIcon = (job) =>
-    getOwner(job)?.type === "brand" ? (
-      <BusinessIcon sx={{ fontSize: "1rem" }} />
-    ) : (
-      <StorefrontIcon sx={{ fontSize: "1rem" }} />
-    );
+  const getOwnerIcon = (job) => {
+    const o = getOwner(job)?.type;
+    if (o === "brand" || o === "company") {
+      return <BusinessIcon sx={{ fontSize: "1rem" }} />;
+    }
+    return <StorefrontIcon sx={{ fontSize: "1rem" }} />;
+  };
 
   const genderLabel = (g) => {
     const v = String(g || "any").toLowerCase();
@@ -608,14 +637,18 @@ const FindJob = () => {
               </Box>
               {getOwnerName(selectedJob) && (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <StorefrontIcon
+                  <Box
                     sx={{
                       fontSize: "1rem",
                       color: isDark
                         ? "rgba(255,255,255,0.45)"
                         : "rgba(0,0,0,0.4)",
+                      display: "flex",
+                      alignItems: "center",
                     }}
-                  />
+                  >
+                    {getOwnerIcon(selectedJob)}
+                  </Box>
                   <Typography
                     sx={{
                       fontWeight: 700,
@@ -663,6 +696,77 @@ const FindJob = () => {
           >
             {locDescription(selectedJob) || "-"}
           </Typography>
+
+          {(() => {
+            const titleLine =
+              locTitle(selectedJob) ||
+              selectedJob?.title ||
+              "";
+            const waDigits = jobWhatsAppDigits(selectedJob?.whatsapp);
+            const waUrl = buildJobWhatsAppApiUrl(waDigits);
+            const mailHref = buildJobMailtoUrl(selectedJob?.email, titleLine);
+            if (!waUrl && !mailHref) return null;
+            return (
+              <Box sx={{ mt: 2.5 }}>
+                <Typography
+                  sx={{
+                    fontWeight: 800,
+                    mb: 1.25,
+                    fontSize: "0.9rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    color: isDark
+                      ? "rgba(255,255,255,0.5)"
+                      : "rgba(0,0,0,0.45)",
+                  }}
+                >
+                  {t("Contact about this job")}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
+                    gap: 1.25,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {waUrl && (
+                    <Button
+                      variant="contained"
+                      size="medium"
+                      startIcon={<WhatsAppIcon />}
+                      onClick={() => openWhatsAppLink(waUrl)}
+                      sx={{
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderRadius: 2.5,
+                        backgroundColor: "#25D366",
+                        "&:hover": { backgroundColor: "#1ebe57" },
+                      }}
+                    >
+                      {t("Apply via WhatsApp")}
+                    </Button>
+                  )}
+                  {mailHref && (
+                    <Button
+                      variant="outlined"
+                      size="medium"
+                      startIcon={<EmailIcon />}
+                      href={mailHref}
+                      component="a"
+                      sx={{
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderRadius: 2.5,
+                      }}
+                    >
+                      {t("Email about this job")}
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </Box>

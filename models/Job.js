@@ -28,6 +28,10 @@ const jobSchema = new mongoose.Schema(
     active: { type: Boolean, default: true },
     /** Where the role is offered; must match app city filter (canonical names from City CRUD). Empty = visible in every city (legacy). */
     city: { type: String, default: "", trim: true, maxlength: 80 },
+    /** E.164-style or local digits; shown on Find Job for wa.me link when set */
+    whatsapp: { type: String, default: "", trim: true, maxlength: 40 },
+    /** Contact email for applications; shown when set */
+    email: { type: String, default: "", trim: true, maxlength: 320 },
   },
   { timestamps: true }
 );

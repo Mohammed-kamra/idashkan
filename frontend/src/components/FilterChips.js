@@ -6,7 +6,6 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
-  Typography,
   alpha,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
@@ -16,9 +15,6 @@ import CategoryIcon from "@mui/icons-material/Category";
 import ClearIcon from "@mui/icons-material/Clear";
 import ViewStreamIcon from "@mui/icons-material/ViewStream";
 import GridViewIcon from "@mui/icons-material/GridView";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
@@ -33,12 +29,10 @@ const FilterChips = ({
   selectedCategory,
   onCategorySelect,
   sortByNewest,
-  sortByNarMe,
   sortByNearMe,
   onToggleNewest,
   onToggleNearMe,
   geoLoading,
-  onClearAll,
   productLayout = "row",
   onLayoutChange,
 }) => {
@@ -52,8 +46,8 @@ const FilterChips = ({
     (theme.palette.mode === "light" ? "#1565c0" : accent);
 
   const storeTypeScrollRef = useRef(null);
-  const [showScrollLeft, setShowScrollLeft] = useState(false);
-  const [showScrollRight, setShowScrollRight] = useState(false);
+      const [showScrollLeft, setShowScrollLeft] = useState(false);
+      const [showScrollRight, setShowScrollRight] = useState(false);
 
   const updateStoreTypeScrollHints = useCallback(() => {
     const el = storeTypeScrollRef.current;

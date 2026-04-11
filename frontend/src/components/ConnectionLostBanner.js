@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Stack, Typography, useTheme } from "@mui/material";
+import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
 import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { useTranslation } from "react-i18next";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 

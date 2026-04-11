@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Box, Typography } from "@mui/material";
 import WhatshotIcon from "@mui/icons-material/Whatshot";
 import { useTheme } from "@mui/material/styles";
@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import ProductCard from "./ProductCard";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
-const FlashDealsSection = ({
+const FlashDealsSection = memo(function FlashDealsSection({
   products,
   onProductOpen,
   likeStates,
@@ -16,7 +16,7 @@ const FlashDealsSection = ({
   formatPrice,
   storeById,
   getID,
-}) => {
+}) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
@@ -152,6 +152,6 @@ const FlashDealsSection = ({
       </Box>
     </Box>
   );
-};
+});
 
 export default FlashDealsSection;

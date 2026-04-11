@@ -1,6 +1,6 @@
 const Job = require("../models/Job");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
-const { storeJob, brandJob, storeTypeList } = require("../utils/refPopulate");
+const { storeJob, brandJob, companyJob, storeTypeList } = require("../utils/refPopulate");
 const { canAccessDataEntryApis } = require("../utils/roleAccess");
 
 // @desc    Get jobs (public)
@@ -39,6 +39,7 @@ const getJobs = async (req, res) => {
         populate: { path: "storeTypeId", select: storeTypeList },
       })
       .populate({ path: "brandId", select: brandJob })
+      .populate({ path: "companyId", select: companyJob })
       .lean();
 
     // storeType filter is applied only to store-owned jobs (brand jobs bypass)
@@ -88,6 +89,7 @@ const getJobsAdmin = async (req, res) => {
         populate: { path: "storeTypeId", select: storeTypeList },
       })
       .populate({ path: "brandId", select: brandJob })
+      .populate({ path: "companyId", select: companyJob })
       .lean();
 
     const filtered =
@@ -128,9 +130,18 @@ const createJob = async (req, res) => {
       image: req.body?.image || "",
       storeId: req.body?.storeId || null,
       brandId: req.body?.brandId || null,
+      companyId: req.body?.companyId || null,
       city:
         req.body?.city != null && String(req.body.city).trim() !== ""
           ? String(req.body.city).trim()
+          : "",
+      whatsapp:
+        req.body?.whatsapp != null && String(req.body.whatsapp).trim() !== ""
+          ? String(req.body.whatsapp).trim()
+          : "",
+      email:
+        req.body?.email != null && String(req.body.email).trim() !== ""
+          ? String(req.body.email).trim()
           : "",
       expireDate: req.body?.expireDate || null,
       active: req.body?.active !== undefined ? Boolean(req.body.active) : true,
@@ -142,6 +153,7 @@ const createJob = async (req, res) => {
         populate: { path: "storeTypeId", select: storeTypeList },
       })
       .populate({ path: "brandId", select: brandJob })
+      .populate({ path: "companyId", select: companyJob })
       .lean();
     res.json(populated);
   } catch (err) {
@@ -172,6 +184,8 @@ const updateJob = async (req, res) => {
       "gender",
       "image",
       "city",
+      "whatsapp",
+      "email",
       "expireDate",
       "active",
     ];
@@ -189,7 +203,11 @@ const updateJob = async (req, res) => {
     }
     // Owner fields must be updated together so switching Store ↔ Brand clears the other side.
     // Omitting storeId in JSON left the old storeId set when only brandId was sent.
-    if (req.body.storeId !== undefined || req.body.brandId !== undefined) {
+    if (
+      req.body.storeId !== undefined ||
+      req.body.brandId !== undefined ||
+      req.body.companyId !== undefined
+    ) {
       const storeId =
         req.body.storeId != null && String(req.body.storeId).trim() !== ""
           ? req.body.storeId
@@ -198,8 +216,13 @@ const updateJob = async (req, res) => {
         req.body.brandId != null && String(req.body.brandId).trim() !== ""
           ? req.body.brandId
           : null;
+      const companyId =
+        req.body.companyId != null && String(req.body.companyId).trim() !== ""
+          ? req.body.companyId
+          : null;
       job.storeId = storeId;
       job.brandId = brandId;
+      job.companyId = companyId;
     }
     await job.save();
     const populated = await Job.findById(job._id)
@@ -209,6 +232,7 @@ const updateJob = async (req, res) => {
         populate: { path: "storeTypeId", select: storeTypeList },
       })
       .populate({ path: "brandId", select: brandJob })
+      .populate({ path: "companyId", select: companyJob })
       .lean();
     res.json(populated);
   } catch (err) {

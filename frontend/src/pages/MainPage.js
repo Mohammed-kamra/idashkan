@@ -61,6 +61,7 @@ import BannerCarousel from "../components/BannerCarousel";
 import FilterChips from "../components/FilterChips";
 import StoreGroupSection from "../components/StoreGroupSection";
 import FlashDealsSection from "../components/FlashDealsSection";
+import { Virtuoso } from "react-virtuoso";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
@@ -123,25 +124,48 @@ const MainPage = () => {
   const isMobile = useIsMobileLayout();
   const navigate = useNavigate();
   const { locName, locDescription } = useLocalizedContent();
-  const [stores, setStores] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [, setProductsByStore] = useState({});
+  const { refreshKey } = useContentRefresh();
+  /** Same in-memory snapshot as useLayoutEffect hydrate — applied on first render so return navigation paints the feed + scroll restore immediately (no skeleton-at-top flash). */
+  const [mainPageBootstrapPayload] = useState(() =>
+    readMainPageCache(refreshKey),
+  );
+  const [stores, setStores] = useState(
+    () => mainPageBootstrapPayload?.stores ?? [],
+  );
+  const [allProducts, setAllProducts] = useState(
+    () => mainPageBootstrapPayload?.allProducts ?? [],
+  );
+  const [, setProductsByStore] = useState(
+    () => mainPageBootstrapPayload?.productsByStore ?? {},
+  );
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    () => mainPageBootstrapPayload == null,
+  );
   const [error, setError] = useState("");
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCategoryType, setSelectedCategoryType] = useState(null);
-  const [storeTypes, setStoreTypes] = useState([]);
+  const [storeTypes, setStoreTypes] = useState(
+    () => mainPageBootstrapPayload?.storeTypes ?? [],
+  );
   const [selectedStoreTypeId, setSelectedStoreTypeId] = useState("all");
   const [priceRange, setPriceRange] = useState([0, 1000000]);
   const [showOnlyDiscount, setShowOnlyDiscount] = useState(true); // Default to showing only discounted products
-  const [allCategories, setAllCategories] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [companies, setCompanies] = useState([]);
-  const [gifts, setGifts] = useState([]);
-  const [jobs, setJobs] = useState([]);
+  const [allCategories, setAllCategories] = useState(
+    () => mainPageBootstrapPayload?.allCategories ?? [],
+  );
+  const [brands, setBrands] = useState(
+    () => mainPageBootstrapPayload?.brands ?? [],
+  );
+  const [companies, setCompanies] = useState(
+    () => mainPageBootstrapPayload?.companies ?? [],
+  );
+  const [gifts, setGifts] = useState(
+    () => mainPageBootstrapPayload?.gifts ?? [],
+  );
+  const [jobs, setJobs] = useState(() => mainPageBootstrapPayload?.jobs ?? []);
 
   // Notification dialog state
   const [loginNotificationOpen, setLoginNotificationOpen] = useState(false);
@@ -188,13 +212,24 @@ const MainPage = () => {
 
   // City filter hook
   const { selectedCity } = useCityFilter();
-  const { refreshKey } = useContentRefresh();
 
   // State for tracking like counts locally
-  const [likeCounts, setLikeCounts] = useState({});
-  const [likeStates, setLikeStates] = useState({}); // Track like state per product
+  const [likeCounts, setLikeCounts] = useState(
+    () => mainPageBootstrapPayload?.likeCounts ?? {},
+  );
+  const [likeStates, setLikeStates] = useState(
+    () => mainPageBootstrapPayload?.likeStates ?? {},
+  ); // Track like state per product
+  const likeCountsRef = useRef({});
+  const likeStatesRef = useRef({});
+  likeCountsRef.current = likeCounts;
+  likeStatesRef.current = likeStates;
   const [likeLoading, setLikeLoading] = useState({}); // Track loading state per product
+  const likeLoadingRef = useRef({});
+  likeLoadingRef.current = likeLoading;
   const [followLoading, setFollowLoading] = useState({}); // Track follow state per store
+  const followLoadingRef = useRef({});
+  followLoadingRef.current = followLoading;
   const [mainPageTab, setMainPageTab] = useState(
     getInitialMainPageTabFromSession,
   ); // 0 = For You, 1 = Following
@@ -257,43 +292,56 @@ const MainPage = () => {
   }, [displayedStores.length]);
 
   // Handle like button click (works for both logged-in and guest/device users)
-  const handleLikeClick = async (productId, e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleLikeClick = useCallback(
+    async (productId, e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    if (likeLoading[productId]) {
-      return;
-    }
-
-    const currentLikeCount = likeCounts[productId] || 0;
-    const isCurrentlyLiked = likeStates[productId] || isProductLiked(productId);
-
-    setLikeLoading((prev) => ({ ...prev, [productId]: true }));
-
-    try {
-      if (isCurrentlyLiked) {
-        setLikeCounts((prev) => ({
-          ...prev,
-          [productId]: Math.max(0, currentLikeCount - 1),
-        }));
-        setLikeStates((prev) => ({
-          ...prev,
-          [productId]: false,
-        }));
-      } else {
-        setLikeCounts((prev) => ({
-          ...prev,
-          [productId]: currentLikeCount + 1,
-        }));
-        setLikeStates((prev) => ({
-          ...prev,
-          [productId]: true,
-        }));
+      if (likeLoadingRef.current[productId]) {
+        return;
       }
 
-      const result = await toggleLike(productId);
+      const currentLikeCount = likeCountsRef.current[productId] || 0;
+      const isCurrentlyLiked =
+        likeStatesRef.current[productId] || isProductLiked(productId);
 
-      if (!result.success) {
+      setLikeLoading((prev) => ({ ...prev, [productId]: true }));
+
+      try {
+        if (isCurrentlyLiked) {
+          setLikeCounts((prev) => ({
+            ...prev,
+            [productId]: Math.max(0, currentLikeCount - 1),
+          }));
+          setLikeStates((prev) => ({
+            ...prev,
+            [productId]: false,
+          }));
+        } else {
+          setLikeCounts((prev) => ({
+            ...prev,
+            [productId]: currentLikeCount + 1,
+          }));
+          setLikeStates((prev) => ({
+            ...prev,
+            [productId]: true,
+          }));
+        }
+
+        const result = await toggleLike(productId);
+
+        if (!result.success) {
+          setLikeCounts((prev) => ({
+            ...prev,
+            [productId]: currentLikeCount,
+          }));
+          setLikeStates((prev) => ({
+            ...prev,
+            [productId]: isCurrentlyLiked,
+          }));
+          alert(result.message || "Failed to update like");
+        }
+      } catch (error) {
         setLikeCounts((prev) => ({
           ...prev,
           [productId]: currentLikeCount,
@@ -302,54 +350,53 @@ const MainPage = () => {
           ...prev,
           [productId]: isCurrentlyLiked,
         }));
-        alert(result.message || "Failed to update like");
+        alert("Failed to update like");
+      } finally {
+        setLikeLoading((prev) => ({ ...prev, [productId]: false }));
       }
-    } catch (error) {
-      setLikeCounts((prev) => ({
-        ...prev,
-        [productId]: currentLikeCount,
-      }));
-      setLikeStates((prev) => ({
-        ...prev,
-        [productId]: isCurrentlyLiked,
-      }));
-      alert("Failed to update like");
-    } finally {
-      setLikeLoading((prev) => ({ ...prev, [productId]: false }));
-    }
-  };
+    },
+    [isProductLiked, toggleLike],
+  );
 
-  const handleFollowClick = async (storeId, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (followLoading[storeId]) return;
-    setFollowLoading((prev) => ({ ...prev, [storeId]: true }));
-    try {
-      const result = await toggleFollowStore(storeId);
-      if (!result.success) {
-        alert(result.message || "Failed to update follow");
-      } else if (mainPageTab === 1 && result.data && !result.data.isFollowed) {
-        setFollowedStores((prev) => prev.filter((s) => s._id !== storeId));
-        setProductsByFollowedStore((prev) => {
-          const next = { ...prev };
-          delete next[storeId];
-          return next;
-        });
+  const handleFollowClick = useCallback(
+    async (storeId, e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (followLoadingRef.current[storeId]) return;
+      setFollowLoading((prev) => ({ ...prev, [storeId]: true }));
+      try {
+        const result = await toggleFollowStore(storeId);
+        if (!result.success) {
+          alert(result.message || "Failed to update follow");
+        } else if (mainPageTab === 1 && result.data && !result.data.isFollowed) {
+          setFollowedStores((prev) => prev.filter((s) => s._id !== storeId));
+          setProductsByFollowedStore((prev) => {
+            const next = { ...prev };
+            delete next[storeId];
+            return next;
+          });
+        }
+      } finally {
+        setFollowLoading((prev) => ({ ...prev, [storeId]: false }));
       }
-    } finally {
-      setFollowLoading((prev) => ({ ...prev, [storeId]: false }));
-    }
-  };
+    },
+    [toggleFollowStore, mainPageTab],
+  );
 
-  const handleProductClick = (product) => {
-    setSelectedProduct(product);
-    setProductDialogOpen(true);
-    if (isAuthenticated) {
-      recordView(product._id);
-    }
-  };
+  const handleProductClick = useCallback(
+    (product) => {
+      setSelectedProduct(product);
+      setProductDialogOpen(true);
+      if (isAuthenticated) {
+        recordView(product._id);
+      }
+    },
+    [isAuthenticated, recordView],
+  );
 
-  const [bannerAds, setBannerAds] = useState([]);
+  const [bannerAds, setBannerAds] = useState(
+    () => mainPageBootstrapPayload?.bannerAds ?? [],
+  );
   const isOnline = useOnlineStatus();
 
   const bannerAdsWithImages = useMemo(
@@ -453,14 +500,16 @@ const MainPage = () => {
   useLayoutEffect(() => {
     const cached = readMainPageCache(refreshKey);
     if (cached) {
-      applyMainPagePayload(cached);
-      setLoading(false);
+      if (mainPageBootstrapPayload == null) {
+        applyMainPagePayload(cached);
+        setLoading(false);
+      }
       setError("");
       // Skip the follow-up silent refetch whenever we hydrate from memory: refetch rebuilds
       // the payload and would change non‑VIP order (shuffle is reload-only) or fight scroll restore.
       skipInitialSilentRefreshRef.current = true;
     }
-  }, [refreshKey, applyMainPagePayload]);
+  }, [refreshKey, applyMainPagePayload, mainPageBootstrapPayload]);
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
@@ -487,91 +536,77 @@ const MainPage = () => {
     }
   }, [selectedCity, fetchData]);
 
+  // Single window scroll handler: persist position, scroll-to-top FAB, mobile tab bar.
   useEffect(() => {
-    const saveScrollPosition = () => {
-      const y = window.scrollY || window.pageYOffset || 0;
-      lastKnownScrollYRef.current = y;
-      const now = Date.now();
-      const last = lastScrollPersistRef.current;
-      const yDelta = Math.abs(y - last.y);
-      // Throttle sessionStorage writes; frequent writes can cause scroll jank on mobile.
-      if (now - last.at < 250 && yDelta < 12) return;
-      lastScrollPersistRef.current = { y, at: now };
-      try {
-        sessionStorage.setItem(MAIN_PAGE_SCROLL_KEY, String(y));
-        sessionStorage.setItem(
-          MAIN_PAGE_SCROLL_STATE_KEY,
-          JSON.stringify({
-            y,
-            tab: mainPageTabRef.current,
-            displayedCount: displayedStoresCountRef.current,
-          }),
-        );
-      } catch {
-        // ignore
-      }
-    };
-
-    window.addEventListener("scroll", saveScrollPosition, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", saveScrollPosition);
-    };
-  }, []);
-
-  // Handle scroll to show/hide scroll to top button
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop =
-        window.pageYOffset || document.documentElement.scrollTop;
-      const nextVisible = scrollTop > 600;
-      setShowScrollTop((prev) => (prev === nextVisible ? prev : nextVisible));
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Mobile behavior for For You / Following tabs:
-  // hide on scroll down, show on scroll up.
-  useEffect(() => {
-    if (!isMobile) {
-      setShowMainTabs(true);
-      return undefined;
-    }
-
-    lastMainScrollYRef.current = window.scrollY || 0;
     let rafId = 0;
 
-    const handleMainTabsScroll = () => {
+    const onScroll = () => {
       if (rafId) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
-        const currentY = window.scrollY || 0;
-        const previousY = lastMainScrollYRef.current;
+        const y = window.scrollY || window.pageYOffset || 0;
+        lastKnownScrollYRef.current = y;
 
-        if (currentY <= 0) {
-          setShowMainTabs((prev) => (prev ? prev : true));
-          lastMainScrollYRef.current = 0;
-          return;
+        const now = Date.now();
+        const last = lastScrollPersistRef.current;
+        const yDelta = Math.abs(y - last.y);
+        if (now - last.at >= 250 || yDelta >= 12) {
+          lastScrollPersistRef.current = { y, at: now };
+          try {
+            sessionStorage.setItem(MAIN_PAGE_SCROLL_KEY, String(y));
+            sessionStorage.setItem(
+              MAIN_PAGE_SCROLL_STATE_KEY,
+              JSON.stringify({
+                y,
+                tab: mainPageTabRef.current,
+                displayedCount: displayedStoresCountRef.current,
+              }),
+            );
+          } catch {
+            // ignore
+          }
         }
 
-        if (Math.abs(currentY - previousY) < 4) return;
+        const scrollTop =
+          window.pageYOffset || document.documentElement.scrollTop;
+        const nextVisible = scrollTop > 600;
+        setShowScrollTop((prev) =>
+          prev === nextVisible ? prev : nextVisible,
+        );
 
-        if (currentY > previousY) {
-          setShowMainTabs((prev) => (prev ? false : prev));
-        } else {
-          setShowMainTabs((prev) => (prev ? prev : true));
+        if (isMobile) {
+          const currentY = y;
+          const previousY = lastMainScrollYRef.current;
+
+          if (currentY <= 0) {
+            setShowMainTabs((prev) => (prev ? prev : true));
+            lastMainScrollYRef.current = 0;
+            return;
+          }
+
+          if (Math.abs(currentY - previousY) < 4) return;
+
+          if (currentY > previousY) {
+            setShowMainTabs((prev) => (prev ? false : prev));
+          } else {
+            setShowMainTabs((prev) => (prev ? prev : true));
+          }
+
+          lastMainScrollYRef.current = currentY;
         }
-
-        lastMainScrollYRef.current = currentY;
       });
     };
 
-    window.addEventListener("scroll", handleMainTabsScroll, { passive: true });
+    lastMainScrollYRef.current = window.scrollY || 0;
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      window.removeEventListener("scroll", handleMainTabsScroll);
+      window.removeEventListener("scroll", onScroll);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile) setShowMainTabs(true);
   }, [isMobile]);
 
   // Scroll to top function
@@ -635,6 +670,14 @@ const MainPage = () => {
     fetchFollowed();
   }, [mainPageTab, getFollowedStores, user]);
 
+  const getID = useCallback((id) => {
+    if (typeof id === "string") return id;
+    if (id && typeof id === "object") {
+      return id.$oid || String(id._id) || String(id);
+    }
+    return id;
+  }, []);
+
   // Memoized list of categories based on the selected store type
   const filteredCategories = useMemo(() => {
     if (selectedStoreTypeId === "all") {
@@ -644,7 +687,7 @@ const MainPage = () => {
       (category) =>
         String(getID(category.storeTypeId)) === String(selectedStoreTypeId),
     );
-  }, [allCategories, selectedStoreTypeId]);
+  }, [allCategories, selectedStoreTypeId, getID]);
 
   // Memoized list of category types based on the selected category
   // const categoryTypes = useMemo(() => {
@@ -678,15 +721,6 @@ const MainPage = () => {
     setShowOnlyDiscount(true);
     setStoresPage(1);
   };
-
-  // Helper to safely get ID from string or object (use function declaration so it's hoisted)
-  function getID(id) {
-    if (typeof id === "string") return id;
-    if (id && typeof id === "object") {
-      return id.$oid || String(id._id) || String(id);
-    }
-    return id;
-  }
 
   const normalizeCity = (value) =>
     String(value || "")
@@ -813,6 +847,33 @@ const MainPage = () => {
     });
     return m;
   }, [stores]);
+
+  /** Related discounted products in same category — only computed while product dialog is open. */
+  const relatedDialogProducts = useMemo(() => {
+    if (!productDialogOpen || !selectedProduct?._id) return [];
+    const pid = selectedProduct._id;
+    const categoryId =
+      selectedProduct.categoryId?._id || selectedProduct.categoryId;
+    return allProducts.filter(
+      (p) =>
+        p._id !== pid &&
+        (p.categoryId?._id || p.categoryId) === categoryId &&
+        storeIdsInCity.has(getID(p.storeId)) &&
+        isExpiryStillValid(p.expireDate || null) !== false &&
+        isDiscountValid(p),
+    );
+  }, [
+    productDialogOpen,
+    selectedProduct,
+    allProducts,
+    storeIdsInCity,
+    getID,
+  ]);
+
+  const closeProductDialog = useCallback(() => {
+    setProductDialogOpen(false);
+    setSelectedProduct(null);
+  }, []);
 
   /**
    * Use parent store's store type first so it matches store-type chips (built from stores)
@@ -1091,6 +1152,18 @@ const MainPage = () => {
     locName,
   ]);
 
+  const productsByStoreId = useMemo(() => {
+    const map = new Map();
+    for (const p of filteredProducts) {
+      const sid = getID(p.storeId);
+      if (sid == null || sid === "") continue;
+      const key = String(sid);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    }
+    return map;
+  }, [filteredProducts, getID]);
+
   // 2. Memoize the final list of stores to display
   const finalFilteredStores = useMemo(() => {
     // Get unique store IDs from the already filtered products
@@ -1338,6 +1411,61 @@ const MainPage = () => {
     selectedCityCanonical,
   ]);
 
+  const mainFeedItems = useMemo(() => {
+    const items = [];
+    displayedStores.forEach((store, index) => {
+      items.push({
+        type: "store",
+        key: `s-${getID(store._id)}`,
+        store,
+      });
+      if ((index + 1) % 8 === 0) {
+        const blockIndex = (index + 1) / 8 - 1;
+        items.push({
+          type: "showcase",
+          key: `sh-${blockIndex}`,
+          blockIndex,
+        });
+      }
+    });
+    return items;
+  }, [displayedStores, getID]);
+
+  const renderRotatingShowcase = useCallback(
+    (blockIndex) => {
+      const variant = blockIndex % 4;
+      if (variant === 0) {
+        const offset = blockIndex * 8;
+        return <BrandShowcase brands={brands.slice(offset, offset + 8)} />;
+      }
+      if (variant === 1) {
+        const offset = blockIndex * 8;
+        return (
+          <CompanyShowcase companies={companies.slice(offset, offset + 8)} />
+        );
+      }
+      if (variant === 2) {
+        const prevList = randomShowcaseStoresRef.current[blockIndex];
+        const needFill =
+          sortedFilteredStores.length > 0 &&
+          (!Array.isArray(prevList) || prevList.length === 0);
+        if (needFill) {
+          const shuffled = [...sortedFilteredStores].sort(
+            () => Math.random() - 0.5,
+          );
+          randomShowcaseStoresRef.current[blockIndex] = shuffled.slice(0, 20);
+        }
+        return (
+          <StoreShowcase
+            stores={randomShowcaseStoresRef.current[blockIndex] ?? []}
+          />
+        );
+      }
+      return <GiftShowcase gifts={showcaseEligibleGifts} />;
+    },
+    [brands, companies, showcaseEligibleGifts, sortedFilteredStores],
+  );
+
   useEffect(() => {
     if (mainPageTab !== 1 || followLoadingTab) return undefined;
     if (filteredFollowedStoresWithProducts.length > 0) return undefined;
@@ -1432,7 +1560,12 @@ const MainPage = () => {
 
   // Runs after store pagination has applied (above) so displayedStores/hasMoreStores match list depth.
   useLayoutEffect(() => {
-    if (loading || mainPageScrollRestoredRef.current) return;
+    if (
+      (loading && stores.length === 0) ||
+      mainPageScrollRestoredRef.current
+    ) {
+      return;
+    }
 
     // Use navigator.onLine so a brief useOnline flicker doesn't skip restore or cancel timers.
     const onlineNow =
@@ -1556,7 +1689,12 @@ const MainPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [loading, hasMoreStores, displayedStores.length, stores.length]);
+  }, [
+    loading,
+    hasMoreStores,
+    displayedStores.length,
+    stores.length,
+  ]);
 
   const requestUserLocation = () => {
     if (!navigator?.geolocation) return;
@@ -1576,13 +1714,16 @@ const MainPage = () => {
     );
   };
 
-  const formatPrice = (price) => {
-    if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${price.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })} ${t("ID")}`;
-  };
+  const formatPrice = useCallback(
+    (price) => {
+      if (typeof price !== "number") return `${t("ID")} 0`;
+      return ` ${price.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })} ${t("ID")}`;
+    },
+    [t],
+  );
 
   const calculateDiscount = (previousPrice, newPrice) => {
     if (!previousPrice || !newPrice) return 0;
@@ -2368,71 +2509,29 @@ const MainPage = () => {
             {/* Find Job */}
             <FindJobShowcase jobs={showcaseEligibleJobs} />
 
-            {displayedStores.map((store, index) => {
-              const productsForCard = filteredProducts.filter(
-                (p) => getID(p.storeId) === getID(store._id),
-              );
-
-              // Every 8 store cards: Brand (8) ? Company (8) ? Store (random 20) ? Gift (last 5) (repeat).
-              const rotatingShowcase =
-                (index + 1) % 8 === 0
-                  ? (() => {
-                      const blockIndex = (index + 1) / 8 - 1;
-                      const variant = blockIndex % 4;
-
-                      if (variant === 0) {
-                        const offset = blockIndex * 8;
-                        return (
-                          <BrandShowcase
-                            brands={brands.slice(offset, offset + 8)}
-                          />
-                        );
-                      }
-
-                      if (variant === 1) {
-                        const offset = blockIndex * 8;
-                        return (
-                          <CompanyShowcase
-                            companies={companies.slice(offset, offset + 8)}
-                          />
-                        );
-                      }
-
-                      if (variant === 2) {
-                        const prevList =
-                          randomShowcaseStoresRef.current[blockIndex];
-                        const needFill =
-                          sortedFilteredStores.length > 0 &&
-                          (!Array.isArray(prevList) || prevList.length === 0);
-                        if (needFill) {
-                          const shuffled = [...sortedFilteredStores].sort(
-                            () => Math.random() - 0.5,
-                          );
-                          randomShowcaseStoresRef.current[blockIndex] =
-                            shuffled.slice(0, 20);
-                        }
-                        return (
-                          <StoreShowcase
-                            stores={
-                              randomShowcaseStoresRef.current[blockIndex] ?? []
-                            }
-                          />
-                        );
-                      }
-
-                      return <GiftShowcase gifts={showcaseEligibleGifts} />;
-                    })()
-                  : null;
-
-              return (
-                <React.Fragment key={store._id}>
+            <Virtuoso
+              useWindowScroll
+              increaseViewportBy={{ top: 600, bottom: 1000 }}
+              data={mainFeedItems}
+              computeItemKey={(_, item) => item.key}
+              itemContent={(_, item) => {
+                if (item.type === "showcase") {
+                  return (
+                    <Box sx={{ mb: 0 }}>
+                      {renderRotatingShowcase(item.blockIndex)}
+                    </Box>
+                  );
+                }
+                const productsForCard =
+                  productsByStoreId.get(String(getID(item.store._id))) ?? [];
+                return (
                   <StoreGroupSection
-                    store={store}
+                    store={item.store}
                     products={productsForCard}
                     onProductOpen={handleProductClick}
                     isStoreFollowed={isStoreFollowed}
                     onFollowClick={handleFollowClick}
-                    followLoading={followLoading[store._id]}
+                    followLoading={followLoading[item.store._id]}
                     likeStates={likeStates}
                     isProductLiked={isProductLiked}
                     onLikeClick={handleLikeClick}
@@ -2440,10 +2539,27 @@ const MainPage = () => {
                     formatPrice={formatPrice}
                     productLayout={productLayout}
                   />
-                  {rotatingShowcase}
-                </React.Fragment>
-              );
-            })}
+                );
+              }}
+              components={{
+                ...(hasMoreStores
+                  ? {
+                      Footer: () => (
+                        <Box
+                          ref={loadMoreSentinelRef}
+                          sx={{
+                            width: "100%",
+                            minHeight: 24,
+                            mt: 3,
+                            mb: 2,
+                          }}
+                          aria-hidden
+                        />
+                      ),
+                    }
+                  : {}),
+              }}
+            />
           </>
         ) : followLoadingTab ? (
           <Box display="flex" justifyContent="center" py={8}>
@@ -2477,10 +2593,13 @@ const MainPage = () => {
             </Alert>
           </>
         ) : (
-          filteredFollowedStoresWithProducts.map(
-            ({ store, products: storeProducts }) => (
+          <Virtuoso
+            useWindowScroll
+            increaseViewportBy={{ top: 500, bottom: 800 }}
+            data={filteredFollowedStoresWithProducts}
+            computeItemKey={(_, row) => String(row.store._id)}
+            itemContent={(_, { store, products: storeProducts }) => (
               <StoreGroupSection
-                key={store._id}
                 store={store}
                 products={storeProducts}
                 onProductOpen={handleProductClick}
@@ -2494,25 +2613,10 @@ const MainPage = () => {
                 formatPrice={formatPrice}
                 productLayout={productLayout}
               />
-            ),
-          )
+            )}
+          />
         )}
       </Box>
-
-      {/* --- */}
-      {mainPageTab === 0 && hasMoreStores && (
-        <Box
-          ref={loadMoreSentinelRef}
-          sx={{
-            width: "100%",
-            minHeight: 24,
-            mt: 3,
-            mb: 2,
-            flexShrink: 0,
-          }}
-          aria-hidden
-        />
-      )}
 
       {mainPageTab === 0 && finalFilteredStores.length === 0 && !loading && (
         <Alert
@@ -2534,10 +2638,11 @@ const MainPage = () => {
       {/* Product Detail Dialog */}
       <Dialog
         open={productDialogOpen}
-        onClose={() => setProductDialogOpen(false)}
+        onClose={closeProductDialog}
         maxWidth="sm"
         fullWidth
         fullScreen={isMobile}
+        TransitionProps={{ timeout: { enter: 180, exit: 140 } }}
         PaperProps={{
           sx: {
             borderRadius: isMobile ? 0 : 4,
@@ -2560,7 +2665,7 @@ const MainPage = () => {
         >
           <IconButton
             size="small"
-            onClick={() => setProductDialogOpen(false)}
+            onClick={closeProductDialog}
             sx={{
               mr: 1.5,
               backgroundColor:
@@ -2593,21 +2698,9 @@ const MainPage = () => {
               );
               const hasDiscount = isDiscountValid(selectedProduct);
               const discountLabel =
-                discountPct !== null ? `-${discountPct}%` : t("Discount");
+                discountPct > 0 ? `-${discountPct}%` : t("Discount");
               const ownerBrandOrCompany =
                 selectedProduct.companyId || selectedProduct.brandId;
-
-              // related discounted products from same category
-              const categoryId =
-                selectedProduct.categoryId?._id || selectedProduct.categoryId;
-              const related = allProducts.filter(
-                (p) =>
-                  p._id !== pid &&
-                  (p.categoryId?._id || p.categoryId) === categoryId &&
-                  storeIdsInCity.has(getID(p.storeId)) &&
-                  isExpiryStillValid(p.expireDate || null) !== false &&
-                  isDiscountValid(p),
-              );
 
               return (
                 <Box>
@@ -2635,6 +2728,8 @@ const MainPage = () => {
                         component="img"
                         image={resolveMediaUrl(selectedProduct.image)}
                         alt={locName(selectedProduct)}
+                        decoding="async"
+                        fetchPriority="high"
                         sx={{
                           maxHeight: 260,
                           objectFit: "contain",
@@ -2702,7 +2797,7 @@ const MainPage = () => {
                           label={locName(ownerBrandOrCompany)}
                           size="small"
                           onClick={() => {
-                            setProductDialogOpen(false);
+                            closeProductDialog();
                             navigate(
                               selectedProduct.companyId
                                 ? `/companies/${ownerBrandOrCompany._id}`
@@ -2732,7 +2827,7 @@ const MainPage = () => {
                             label={locName(selectedProduct.storeId)}
                             size="small"
                             onClick={() => {
-                              setProductDialogOpen(false);
+                              closeProductDialog();
                               navigate(
                                 `/stores/${selectedProduct.storeId._id}`,
                               );
@@ -2772,7 +2867,7 @@ const MainPage = () => {
                                 selectedProduct.categoryId,
                             ),
                           }}
-                          onClick={() => setProductDialogOpen(false)}
+                          onClick={closeProductDialog}
                           sx={{
                             borderRadius: 99,
                             fontWeight: 600,
@@ -3106,8 +3201,8 @@ const MainPage = () => {
                       )}
                     </Box>
 
-                    {/* Related products from same store */}
-                    {related.length > 0 && (
+                    {/* Related products from same category */}
+                    {relatedDialogProducts.length > 0 && (
                       <Box sx={{ mt: 0.5 }}>
                         <Box
                           sx={{
@@ -3135,7 +3230,7 @@ const MainPage = () => {
                               fontWeight: 600,
                             }}
                           >
-                            {related.length}
+                            {relatedDialogProducts.length}
                           </Typography>
                         </Box>
 
@@ -3151,14 +3246,14 @@ const MainPage = () => {
                             scrollbarWidth: "none",
                           }}
                         >
-                          {related.map((rel) => {
+                          {relatedDialogProducts.map((rel) => {
                             const relDiscount = calculateDiscount(
                               rel.previousPrice,
                               rel.newPrice,
                             );
                             const relHasDiscount = isDiscountValid(rel);
                             const relDiscountLabel =
-                              relDiscount !== null
+                              relDiscount > 0
                                 ? `-${relDiscount}%`
                                 : t("Discount");
                             return (

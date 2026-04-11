@@ -2343,7 +2343,7 @@ const StoreProfile = () => {
               );
               const hasDiscount = isDiscountValid(selectedProduct);
               const discountLabel =
-                discountPct !== null ? `-${discountPct}%` : t("Discount");
+                discountPct > 0 ? `-${discountPct}%` : t("Discount");
 
               const categoryId =
                 selectedProduct.categoryId?._id || selectedProduct.categoryId;
@@ -2626,7 +2626,8 @@ const StoreProfile = () => {
                           {related.map((rel) => {
                             const relDiscount = calculateDiscount(rel.previousPrice, rel.newPrice);
                             const relHasDiscount = isDiscountValid(rel);
-                            const relDiscountLabel = relDiscount !== null ? `-${relDiscount}%` : t("Discount");
+                            const relDiscountLabel =
+                              relDiscount > 0 ? `-${relDiscount}%` : t("Discount");
                             return (
                               <Box
                                 key={rel._id}
