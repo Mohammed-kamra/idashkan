@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Box,
   Typography,
@@ -36,7 +42,12 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import FullScreenImageModal from "./FullScreenImageModal";
+import BrandShowcase from "./BrandShowcase";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import { brandAPI } from "../services/api";
+
+/** Stable default when parent does not pass {@link storeCityById}. */
+const EMPTY_STORE_CITY_MAP = Object.freeze({});
 
 /**
  * Same product quick-view pattern as MainPage / BrandProfile / StoreProfile.
@@ -47,6 +58,7 @@ import { formatPriceDigits } from "../utils/formatPriceNumber";
  * @param {object | null} props.product
  * @param {object[]} [props.candidateProducts] — pool used to build “related” (e.g. search results).
  * @param {(p: object) => void} [props.onProductChange] — when user picks a related product.
+ * @param {Record<string, string>} [props.storeCityById] — map of store id → city string when `product.storeId` is not populated (aligns with MainPage `storeCityById`).
  */
 const ProductDetailDialog = ({
   open,
@@ -54,7 +66,22 @@ const ProductDetailDialog = ({
   product,
   candidateProducts = [],
   onProductChange,
+  storeCityById: storeCityByIdProp,
 }) => {
+  /** Cities from populated store refs in the candidate pool, merged with parent map (e.g. MainPage stores list). */
+  const mergedStoreCityById = useMemo(() => {
+    const fromCandidates = {};
+    for (const p of candidateProducts) {
+      const sid = p?.storeId?._id ?? p?.storeId;
+      if (sid == null) continue;
+      const city = p?.storeId?.storecity || p?.storeId?.city || "";
+      if (city) fromCandidates[String(sid)] = city;
+    }
+    return {
+      ...fromCandidates,
+      ...(storeCityByIdProp || EMPTY_STORE_CITY_MAP),
+    };
+  }, [candidateProducts, storeCityByIdProp]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { t } = useTranslation();
@@ -71,23 +98,38 @@ const ProductDetailDialog = ({
 
   const lastRecordedId = useRef(null);
 
+  const getProductCityString = useCallback(
+    (p) => {
+      const fromPopulated =
+        p?.storeId?.storecity || p?.storeId?.city || "";
+      if (fromPopulated) return fromPopulated;
+      const sid = p?.storeId?._id ?? p?.storeId;
+      if (sid != null) {
+        const fromMap = mergedStoreCityById[String(sid)];
+        if (fromMap) return fromMap;
+      }
+      return p?.storecity || p?.city || "";
+    },
+    [mergedStoreCityById],
+  );
+
   const productMatchesSelectedCity = useCallback(
-    (p) =>
-      cityStringsMatch(
-        selectedCity,
-        p?.storeId?.storecity || p?.storeId?.city || "",
-      ),
-    [selectedCity],
+    (p) => cityStringsMatch(selectedCity, getProductCityString(p)),
+    [selectedCity, getProductCityString],
   );
 
   const calculateDiscount = (previousPrice, newPrice) => {
-    if (!previousPrice || !newPrice || previousPrice <= newPrice) return 0;
-    return Math.round(((previousPrice - newPrice) / previousPrice) * 100);
+    const prev = Number(previousPrice);
+    const next = Number(newPrice);
+    if (!Number.isFinite(prev) || !Number.isFinite(next) || prev <= next)
+      return 0;
+    return Math.round(((prev - next) / prev) * 100);
   };
 
   const formatPrice = (price) => {
-    if (typeof price !== "number") return `${t("ID")} 0`;
-    return ` ${formatPriceDigits(price)} ${t("ID")}`;
+    const n = typeof price === "number" ? price : parseFloat(price);
+    if (!Number.isFinite(n)) return `${t("ID")} 0`;
+    return ` ${formatPriceDigits(n)} ${t("ID")}`;
   };
 
   const isDiscountValid = (p) => {
@@ -95,6 +137,96 @@ const ProductDetailDialog = ({
     if (!p.expireDate) return true;
     return isExpiryStillValid(p.expireDate);
   };
+
+  const MAX_RELATED_CATEGORY = 10;
+  const MAX_RELATED_ORG = 10;
+  const MAX_RELATED_TOTAL = 20;
+
+  const related = useMemo(() => {
+    if (!product?._id) return [];
+    const pid = product._id;
+    const categoryId = product.categoryId?._id || product.categoryId;
+    const storeId = product.storeId?._id || product.storeId;
+    const brandId = product.brandId?._id || product.brandId;
+    const companyId = product.companyId?._id || product.companyId;
+    const hasCategory =
+      categoryId != null && String(categoryId).trim() !== "";
+
+    const baseRelatedPredicate = (p) =>
+      p._id !== pid &&
+      productMatchesSelectedCity(p) &&
+      isExpiryStillValid(p.expireDate || null) !== false &&
+      isDiscountValid(p);
+
+    const matchesStoreBrandOrCompany = (p) => {
+      if (
+        storeId != null &&
+        String(storeId).trim() !== "" &&
+        String(p.storeId?._id || p.storeId) === String(storeId)
+      ) {
+        return true;
+      }
+      if (
+        brandId != null &&
+        String(brandId).trim() !== "" &&
+        String(p.brandId?._id || p.brandId) === String(brandId)
+      ) {
+        return true;
+      }
+      if (
+        companyId != null &&
+        String(companyId).trim() !== "" &&
+        String(p.companyId?._id || p.companyId) === String(companyId)
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    const relatedByCategory = hasCategory
+      ? candidateProducts
+          .filter(
+            (p) =>
+              baseRelatedPredicate(p) &&
+              String(p.categoryId?._id || p.categoryId) === String(categoryId),
+          )
+          .slice(0, MAX_RELATED_CATEGORY)
+      : [];
+
+    const seenIds = new Set(relatedByCategory.map((p) => String(p._id)));
+
+    const relatedByOrg = candidateProducts
+      .filter(
+        (p) =>
+          baseRelatedPredicate(p) &&
+          matchesStoreBrandOrCompany(p) &&
+          !seenIds.has(String(p._id)),
+      )
+      .slice(0, MAX_RELATED_ORG);
+
+    return [...relatedByCategory, ...relatedByOrg].slice(0, MAX_RELATED_TOTAL);
+  }, [product, candidateProducts, productMatchesSelectedCity]);
+
+  const [fallbackBrands, setFallbackBrands] = useState([]);
+
+  useEffect(() => {
+    if (!open || !product?._id || related.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await brandAPI.getAll();
+        if (!cancelled) {
+          const data = res?.data;
+          setFallbackBrands(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) setFallbackBrands([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, product?._id, related.length]);
 
   useEffect(() => {
     if (open && product?._id && isAuthenticated) {
@@ -218,18 +350,7 @@ const ProductDetailDialog = ({
               );
               const hasDiscount = isDiscountValid(product);
               const discountLabel =
-                discountPct !== null ? `-${discountPct}%` : t("Discount");
-
-              const categoryId =
-                product.categoryId?._id || product.categoryId;
-              const related = candidateProducts.filter(
-                (p) =>
-                  p._id !== pid &&
-                  productMatchesSelectedCity(p) &&
-                  (p.categoryId?._id || p.categoryId) === categoryId &&
-                  isExpiryStillValid(p.expireDate || null) !== false &&
-                  isDiscountValid(p),
-              );
+                discountPct > 0 ? `-${discountPct}%` : t("Discount");
 
               return (
                 <Box>
@@ -706,7 +827,7 @@ const ProductDetailDialog = ({
                       )}
                     </Box>
 
-                    {related.length > 0 && (
+                    {related.length > 0 ? (
                       <Box sx={{ mt: 0.5 }}>
                         <Box
                           sx={{
@@ -734,7 +855,7 @@ const ProductDetailDialog = ({
                               fontWeight: 600,
                             }}
                           >
-                            {related.length}
+                            {Math.min(related.length, MAX_RELATED_TOTAL)}
                           </Typography>
                         </Box>
                         <Box
@@ -756,7 +877,7 @@ const ProductDetailDialog = ({
                             );
                             const relHasDiscount = isDiscountValid(rel);
                             const relDiscountLabel =
-                              relDiscount !== null
+                              relDiscount > 0
                                 ? `-${relDiscount}%`
                                 : t("Discount");
                             return (
@@ -870,6 +991,18 @@ const ProductDetailDialog = ({
                             );
                           })}
                         </Box>
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          mt: 0.5,
+                          mx: -2.5,
+                          px: 1.5,
+                          maxWidth: "100%",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <BrandShowcase brands={fallbackBrands} />
                       </Box>
                     )}
                   </Box>

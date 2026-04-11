@@ -7,7 +7,6 @@ import React, {
   useCallback,
 } from "react";
 import {
-  CardMedia,
   Typography,
   Button,
   Box,
@@ -15,7 +14,6 @@ import {
   Alert,
   TextField,
   InputAdornment,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,7 +23,6 @@ import {
   Tab,
   Skeleton,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import { Link, useNavigate } from "react-router-dom";
 import {
   storeAPI,
@@ -52,11 +49,11 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import Loader from "../components/Loader";
 import BrandShowcase from "../components/BrandShowcase";
+import ProductDetailDialog from "../components/ProductDetailDialog";
 import CompanyShowcase from "../components/CompanyShowcase";
 import StoreShowcase from "../components/StoreShowcase";
 import GiftShowcase from "../components/GiftShowcase";
 import FindJobShowcase from "../components/FindJobShowcase";
-import FullScreenImageModal from "../components/FullScreenImageModal";
 import BannerCarousel from "../components/BannerCarousel";
 import FilterChips from "../components/FilterChips";
 import StoreGroupSection from "../components/StoreGroupSection";
@@ -173,7 +170,6 @@ const MainPage = () => {
   const [loginNotificationReason] = useState("like");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [productImageFullscreen, setProductImageFullscreen] = useState(null);
 
   // Filter toggle state for mobile
   const [filtersOpen] = useState(false);
@@ -369,7 +365,11 @@ const MainPage = () => {
         const result = await toggleFollowStore(storeId);
         if (!result.success) {
           alert(result.message || "Failed to update follow");
-        } else if (mainPageTab === 1 && result.data && !result.data.isFollowed) {
+        } else if (
+          mainPageTab === 1 &&
+          result.data &&
+          !result.data.isFollowed
+        ) {
           setFollowedStores((prev) => prev.filter((s) => s._id !== storeId));
           setProductsByFollowedStore((prev) => {
             const next = { ...prev };
@@ -571,9 +571,7 @@ const MainPage = () => {
         const scrollTop =
           window.pageYOffset || document.documentElement.scrollTop;
         const nextVisible = scrollTop > 600;
-        setShowScrollTop((prev) =>
-          prev === nextVisible ? prev : nextVisible,
-        );
+        setShowScrollTop((prev) => (prev === nextVisible ? prev : nextVisible));
 
         if (isMobile) {
           const currentY = y;
@@ -848,28 +846,6 @@ const MainPage = () => {
     });
     return m;
   }, [stores]);
-
-  /** Related discounted products in same category — only computed while product dialog is open. */
-  const relatedDialogProducts = useMemo(() => {
-    if (!productDialogOpen || !selectedProduct?._id) return [];
-    const pid = selectedProduct._id;
-    const categoryId =
-      selectedProduct.categoryId?._id || selectedProduct.categoryId;
-    return allProducts.filter(
-      (p) =>
-        p._id !== pid &&
-        (p.categoryId?._id || p.categoryId) === categoryId &&
-        storeIdsInCity.has(getID(p.storeId)) &&
-        isExpiryStillValid(p.expireDate || null) !== false &&
-        isDiscountValid(p),
-    );
-  }, [
-    productDialogOpen,
-    selectedProduct,
-    allProducts,
-    storeIdsInCity,
-    getID,
-  ]);
 
   const closeProductDialog = useCallback(() => {
     setProductDialogOpen(false);
@@ -1255,7 +1231,8 @@ const MainPage = () => {
   const storeCityById = useMemo(() => {
     const map = {};
     stores.forEach((store) => {
-      map[String(getID(store?._id))] = store?.storecity || "";
+      map[String(getID(store?._id))] =
+        store?.storecity || store?.city || "";
     });
     return map;
   }, [stores]);
@@ -1561,10 +1538,7 @@ const MainPage = () => {
 
   // Runs after store pagination has applied (above) so displayedStores/hasMoreStores match list depth.
   useLayoutEffect(() => {
-    if (
-      (loading && stores.length === 0) ||
-      mainPageScrollRestoredRef.current
-    ) {
+    if ((loading && stores.length === 0) || mainPageScrollRestoredRef.current) {
       return;
     }
 
@@ -1690,12 +1664,7 @@ const MainPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [
-    loading,
-    hasMoreStores,
-    displayedStores.length,
-    stores.length,
-  ]);
+  }, [loading, hasMoreStores, displayedStores.length, stores.length]);
 
   const requestUserLocation = () => {
     if (!navigator?.geolocation) return;
@@ -1722,11 +1691,6 @@ const MainPage = () => {
     },
     [t],
   );
-
-  const calculateDiscount = (previousPrice, newPrice) => {
-    if (!previousPrice || !newPrice) return 0;
-    return Math.round(((previousPrice - newPrice) / previousPrice) * 100);
-  };
 
   if (loading)
     return (
@@ -2634,741 +2598,14 @@ const MainPage = () => {
       )}
 
       {/* Product Detail Dialog */}
-      <Dialog
+      <ProductDetailDialog
         open={productDialogOpen}
         onClose={closeProductDialog}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-        TransitionProps={{ timeout: { enter: 180, exit: 140 } }}
-        PaperProps={{
-          sx: {
-            borderRadius: isMobile ? 0 : 4,
-            overflow: "hidden",
-            backgroundColor:
-              theme.palette.mode === "dark" ? "rgba(22,28,44,1)" : "#fff",
-            backgroundImage: "none",
-          },
-        }}
-      >
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: 2,
-            py: 1.5,
-            borderBottom: `1px solid ${theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-          }}
-        >
-          <IconButton
-            size="small"
-            onClick={closeProductDialog}
-            sx={{
-              mr: 1.5,
-              backgroundColor:
-                theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.07)"
-                  : "rgba(0,0,0,0.05)",
-              borderRadius: 2,
-            }}
-          >
-            <CloseIcon sx={{ fontSize: "1.1rem" }} />
-          </IconButton>
-          <Typography sx={{ fontWeight: 700, fontSize: "1rem", flex: 1 }}>
-            {t("Product Details")}
-          </Typography>
-        </Box>
-
-        <DialogContent sx={{ p: 0, overflowX: "hidden" }}>
-          {selectedProduct &&
-            (() => {
-              const isDark = theme.palette.mode === "dark";
-              const pid = selectedProduct._id;
-              const liked = likeStates[pid] ?? isProductLiked(pid);
-              const likeCount =
-                likeCounts[pid] ?? selectedProduct.likeCount ?? 0;
-              const viewCount = selectedProduct.viewCount ?? 0;
-              const isLikeLoading = likeLoading[pid];
-              const discountPct = calculateDiscount(
-                selectedProduct.previousPrice,
-                selectedProduct.newPrice,
-              );
-              const hasDiscount = isDiscountValid(selectedProduct);
-              const discountLabel =
-                discountPct > 0 ? `-${discountPct}%` : t("Discount");
-              const ownerBrandOrCompany =
-                selectedProduct.companyId || selectedProduct.brandId;
-
-              return (
-                <Box>
-                  {/* Image */}
-                  {selectedProduct.image ? (
-                    <Box
-                      sx={{
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.04)"
-                          : "rgba(0,0,0,0.03)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minHeight: 220,
-                        cursor: "pointer",
-                      }}
-                      onClick={() =>
-                        setProductImageFullscreen({
-                          url: resolveMediaUrl(selectedProduct.image),
-                          alt: locName(selectedProduct),
-                        })
-                      }
-                    >
-                      <CardMedia
-                        component="img"
-                        image={resolveMediaUrl(selectedProduct.image)}
-                        alt={locName(selectedProduct)}
-                        decoding="async"
-                        fetchPriority="high"
-                        sx={{
-                          maxHeight: 260,
-                          objectFit: "contain",
-                          width: "100%",
-                        }}
-                      />
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        height: 180,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.04)"
-                          : "rgba(0,0,0,0.03)",
-                      }}
-                    >
-                      <ShoppingCartIcon sx={{ fontSize: 64, opacity: 0.2 }} />
-                    </Box>
-                  )}
-
-                  {/* Details */}
-                  <Box
-                    sx={{
-                      px: 2.5,
-                      py: 2,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1.25,
-                    }}
-                  >
-                    {/* Title */}
-                    <Typography
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: "1.15rem",
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {locName(selectedProduct)}
-                    </Typography>
-
-                    {/* Description */}
-                    {locDescription(selectedProduct) && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ lineHeight: 1.55 }}
-                      >
-                        {locDescription(selectedProduct)}
-                      </Typography>
-                    )}
-
-                    {/* Brand / Store / Category chips */}
-                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                      {ownerBrandOrCompany && locName(ownerBrandOrCompany) && (
-                        <Chip
-                          icon={
-                            <BusinessIcon
-                              sx={{ fontSize: "0.9rem !important" }}
-                            />
-                          }
-                          label={locName(ownerBrandOrCompany)}
-                          size="small"
-                          onClick={() => {
-                            closeProductDialog();
-                            navigate(
-                              selectedProduct.companyId
-                                ? `/companies/${ownerBrandOrCompany._id}`
-                                : `/brands/${ownerBrandOrCompany._id}`,
-                            );
-                          }}
-                          sx={{
-                            borderRadius: 99,
-                            fontWeight: 600,
-                            fontSize: "0.72rem",
-                            cursor: "pointer",
-                            backgroundColor: isDark
-                              ? "rgba(255,255,255,0.08)"
-                              : "rgba(30,111,217,0.08)",
-                            color: "var(--color-primary,#1E6FD9)",
-                          }}
-                        />
-                      )}
-                      {selectedProduct.storeId &&
-                        locName(selectedProduct.storeId) && (
-                          <Chip
-                            icon={
-                              <StorefrontIcon
-                                sx={{ fontSize: "0.9rem !important" }}
-                              />
-                            }
-                            label={locName(selectedProduct.storeId)}
-                            size="small"
-                            onClick={() => {
-                              closeProductDialog();
-                              navigate(
-                                `/stores/${selectedProduct.storeId._id}`,
-                              );
-                            }}
-                            sx={{
-                              borderRadius: 99,
-                              fontWeight: 600,
-                              fontSize: "0.72rem",
-                              cursor: "pointer",
-                              backgroundColor: isDark
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(30,111,217,0.08)",
-                              color: "var(--color-primary,#1E6FD9)",
-                            }}
-                          />
-                        )}
-                      {selectedProduct.categoryId && (
-                        <Chip
-                          icon={
-                            <CategoryIcon
-                              sx={{ fontSize: "0.9rem !important" }}
-                            />
-                          }
-                          label={
-                            locName(selectedProduct.categoryId) || t("Category")
-                          }
-                          size="small"
-                          component={Link}
-                          to="/categories"
-                          state={{
-                            category:
-                              selectedProduct.categoryId?.name ||
-                              "All Categories",
-                            categoryType: getCategoryTypeName(
-                              selectedProduct.categoryTypeId,
-                              selectedProduct.categoryId?._id ||
-                                selectedProduct.categoryId,
-                            ),
-                          }}
-                          onClick={closeProductDialog}
-                          sx={{
-                            borderRadius: 99,
-                            fontWeight: 600,
-                            fontSize: "0.72rem",
-                            cursor: "pointer",
-                            backgroundColor: isDark
-                              ? "rgba(255,255,255,0.08)"
-                              : "rgba(30,111,217,0.08)",
-                            color: "var(--color-primary,#1E6FD9)",
-                            textDecoration: "none",
-                          }}
-                        />
-                      )}
-                    </Box>
-
-                    {/* Expiry */}
-                    {selectedProduct.expireDate &&
-                      (() => {
-                        const info = getExpiryRemainingInfo(
-                          selectedProduct.expireDate,
-                        );
-                        const label = formatExpiryChipLabel(info, t);
-                        const chipColor = expiryChipBg(info);
-                        const dateStr = formatExpiryDateDdMmYyyy(
-                          selectedProduct.expireDate,
-                        );
-                        return (
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                              px: 1.25,
-                              py: 0.9,
-                              borderRadius: 2.5,
-                              backgroundColor: isDark
-                                ? `${chipColor}22`
-                                : `${chipColor}18`,
-                              border: `1px solid ${chipColor}55`,
-                            }}
-                          >
-                            <AccessTimeIcon
-                              sx={{
-                                fontSize: "1rem",
-                                color: chipColor,
-                                flexShrink: 0,
-                              }}
-                            />
-                            <Box
-                              sx={{ display: "flex", flexDirection: "column" }}
-                            >
-                              <Typography
-                                sx={{
-                                  fontSize: "0.72rem",
-                                  fontWeight: 700,
-                                  color: chipColor,
-                                  lineHeight: 1.3,
-                                }}
-                              >
-                                {info.kind === "expired"
-                                  ? t("Expired")
-                                  : label || t("Expires")}
-                              </Typography>
-                              {dateStr && (
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.66rem",
-                                    fontWeight: 500,
-                                    color: isDark
-                                      ? "rgba(255,255,255,0.5)"
-                                      : "rgba(0,0,0,0.45)",
-                                    lineHeight: 1.2,
-                                  }}
-                                >
-                                  {dateStr}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Box>
-                        );
-                      })()}
-
-                    {/* Price block */}
-                    <Box
-                      sx={{
-                        mt: 0.5,
-                        p: 1.75,
-                        borderRadius: 3,
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.05)"
-                          : "rgba(0,0,0,0.025)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 0.25,
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "text.secondary",
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        {t("Price")}
-                      </Typography>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                      >
-                        {hasDiscount &&
-                          selectedProduct.previousPrice &&
-                          Number(selectedProduct.previousPrice) >
-                            Number(selectedProduct.newPrice) && (
-                            <Typography
-                              sx={{
-                                textDecoration: "line-through",
-                                color: "text.disabled",
-                                fontSize: "0.9rem",
-                              }}
-                            >
-                              {formatPrice(selectedProduct.previousPrice)}
-                            </Typography>
-                          )}
-                        <Typography
-                          sx={{
-                            fontWeight: 900,
-                            fontSize: "1.65rem",
-                            color: "var(--color-secondary,#0d47a1)",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {formatPrice(selectedProduct.newPrice)}
-                        </Typography>
-                        {hasDiscount && (
-                          <Chip
-                            label={discountLabel}
-                            size="small"
-                            sx={{
-                              height: 22,
-                              fontSize: "0.72rem",
-                              fontWeight: 800,
-                              backgroundColor: "#e53e3e",
-                              color: "#fff",
-                              borderRadius: 99,
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
-
-                    {/* Like / view / like-count stats bar */}
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        mt: 0.25,
-                        px: 1.5,
-                        py: 1,
-                        borderRadius: 3,
-                        backgroundColor: isDark
-                          ? "rgba(255,255,255,0.04)"
-                          : "rgba(0,0,0,0.025)",
-                        border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"}`,
-                      }}
-                    >
-                      {/* Like button */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.5,
-                          cursor: isLikeLoading ? "default" : "pointer",
-                          userSelect: "none",
-                          px: 1.25,
-                          py: 0.6,
-                          borderRadius: 99,
-                          transition: "background 0.15s",
-                          backgroundColor: liked
-                            ? "rgba(229,62,62,0.12)"
-                            : "transparent",
-                          "&:active": { transform: "scale(0.93)" },
-                        }}
-                        onClick={(e) =>
-                          !isLikeLoading && handleLikeClick(pid, e)
-                        }
-                      >
-                        {liked ? (
-                          <FavoriteIcon
-                            sx={{
-                              fontSize: "1.2rem",
-                              color: "#e53e3e",
-                              transform: "scale(1.15)",
-                              transition: "transform 0.15s",
-                            }}
-                          />
-                        ) : (
-                          <FavoriteBorderIcon
-                            sx={{
-                              fontSize: "1.2rem",
-                              color: isDark
-                                ? "rgba(255,255,255,0.5)"
-                                : "rgba(0,0,0,0.4)",
-                            }}
-                          />
-                        )}
-                        <Typography
-                          sx={{
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            color: liked
-                              ? "#e53e3e"
-                              : isDark
-                                ? "rgba(255,255,255,0.55)"
-                                : "rgba(0,0,0,0.5)",
-                            minWidth: 14,
-                          }}
-                        >
-                          {likeCount > 0 ? likeCount : ""}
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          width: "1px",
-                          height: 20,
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.1)"
-                            : "rgba(0,0,0,0.08)",
-                          flexShrink: 0,
-                        }}
-                      />
-
-                      {/* View count */}
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        <VisibilityIcon
-                          sx={{
-                            fontSize: "1.1rem",
-                            color: isDark
-                              ? "rgba(255,255,255,0.4)"
-                              : "rgba(0,0,0,0.35)",
-                          }}
-                        />
-                        <Typography
-                          sx={{
-                            fontSize: "0.8rem",
-                            fontWeight: 600,
-                            color: isDark
-                              ? "rgba(255,255,255,0.55)"
-                              : "rgba(0,0,0,0.5)",
-                          }}
-                        >
-                          {viewCount > 0 ? viewCount.toLocaleString() : "0"}
-                        </Typography>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          width: "1px",
-                          height: 20,
-                          backgroundColor: isDark
-                            ? "rgba(255,255,255,0.1)"
-                            : "rgba(0,0,0,0.08)",
-                          flexShrink: 0,
-                        }}
-                      />
-
-                      {/* Like count */}
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                      >
-                        <FavoriteIcon
-                          sx={{
-                            fontSize: "1rem",
-                            color: isDark
-                              ? "rgba(255,100,100,0.45)"
-                              : "rgba(229,62,62,0.4)",
-                          }}
-                        />
-                        <Typography
-                          sx={{
-                            fontSize: "0.8rem",
-                            fontWeight: 600,
-                            color: isDark
-                              ? "rgba(255,255,255,0.55)"
-                              : "rgba(0,0,0,0.5)",
-                          }}
-                        >
-                          {likeCount > 0 ? likeCount.toLocaleString() : "0"}
-                        </Typography>
-                      </Box>
-
-                      {selectedProduct.averageRating > 0 && (
-                        <>
-                          <Box
-                            sx={{
-                              width: "1px",
-                              height: 20,
-                              backgroundColor: isDark
-                                ? "rgba(255,255,255,0.1)"
-                                : "rgba(0,0,0,0.08)",
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                            }}
-                          >
-                            <StarIcon
-                              sx={{ fontSize: "1rem", color: "#ffc107" }}
-                            />
-                            <Typography
-                              sx={{
-                                fontSize: "0.8rem",
-                                fontWeight: 600,
-                                color: isDark
-                                  ? "rgba(255,255,255,0.55)"
-                                  : "rgba(0,0,0,0.5)",
-                              }}
-                            >
-                              {selectedProduct.averageRating.toFixed(1)}
-                            </Typography>
-                          </Box>
-                        </>
-                      )}
-                    </Box>
-
-                    {/* Related products from same category */}
-                    {relatedDialogProducts.length > 0 && (
-                      <Box sx={{ mt: 0.5 }}>
-                        <Box
-                          sx={{
-                            pb: 0.75,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              fontWeight: 700,
-                              fontSize: "0.88rem",
-                              color: isDark
-                                ? "rgba(255,255,255,0.75)"
-                                : "rgba(0,0,0,0.6)",
-                            }}
-                          >
-                            {t("Related Products")}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "var(--color-primary,#1E6FD9)",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {relatedDialogProducts.length}
-                          </Typography>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            display: "flex",
-                            gap: 1.25,
-                            overflowX: "auto",
-                            pb: 1,
-                            mx: -2.5,
-                            px: 2.5,
-                            "&::-webkit-scrollbar": { display: "none" },
-                            scrollbarWidth: "none",
-                          }}
-                        >
-                          {relatedDialogProducts.map((rel) => {
-                            const relDiscount = calculateDiscount(
-                              rel.previousPrice,
-                              rel.newPrice,
-                            );
-                            const relHasDiscount = isDiscountValid(rel);
-                            const relDiscountLabel =
-                              relDiscount > 0
-                                ? `-${relDiscount}%`
-                                : t("Discount");
-                            return (
-                              <Box
-                                key={rel._id}
-                                onClick={() => setSelectedProduct(rel)}
-                                sx={{
-                                  flexShrink: 0,
-                                  width: 120,
-                                  borderRadius: 2.5,
-                                  overflow: "hidden",
-                                  backgroundColor: isDark
-                                    ? "rgba(255,255,255,0.05)"
-                                    : "rgba(0,0,0,0.03)",
-                                  border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
-                                  cursor: "pointer",
-                                  "&:active": { transform: "scale(0.95)" },
-                                }}
-                              >
-                                <Box sx={{ position: "relative" }}>
-                                  {rel.image ? (
-                                    <Box
-                                      component="img"
-                                      src={resolveMediaUrl(rel.image)}
-                                      alt={locName(rel) || ""}
-                                      sx={{
-                                        width: "100%",
-                                        height: 90,
-                                        objectFit: "contain",
-                                        backgroundColor: isDark
-                                          ? "rgba(255,255,255,0.03)"
-                                          : "rgba(0,0,0,0.02)",
-                                        display: "block",
-                                      }}
-                                    />
-                                  ) : (
-                                    <Box
-                                      sx={{
-                                        width: "100%",
-                                        height: 90,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: isDark
-                                          ? "rgba(255,255,255,0.03)"
-                                          : "rgba(0,0,0,0.02)",
-                                      }}
-                                    >
-                                      <ShoppingCartIcon
-                                        sx={{ fontSize: 28, opacity: 0.2 }}
-                                      />
-                                    </Box>
-                                  )}
-                                  {relHasDiscount && (
-                                    <Box
-                                      sx={{
-                                        position: "absolute",
-                                        top: 5,
-                                        left: 5,
-                                        background:
-                                          "linear-gradient(135deg,#e53e3e,#c53030)",
-                                        color: "#fff",
-                                        fontSize: "0.58rem",
-                                        fontWeight: 800,
-                                        px: 0.6,
-                                        py: 0.2,
-                                        borderRadius: 0.75,
-                                        pointerEvents: "none",
-                                      }}
-                                    >
-                                      {relDiscountLabel}
-                                    </Box>
-                                  )}
-                                </Box>
-                                <Box sx={{ px: 0.75, py: 0.75 }}>
-                                  <Typography
-                                    sx={{
-                                      fontSize: "0.68rem",
-                                      fontWeight: 600,
-                                      lineHeight: 1.3,
-                                      color: isDark
-                                        ? "rgba(255,255,255,0.85)"
-                                        : "rgba(0,0,0,0.8)",
-                                      display: "-webkit-box",
-                                      WebkitLineClamp: 2,
-                                      WebkitBoxOrient: "vertical",
-                                      overflow: "hidden",
-                                      mb: 0.4,
-                                    }}
-                                  >
-                                    {locName(rel) || "\u00A0"}
-                                  </Typography>
-                                  {rel.newPrice && (
-                                    <Typography
-                                      sx={{
-                                        fontSize: "0.72rem",
-                                        fontWeight: 800,
-                                        color: "var(--color-secondary,#0d47a1)",
-                                        lineHeight: 1,
-                                      }}
-                                    >
-                                      {formatPrice(rel.newPrice)}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              </Box>
-                            );
-                          })}
-                        </Box>
-                      </Box>
-                    )}
-                  </Box>
-                </Box>
-              );
-            })()}
-        </DialogContent>
-      </Dialog>
+        product={selectedProduct}
+        candidateProducts={allProducts}
+        onProductChange={setSelectedProduct}
+        storeCityById={storeCityById}
+      />
 
       {/* Login Notification Dialog */}
       <Dialog
@@ -3417,13 +2654,6 @@ const MainPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <FullScreenImageModal
-        open={Boolean(productImageFullscreen)}
-        onClose={() => setProductImageFullscreen(null)}
-        imageUrl={productImageFullscreen?.url}
-        alt={productImageFullscreen?.alt || ""}
-      />
 
       {/* Scroll to Top Button */}
       {/* {showScrollTop && (

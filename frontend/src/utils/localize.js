@@ -5,6 +5,14 @@
  * @param {'normal'|'en'|'ar'|'ku'} dataLang - `normal` = primary/source field only
  */
 
+/** Ensures UI never receives a plain object as React text (avoids invariant #31). */
+function coalesceLocalizedScalar(val) {
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  return "";
+}
+
 export function getLocalizedField(item, field, dataLang = "normal") {
   if (!item) return "";
   const primary = item[field];
@@ -16,16 +24,14 @@ export function getLocalizedField(item, field, dataLang = "normal") {
     (primary.en != null || primary.ar != null || primary.ku != null)
   ) {
     if (dataLang === "normal" || !dataLang) {
-      return primary.en || primary.ar || primary.ku || "";
+      return coalesceLocalizedScalar(
+        primary.en ?? primary.ar ?? primary.ku ?? "",
+      );
     }
     const key =
       dataLang === "en" ? "en" : dataLang === "ar" ? "ar" : "ku";
-    return (
-      primary[key] ||
-      primary.en ||
-      primary.ar ||
-      primary.ku ||
-      ""
+    return coalesceLocalizedScalar(
+      primary[key] ?? primary.en ?? primary.ar ?? primary.ku ?? "",
     );
   }
 

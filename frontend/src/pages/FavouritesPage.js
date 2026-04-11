@@ -17,8 +17,9 @@ import {
   Button,
   Skeleton,
 } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
@@ -38,6 +39,7 @@ import {
 import ProductViewTracker from "../components/ProductViewTracker";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import ProductDetailDialog from "../components/ProductDetailDialog";
 
 const FavouritesPage = () => {
   const theme = useTheme();
@@ -53,6 +55,8 @@ const FavouritesPage = () => {
   const [error, setError] = useState(null);
   const [likeStates, setLikeStates] = useState({});
   const [likeLoading, setLikeLoading] = useState({});
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
 
   const isProductExpired = (product) =>
     Boolean(product.expireDate) && !isExpiryStillValid(product.expireDate);
@@ -346,11 +350,14 @@ const FavouritesPage = () => {
                 recordedIdsRef={productViewRecordedRef}
               >
                 <Card
-                  component={Link}
-                  to={`/products/${product._id}`}
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setProductDialogOpen(true);
+                  }}
                   sx={{
                     textDecoration: "none",
                     color: "inherit",
+                    cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
@@ -623,10 +630,19 @@ const FavouritesPage = () => {
           })}
         </Box>
       )}
+
+      <ProductDetailDialog
+        open={productDialogOpen}
+        onClose={() => {
+          setProductDialogOpen(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        candidateProducts={nonExpiredProducts}
+        onProductChange={setSelectedProduct}
+      />
     </Box>
   );
 };
 
 export default FavouritesPage;
-
-

@@ -184,54 +184,40 @@ const ProductDetail = () => {
       const response = await productAPI.getAll();
       const allProducts = response.data;
 
-      // Filter products by same category (excluding current product and expired discounts)
+      const curCat =
+        currentProduct.categoryId?._id || currentProduct.categoryId;
+      const curStore = currentProduct.storeId?._id || currentProduct.storeId;
+
+      const passesDiscountRules = (p) => {
+        if (p.isDiscount && !isDiscountValid(p)) return false;
+        return true;
+      };
+
+      // Prefer same category; if none, fall back to same store only
       const sameCategoryProducts = allProducts
         .filter((p) => p._id !== currentProduct._id)
+        .filter(passesDiscountRules)
         .filter((p) => {
-          // Exclude expired discounted products
-          if (p.isDiscount && !isDiscountValid(p)) {
-            return false;
-          }
-
-          if (
-            currentProduct.categoryId &&
-            p.categoryId &&
-            currentProduct.categoryId._id === p.categoryId._id
-          ) {
-            return true;
-          }
-          return false;
+          if (curCat == null || String(curCat).trim() === "") return false;
+          const pCat = p.categoryId?._id || p.categoryId;
+          return pCat != null && String(pCat) === String(curCat);
         })
-        .slice(0, 5); // Limit to 5 products
+        .slice(0, 5);
 
-      // Filter products by same store (excluding current product, already selected category products, and expired discounts)
       const sameStoreProducts = allProducts
         .filter((p) => p._id !== currentProduct._id)
+        .filter(passesDiscountRules)
         .filter((p) => {
-          // Exclude expired discounted products
-          if (p.isDiscount && !isDiscountValid(p)) {
-            return false;
-          }
-
-          // Exclude products already in sameCategoryProducts
-          const isAlreadyInCategory = sameCategoryProducts.some(
-            (catProduct) => catProduct._id === p._id,
-          );
-          if (isAlreadyInCategory) return false;
-
-          if (
-            currentProduct.storeId &&
-            p.storeId &&
-            currentProduct.storeId._id === p.storeId._id
-          ) {
-            return true;
-          }
-          return false;
+          if (curStore == null || String(curStore).trim() === "") return false;
+          const pStore = p.storeId?._id || p.storeId;
+          return pStore != null && String(pStore) === String(curStore);
         })
-        .slice(0, 5); // Limit to 5 products
+        .slice(0, 5);
 
-      // Combine both arrays
-      const related = [...sameCategoryProducts, ...sameStoreProducts];
+      const related =
+        sameCategoryProducts.length > 0
+          ? sameCategoryProducts
+          : sameStoreProducts;
       setRelatedProducts(related);
     } catch (err) {
       console.error("Error fetching related products:", err);
