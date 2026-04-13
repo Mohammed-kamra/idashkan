@@ -41,7 +41,9 @@ const StoreGroupSection = memo(function StoreGroupSection({
 
   const followed = isStoreFollowed(store._id);
   const discountedCount = products.filter(
-    (p) => p.isDiscount || (p.previousPrice && p.newPrice && p.previousPrice > p.newPrice),
+    (p) =>
+      p.isDiscount ||
+      (p.previousPrice && p.newPrice && p.previousPrice > p.newPrice),
   ).length;
 
   return (
@@ -93,7 +95,10 @@ const StoreGroupSection = memo(function StoreGroupSection({
         }}
       >
         {/* Logo */}
-        <Link to={`/stores/${store._id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
+        <Link
+          to={`/stores/${store._id}`}
+          style={{ textDecoration: "none", flexShrink: 0 }}
+        >
           <Avatar
             src={store.logo ? resolveMediaUrl(store.logo) : undefined}
             alt={locName(store)}
@@ -116,14 +121,26 @@ const StoreGroupSection = memo(function StoreGroupSection({
             }}
           >
             {!store.logo && (
-              <BusinessIcon sx={{ fontSize: { xs: 26, sm: 32 }, color: "rgba(255,255,255,0.8)" }} />
+              <BusinessIcon
+                sx={{
+                  fontSize: { xs: 26, sm: 32 },
+                  color: "rgba(255,255,255,0.8)",
+                }}
+              />
             )}
           </Avatar>
         </Link>
 
         {/* Store info */}
         <Box sx={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.8,
+              flexWrap: "wrap",
+            }}
+          >
             <Typography
               component={Link}
               to={`/stores/${store._id}`}
@@ -142,7 +159,11 @@ const StoreGroupSection = memo(function StoreGroupSection({
 
             {store.isVip && (
               <WorkspacePremiumIcon
-                sx={{ fontSize: 18, color: "#fbbf24", filter: "drop-shadow(0 1px 3px rgba(251,191,36,0.6))" }}
+                sx={{
+                  fontSize: 18,
+                  color: "#fbbf24",
+                  filter: "drop-shadow(0 1px 3px rgba(251,191,36,0.6))",
+                }}
               />
             )}
 
@@ -154,12 +175,16 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 width: 28,
                 height: 28,
                 color: "white",
-                bgcolor: followed ? "rgba(34,197,94,0.8)" : "rgba(255,255,255,0.18)",
+                bgcolor: followed
+                  ? "rgba(34,197,94,0.8)"
+                  : "rgba(255,255,255,0.18)",
                 border: "1px solid rgba(255,255,255,0.25)",
                 backdropFilter: "blur(4px)",
                 transition: "all 0.2s ease",
                 "&:hover": {
-                  bgcolor: followed ? "rgba(34,197,94,1)" : "rgba(255,255,255,0.3)",
+                  bgcolor: followed
+                    ? "rgba(34,197,94,1)"
+                    : "rgba(255,255,255,0.3)",
                   transform: "scale(1.1)",
                 },
                 p: 0,
@@ -192,7 +217,15 @@ const StoreGroupSection = memo(function StoreGroupSection({
             </Typography>
           )}
 
-          <Box sx={{ display: "flex", gap: 0.8, mt: 0.8, flexWrap: "wrap", alignItems: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.8,
+              mt: 0.8,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
             {discountedCount > 0 && (
               <Chip
                 label={`${discountedCount} ${t("Discounted Products")}`}
@@ -211,7 +244,14 @@ const StoreGroupSection = memo(function StoreGroupSection({
             )}
             {store.isHasDelivery && (
               <Chip
-                icon={<LocalShippingIcon sx={{ fontSize: "0.8rem !important", color: "white !important" }} />}
+                icon={
+                  <LocalShippingIcon
+                    sx={{
+                      fontSize: "0.8rem !important",
+                      color: "white !important",
+                    }}
+                  />
+                }
                 label={t("Delivery")}
                 size="small"
                 sx={{
@@ -268,7 +308,9 @@ const StoreGroupSection = memo(function StoreGroupSection({
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "thin",
-              scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
+              scrollbarColor: isDark
+                ? "#4a5568 transparent"
+                : "#d1d5db transparent",
               "&::-webkit-scrollbar": { height: 4 },
               "&::-webkit-scrollbar-track": { background: "transparent" },
               "&::-webkit-scrollbar-thumb": {
@@ -301,7 +343,9 @@ const StoreGroupSection = memo(function StoreGroupSection({
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "thin",
-              scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
+              scrollbarColor: isDark
+                ? "#4a5568 transparent"
+                : "#d1d5db transparent",
               "&::-webkit-scrollbar": { height: 4 },
               "&::-webkit-scrollbar-track": { background: "transparent" },
               "&::-webkit-scrollbar-thumb": {

@@ -40,6 +40,11 @@ const brandSchema = new mongoose.Schema({
     enum: ["on", "off"],
     default: "on",
   },
+  /** Physical location city (same values as store `storecity`). */
+  storecity: { type: String, trim: true, default: "Erbil" },
+  isHasDelivery: { type: Boolean, default: false },
+  deliveryAllCities: { type: Boolean, default: false },
+  deliveryCities: [{ type: String, trim: true }],
 });
 
 module.exports = mongoose.model("Brand", brandSchema);

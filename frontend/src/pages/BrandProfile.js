@@ -72,7 +72,10 @@ import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { useCityFilter } from "../context/CityFilterContext";
-import { cityStringsMatch } from "../utils/cityMatch";
+import {
+  cityStringsMatch,
+  productStoreMatchesCity,
+} from "../utils/cityMatch";
 import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -142,9 +145,8 @@ const BrandProfile = () => {
 
   const productMatchesSelectedCity = useCallback(
     (product) =>
-      cityStringsMatch(
-        selectedCity,
-        product?.storeId?.storecity || product?.storeId?.city || "",
+      productStoreMatchesCity(product, selectedCity, (p) =>
+        String(p?.storeId?.storecity || p?.storeId?.city || "").trim(),
       ),
     [selectedCity],
   );
@@ -373,11 +375,11 @@ const BrandProfile = () => {
   // Get product category type name from categoryId (populated) and categoryTypeId
   const getProductCategoryTypeName = (product) => {
     if (!product.categoryId || !product.categoryTypeId) {
-      return locName(product.categoryId) || t("Uncategorized");
+      return locName(product.categoryId) || "";
     }
     const category = product.categoryId;
     if (!category.types || !Array.isArray(category.types)) {
-      return locName(category) || t("Uncategorized");
+      return locName(category) || "";
     }
     const categoryType =
       category.types.find(
@@ -385,7 +387,7 @@ const BrandProfile = () => {
       ) || category.types.find((type) => type.name === product.categoryTypeId);
     return categoryType
       ? locName(categoryType)
-      : locName(category) || t("Uncategorized");
+      : locName(category) || "";
   };
 
   // Filter products based on current filters
@@ -1285,79 +1287,62 @@ const BrandProfile = () => {
     { key: "waze", label: "Waze", value: brandLocationInfo.waze },
   ].filter((item) => Boolean(item.value));
 
-  const renderLocationRow = () => (
-    <>
-      {locationLinks.length > 0
-        ? locationLinks.map((item) => (
-            <>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  flexWrap: "nowrap",
-                  overflowX: "auto",
-                  mb: 1,
-                }}
-              >
-                <LocationOn
-                  sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }}
-                />
-            </Box>
-              <Button
-                key={item.key}
-                component="a"
-                href={normalizeUrl(item.value)}
-                target="_blank"
-                rel="noopener noreferrer"
-                size="small"
-                variant="outlined"
-                sx={{
-                  color: "white",
-                  borderColor: "rgba(255,255,255,0.45)",
-                  textTransform: "none",
-                  whiteSpace: "nowrap",
-                  "&:hover": {
-                    borderColor: "white",
-                    backgroundColor: "rgba(255,255,255,0.15)",
-                  },
-                }}
-              >
-                {item.label}
-              </Button>
-            </>
-          ))
-        : null}
-    </>
-  );
-
-  const renderContactRow = () => (
-    <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-        flexWrap: "nowrap",
-        overflowX: "auto",
-      }}
-    >
-      <Phone sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
-      <Typography
-        variant={displayPhone ? "h6" : "body2"}
+  const renderLocationRow = () => {
+    if (locationLinks.length === 0) return null;
+    return (
+      <Box
         sx={{
-          fontSize: { xs: "0.875rem", md: "1.125rem" },
-          fontFamily: "monospace",
-          textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-          color: "white",
-          mr: 0.5,
-          whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          mb: 1,
         }}
       >
-        {displayPhone || t("phone not provided")}
-      </Typography>
-      {socialLinks
-        .filter((item) => Boolean(item.value))
-        .map((item) => {
+        <LocationOn sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
+        {locationLinks.map((item) => (
+          <Button
+            key={item.key}
+            component="a"
+            href={normalizeUrl(item.value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            size="small"
+            variant="outlined"
+            sx={{
+              color: "white",
+              borderColor: "rgba(255,255,255,0.45)",
+              textTransform: "none",
+              whiteSpace: "nowrap",
+              "&:hover": {
+                borderColor: "white",
+                backgroundColor: "rgba(255,255,255,0.15)",
+              },
+            }}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </Box>
+    );
+  };
+
+  const renderContactRow = () => {
+    const socialItems = socialLinks.filter((item) => Boolean(item.value));
+    if (socialItems.length === 0) return null;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+        }}
+      >
+        {socialItems.map((item) => {
           const href = normalizeUrl(item.value, item.key);
           if (item.key === "whatsapp" && href) {
             return (
@@ -1400,7 +1385,8 @@ const BrandProfile = () => {
           );
         })}
       </Box>
-  );
+    );
+  };
 
   const isDark = theme.palette.mode === "dark";
 
@@ -1645,7 +1631,7 @@ const BrandProfile = () => {
                 {renderLocationRow()}
                 </Box>
             )}
-            <Box>{renderContactRow()}</Box>
+            {renderContactRow()}
             {locDescription(brand) && (
                   <Typography
                 variant="body2"
@@ -1798,24 +1784,26 @@ const BrandProfile = () => {
                           display: "block",
                         }}
                       />
-                      <Box
-                  sx={{
-                          position: "absolute",
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          p: 1,
-                          background:
-                            "linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))",
-                        }}
-                      >
-                <Typography
-                          sx={{ color: "white", fontWeight: 700 }}
-                          noWrap
+                      {locTitle(reel) ? (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            p: 1,
+                            background:
+                              "linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))",
+                          }}
                         >
-                          {locTitle(reel) || t("Reel")}
-                </Typography>
-              </Box>
+                          <Typography
+                            sx={{ color: "white", fontWeight: 700 }}
+                            noWrap
+                          >
+                            {locTitle(reel)}
+                          </Typography>
+                        </Box>
+                      ) : null}
                     </Box>
                   </Card>
                 );
@@ -1845,9 +1833,11 @@ const BrandProfile = () => {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>
-          {locTitle(selectedJob) || t("Job")}
-        </DialogTitle>
+        {locTitle(selectedJob) ? (
+          <DialogTitle sx={{ fontWeight: 900 }}>
+            {locTitle(selectedJob)}
+          </DialogTitle>
+        ) : null}
         <DialogContent>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <Box
@@ -1881,7 +1871,7 @@ const BrandProfile = () => {
               <Typography sx={{ fontWeight: 800 }}>
                 {locName(selectedJob?.storeId) ||
                   locName(selectedJob?.brandId) ||
-                  "-"}
+                  ""}
               </Typography>
             </Box>
           </Box>
@@ -1890,7 +1880,7 @@ const BrandProfile = () => {
             {t("Description")}
           </Typography>
           <Typography sx={{ whiteSpace: "pre-wrap" }} color="text.secondary">
-            {locDescription(selectedJob) || "-"}
+            {locDescription(selectedJob) || ""}
           </Typography>
         </DialogContent>
       </Dialog>

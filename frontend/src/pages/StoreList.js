@@ -37,7 +37,7 @@ import { useTranslation } from "react-i18next";
 import { useCityFilter } from "../context/CityFilterContext";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
-import { cityStringsMatch } from "../utils/cityMatch";
+import { storeMatchesSelectedCity } from "../utils/cityMatch";
 import { getAllLocalizedFieldValues } from "../utils/localize";
 function getID(id) {
   if (typeof id === "string") return id;
@@ -47,8 +47,20 @@ function getID(id) {
   return id;
 }
 
-const StoreCard = ({ store, index, isDark, t, onClick, locName, theme }) => {
+const StoreCard = ({
+  store,
+  index,
+  isDark,
+  onClick,
+  locName,
+  locAddress,
+  theme,
+}) => {
   const accent = theme.palette.primary.main;
+  const displayAddress = String(locAddress(store) || "").trim();
+  const displayPhone = String(
+    store?.contactInfo?.phone || store?.phone || "",
+  ).trim();
   /** Readable label on pale tints in light mode */
   const primaryOnSurface =
     theme.palette.primary.dark ||
@@ -251,37 +263,41 @@ const StoreCard = ({ store, index, isDark, t, onClick, locName, theme }) => {
             />
           ) : null}
 
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-              display: { xs: "block", sm: "-webkit-box" },
-              WebkitLineClamp: { sm: 2 },
-              WebkitBoxOrient: { sm: "vertical" },
-              overflow: "hidden",
-              fontSize: "0.8rem",
-              textAlign: { xs: "left", sm: "center" },
-            }}
-          >
-            <LocationOnIcon
-              sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
-            />
-            {store.address || t("Address not provided")}
-          </Typography>
+          {displayAddress ? (
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                display: { xs: "block", sm: "-webkit-box" },
+                WebkitLineClamp: { sm: 2 },
+                WebkitBoxOrient: { sm: "vertical" },
+                overflow: "hidden",
+                fontSize: "0.8rem",
+                textAlign: { xs: "left", sm: "center" },
+              }}
+            >
+              <LocationOnIcon
+                sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
+              />
+              {displayAddress}
+            </Typography>
+          ) : null}
 
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-              fontSize: "0.8rem",
-              textAlign: { xs: "left", sm: "center" },
-            }}
-          >
-            <PhoneIcon
-              sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
-            />
-            {store.phone || t("Phone not provided")}
-          </Typography>
+          {displayPhone ? (
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontSize: "0.8rem",
+                textAlign: { xs: "left", sm: "center" },
+              }}
+            >
+              <PhoneIcon
+                sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
+              />
+              {displayPhone}
+            </Typography>
+          ) : null}
         </CardContent>
       </Card>
     </Fade>
@@ -294,7 +310,7 @@ const StoreList = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { t } = useTranslation();
-  const { locName } = useLocalizedContent();
+  const { locName, locAddress } = useLocalizedContent();
   const { selectedCity } = useCityFilter();
 
   const [stores, setStores] = useState([]);
@@ -355,9 +371,7 @@ const StoreList = () => {
       list = list.filter((s) => getID(s.storeTypeId) === selectedTypeId);
     }
 
-    list = list.filter((s) =>
-      cityStringsMatch(selectedCity, s.storecity || s.city || ""),
-    );
+    list = list.filter((s) => storeMatchesSelectedCity(s, selectedCity));
 
     const q = searchQuery.trim().toLowerCase();
     if (q) {
@@ -824,8 +838,8 @@ const StoreList = () => {
               store={store}
               index={index}
               isDark={isDark}
-              t={t}
               locName={locName}
+              locAddress={locAddress}
               theme={theme}
               onClick={() => handleStoreClick(store)}
             />

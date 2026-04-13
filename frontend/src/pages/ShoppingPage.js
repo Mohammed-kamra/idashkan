@@ -28,7 +28,7 @@ import {
 import { ShoppingBag as ShoppingBagIcon } from "@mui/icons-material";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useCityFilter } from "../context/CityFilterContext";
-import { cityStringsMatch } from "../utils/cityMatch";
+import { storeMatchesSelectedCity } from "../utils/cityMatch";
 
 const getStoreTypeId = (store) =>
   String(store?.storeTypeId?._id ?? store?.storeTypeId ?? "");
@@ -74,9 +74,7 @@ const ShoppingPage = () => {
 
   const cityDeliveryStores = useMemo(
     () =>
-      deliveryStores.filter((s) =>
-        cityStringsMatch(selectedCity, s.storecity || s.city),
-      ),
+      deliveryStores.filter((s) => storeMatchesSelectedCity(s, selectedCity)),
     [deliveryStores, selectedCity],
   );
 

@@ -11,6 +11,7 @@ import {
   CardMedia,
   CardContent,
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
   Button,
@@ -84,6 +85,7 @@ import {
   formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
+import StoreBranchesShowcase from "../components/StoreBranches_Showcase";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 
@@ -397,7 +399,7 @@ const StoreProfile = () => {
         ),
       );
     items.forEach((item, idx) => {
-      const name = locName(item.product) || "-";
+      const name = locName(item.product) || "";
       const qty = Number(item.qty) || 0;
       lines.push(`${idx + 1}) ${name} x${qty}`);
     });
@@ -587,11 +589,11 @@ const StoreProfile = () => {
   // Get product category type name from categoryId (populated) and categoryTypeId
   const getProductCategoryTypeName = (product) => {
     if (!product.categoryId || !product.categoryTypeId) {
-      return locName(product.categoryId) || t("Uncategorized");
+      return locName(product.categoryId) || "";
     }
     const category = product.categoryId;
     if (!category.types || !Array.isArray(category.types)) {
-      return locName(category) || t("Uncategorized");
+      return locName(category) || "";
     }
     const categoryType =
       category.types.find(
@@ -599,7 +601,7 @@ const StoreProfile = () => {
       ) || category.types.find((type) => type.name === product.categoryTypeId);
     return categoryType
       ? locName(categoryType)
-      : locName(category) || t("Uncategorized");
+      : locName(category) || "";
   };
 
   // Filter products based on current filters
@@ -1557,20 +1559,21 @@ const StoreProfile = () => {
     { key: "waze", label: "Waze", value: storeLocationInfo.waze },
   ].filter((item) => Boolean(item.value));
 
-  const renderLocationRow = () => (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        flexWrap: "nowrap",
-        overflowX: "auto",
-        mb: 1,
-      }}
-    >
-      <LocationOn sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
-      {locationLinks.length > 0 ? (
-        locationLinks.map((item) => (
+  const renderLocationRow = () => {
+    if (locationLinks.length === 0) return null;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+          mb: 1,
+        }}
+      >
+        <LocationOn sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
+        {locationLinks.map((item) => (
           <Button
             key={item.key}
             component="a"
@@ -1592,19 +1595,15 @@ const StoreProfile = () => {
           >
             {item.label}
           </Button>
-        ))
-      ) : (
-        <Typography
-          variant="body2"
-          sx={{ color: "white", opacity: 0.9, whiteSpace: "nowrap" }}
-        >
-          {t("address not provided")}
-        </Typography>
-      )}
-    </Box>
-  );
+        ))}
+      </Box>
+    );
+  };
 
-  const renderContactRow = () => (
+  const renderContactRow = () => {
+    const socialItems = socialLinks.filter((item) => Boolean(item.value));
+    if (socialItems.length === 0) return null;
+    return (
     <Box
       sx={{
         display: "flex",
@@ -1615,22 +1614,7 @@ const StoreProfile = () => {
         overflowX: "auto",
       }}
     >
-      {/* <Phone sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} /> */}
-      {/* <Typography
-        variant={displayPhone ? "h6" : "body2"}
-        sx={{
-          fontSize: { xs: "0.875rem", md: "1.125rem" },
-          fontFamily: "monospace",
-          textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-          color: "white",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {displayPhone || t("phone not provided")}
-      </Typography> */}
-      {socialLinks
-        .filter((item) => Boolean(item.value))
-        .map((item) => {
+      {socialItems.map((item) => {
           const href = normalizeUrl(item.value, item.key);
           if (item.key === "whatsapp" && href) {
             return (
@@ -1673,7 +1657,8 @@ const StoreProfile = () => {
           );
         })}
     </Box>
-  );
+    );
+  };
 
   const isDark = theme.palette.mode === "dark";
 
@@ -2008,7 +1993,7 @@ const StoreProfile = () => {
                 {renderLocationRow()}
               </Box>
             )}
-            <Box>{renderContactRow()}</Box>
+            {renderContactRow()}
             {store.description && (
               <Typography
                 variant="body2"
@@ -2029,6 +2014,8 @@ const StoreProfile = () => {
 
       {/* Enhanced Products Section with Tabs */}
       <Box sx={{ mb: 4 }}>
+        {store && <StoreBranchesShowcase store={store} />}
+
         {/* <Box sx={{ mb: 4, textAlign: "center" }}>
           <Typography
             variant="h3"
@@ -2185,24 +2172,26 @@ const StoreProfile = () => {
                           display: "block",
                         }}
                       />
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          p: 1,
-                          background:
-                            "linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))",
-                        }}
-                      >
-                        <Typography
-                          sx={{ color: "white", fontWeight: 700 }}
-                          noWrap
+                      {reel?.title ? (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            p: 1,
+                            background:
+                              "linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))",
+                          }}
                         >
-                          {reel?.title || t("Reel")}
-                        </Typography>
-                      </Box>
+                          <Typography
+                            sx={{ color: "white", fontWeight: 700 }}
+                            noWrap
+                          >
+                            {reel.title}
+                          </Typography>
+                        </Box>
+                      ) : null}
                     </Box>
                   </Card>
                 );
@@ -2232,7 +2221,9 @@ const StoreProfile = () => {
         fullWidth
         maxWidth="sm"
       >
-          {locTitle(selectedJob) || t("Job")}
+        {locTitle(selectedJob) ? (
+          <DialogTitle>{locTitle(selectedJob)}</DialogTitle>
+        ) : null}
         <DialogContent>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <Box
@@ -2266,7 +2257,7 @@ const StoreProfile = () => {
               <Typography sx={{ fontWeight: 800 }}>
                 {locName(selectedJob?.storeId) ||
                   locName(selectedJob?.brandId) ||
-                  "-"}
+                  ""}
               </Typography>
             </Box>
           </Box>
@@ -2275,7 +2266,7 @@ const StoreProfile = () => {
             {t("Description")}
           </Typography>
           <Typography sx={{ whiteSpace: "pre-wrap" }} color="text.secondary">
-            {locDescription(selectedJob) || "-"}
+            {locDescription(selectedJob) || ""}
           </Typography>
         </DialogContent>
       </Dialog>

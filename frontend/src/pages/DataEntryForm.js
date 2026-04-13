@@ -36,6 +36,8 @@ import {
   TablePagination,
   Checkbox,
   Snackbar,
+  Autocomplete,
+  OutlinedInput,
 } from "@mui/material";
 import {
   storeAPI,
@@ -146,6 +148,34 @@ function normalizeCategoryTypeRow(t) {
     descriptionAr: t.descriptionAr || "",
     descriptionKu: t.descriptionKu || "",
   };
+}
+
+/** Branches reference other stores; form state is string[] of store IDs. API stores name + storeId for stable sync. */
+function branchesFromApiToForm(branchRows, allStores) {
+  const ids = [];
+  for (const br of branchRows || []) {
+    if (br?.storeId) {
+      const sid = String(br.storeId);
+      if ((allStores || []).some((s) => String(s._id) === sid)) {
+        ids.push(sid);
+        continue;
+      }
+    }
+    const match = (allStores || []).find((s) => s.name === br.name);
+    if (match) ids.push(String(match._id));
+  }
+  return [...new Set(ids)];
+}
+
+function branchesToApiPayload(branchStoreIds, allStores) {
+  return (branchStoreIds || [])
+    .map((id) => {
+      const s = (allStores || []).find((st) => String(st._id) === String(id));
+      return s
+        ? { name: s.name, storeId: s._id }
+        : null;
+    })
+    .filter(Boolean);
 }
 
 const DataEntryForm = () => {
@@ -265,8 +295,12 @@ const DataEntryForm = () => {
     descriptionKu: "",
     isVip: false,
     brandTypeId: "",
+    storecity: "Erbil",
     expireDate: "",
     statusAll: "on",
+    isHasDelivery: false,
+    deliveryAllCities: false,
+    deliveryCities: [],
   });
   // Store form state
   const [storeForm, setStoreForm] = useState({
@@ -300,6 +334,8 @@ const DataEntryForm = () => {
     expireDate: "",
     statusAll: "on",
     isHasDelivery: false,
+    deliveryAllCities: false,
+    deliveryCities: [],
   });
 
   // Product form state
@@ -433,8 +469,7 @@ const DataEntryForm = () => {
   const [brandBulkUploadLoading, setBrandBulkUploadLoading] = useState(false);
   const [storeBulkUploadLoading, setStoreBulkUploadLoading] = useState(false);
   const [deleteExpiredLoading, setDeleteExpiredLoading] = useState(false);
-  const [translateMissingLoading, setTranslateMissingLoading] =
-    useState(false);
+  const [translateMissingLoading, setTranslateMissingLoading] = useState(false);
 
   const [selectedStoreFilter, setSelectedStoreFilter] = useState("");
   const [editDialog, setEditDialog] = useState({
@@ -545,6 +580,56 @@ const DataEntryForm = () => {
     [baseStoreCityOptions, jobForm.city],
   );
 
+  const deliveryFormCityOptions = useMemo(() => {
+    let opts = [...baseStoreCityOptions];
+    for (const city of storeForm.deliveryCities || []) {
+      if (!opts.some((o) => o.value === city)) {
+        opts.push({
+          value: city,
+          flag: "📍",
+          label: city,
+          inactive: true,
+        });
+      }
+    }
+    return opts;
+  }, [baseStoreCityOptions, storeForm.deliveryCities]);
+
+  const brandFormCityOptions = useMemo(
+    () => withLegacyCity(baseStoreCityOptions, brandForm.storecity),
+    [baseStoreCityOptions, brandForm.storecity],
+  );
+
+  const deliveryBrandFormCityOptions = useMemo(() => {
+    let opts = [...baseStoreCityOptions];
+    for (const city of brandForm.deliveryCities || []) {
+      if (!opts.some((o) => o.value === city)) {
+        opts.push({
+          value: city,
+          flag: "📍",
+          label: city,
+          inactive: true,
+        });
+      }
+    }
+    return opts;
+  }, [baseStoreCityOptions, brandForm.deliveryCities]);
+
+  const deliveryEditCityOptions = useMemo(() => {
+    let opts = [...baseStoreCityOptions];
+    for (const city of editForm.deliveryCities || []) {
+      if (!opts.some((o) => o.value === city)) {
+        opts.push({
+          value: city,
+          flag: "📍",
+          label: city,
+          inactive: true,
+        });
+      }
+    }
+    return opts;
+  }, [baseStoreCityOptions, editForm.deliveryCities]);
+
   useEffect(() => {
     const names = baseStoreCityOptions.map((o) => o.value);
     if (!names.length) return;
@@ -559,9 +644,15 @@ const DataEntryForm = () => {
     const names = baseStoreCityOptions.map((o) => o.value);
     if (!names.length) return;
     setStoreForm((prev) =>
-      names.includes(prev.storecity)
-        ? prev
-        : { ...prev, storecity: names[0] },
+      names.includes(prev.storecity) ? prev : { ...prev, storecity: names[0] },
+    );
+  }, [baseStoreCityOptions]);
+
+  useEffect(() => {
+    const names = baseStoreCityOptions.map((o) => o.value);
+    if (!names.length) return;
+    setBrandForm((prev) =>
+      names.includes(prev.storecity) ? prev : { ...prev, storecity: names[0] },
     );
   }, [baseStoreCityOptions]);
 
@@ -751,9 +842,13 @@ const DataEntryForm = () => {
   };
   const handleStoreFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setStoreForm({
-      ...storeForm,
-      [name]: type === "checkbox" ? checked : value,
+    setStoreForm((prev) => {
+      const next = { ...prev, [name]: type === "checkbox" ? checked : value };
+      if (name === "isHasDelivery" && type === "checkbox" && !checked) {
+        next.deliveryAllCities = false;
+        next.deliveryCities = [];
+      }
+      return next;
     });
   };
 
@@ -945,9 +1040,14 @@ const DataEntryForm = () => {
   };
 
   const handleBrandFormChange = (e) => {
-    setBrandForm({
-      ...brandForm,
-      [e.target.name]: e.target.value,
+    const { name, value, type, checked } = e.target;
+    setBrandForm((prev) => {
+      const next = { ...prev, [name]: type === "checkbox" ? checked : value };
+      if (name === "isHasDelivery" && type === "checkbox" && !checked) {
+        next.deliveryAllCities = false;
+        next.deliveryCities = [];
+      }
+      return next;
     });
   };
 
@@ -1384,8 +1484,9 @@ const DataEntryForm = () => {
       const hasCompany = Boolean(
         jobForm.companyId && String(jobForm.companyId).trim(),
       );
-      const ownerCount = [hasStore, hasBrand, hasCompany].filter(Boolean)
-        .length;
+      const ownerCount = [hasStore, hasBrand, hasCompany].filter(
+        Boolean,
+      ).length;
       if (ownerCount !== 1) {
         setMessage({
           type: "error",
@@ -1772,14 +1873,35 @@ const DataEntryForm = () => {
     }
 
     try {
+      if (
+        brandForm.isHasDelivery &&
+        !brandForm.deliveryAllCities &&
+        (!brandForm.deliveryCities || brandForm.deliveryCities.length === 0)
+      ) {
+        setMessage({
+          type: "error",
+          text: t(
+            "Select delivery cities or enable delivery for all cities.",
+          ),
+        });
+        setLoading(false);
+        return;
+      }
+
       setUploadLoading(true);
       const logoUrl = await uploadBrandLogo(selectedBrandLogo);
       setUploadLoading(false);
 
+      const hasDel = !!brandForm.isHasDelivery;
       const brandData = {
         ...brandForm,
         logo: logoUrl,
         expireDate: normalizeExpiryInputForApi(brandForm.expireDate),
+        deliveryAllCities: hasDel ? !!brandForm.deliveryAllCities : false,
+        deliveryCities:
+          hasDel && !brandForm.deliveryAllCities
+            ? brandForm.deliveryCities || []
+            : [],
         contactInfo: {
           phone: brandForm.phone || "",
           whatsapp: brandForm.whatsapp || "",
@@ -1832,6 +1954,10 @@ const DataEntryForm = () => {
         isVip: false,
         expireDate: "",
         statusAll: "on",
+        storecity: "Erbil",
+        isHasDelivery: false,
+        deliveryAllCities: false,
+        deliveryCities: [],
       });
       setSelectedBrandLogo(null);
       if (brandLogoFileRef.current) {
@@ -1860,6 +1986,21 @@ const DataEntryForm = () => {
     setMessage({ type: "", text: "" });
 
     try {
+      if (
+        storeForm.isHasDelivery &&
+        !storeForm.deliveryAllCities &&
+        (!storeForm.deliveryCities || storeForm.deliveryCities.length === 0)
+      ) {
+        setMessage({
+          type: "error",
+          text: t(
+            "Select delivery cities or enable delivery for all cities.",
+          ),
+        });
+        setLoading(false);
+        return;
+      }
+
       let logoUrl = "";
 
       if (selectedStoreLogo) {
@@ -1868,10 +2009,17 @@ const DataEntryForm = () => {
         setUploadLoading(false);
       }
 
+      const hasDel = !!storeForm.isHasDelivery;
       const storeData = {
         ...storeForm,
         logo: logoUrl,
+        branches: branchesToApiPayload(storeForm.branches, stores),
         expireDate: normalizeExpiryInputForApi(storeForm.expireDate),
+        deliveryAllCities: hasDel ? !!storeForm.deliveryAllCities : false,
+        deliveryCities:
+          hasDel && !storeForm.deliveryAllCities
+            ? storeForm.deliveryCities || []
+            : [],
         contactInfo: {
           phone: storeForm.phone || "",
           whatsapp: storeForm.whatsapp || "",
@@ -1919,6 +2067,9 @@ const DataEntryForm = () => {
         show: true,
         expireDate: "",
         statusAll: "on",
+        isHasDelivery: false,
+        deliveryAllCities: false,
+        deliveryCities: [],
       });
       setSelectedStoreLogo(null);
       fetchStores(); // Refresh stores list
@@ -2205,6 +2356,12 @@ const DataEntryForm = () => {
           ? toDatetimeLocalValue(data.expireDate)
           : "",
         statusAll: data.statusAll === "off" ? "off" : "on",
+        storecity: data.storecity || "Erbil",
+        isHasDelivery: !!data.isHasDelivery,
+        deliveryAllCities: !!data.deliveryAllCities,
+        deliveryCities: Array.isArray(data.deliveryCities)
+          ? data.deliveryCities
+          : [],
       });
     } else if (type === "store") {
       setEditForm({
@@ -2234,7 +2391,7 @@ const DataEntryForm = () => {
         descriptionEn: data.descriptionEn || "",
         descriptionAr: data.descriptionAr || "",
         descriptionKu: data.descriptionKu || "",
-        branches: data.branches || [],
+        branches: branchesFromApiToForm(data.branches, stores),
         show: data.show !== undefined ? data.show : true,
         expireDate: data.expireDate
           ? toDatetimeLocalValue(data.expireDate)
@@ -2244,6 +2401,10 @@ const DataEntryForm = () => {
           : "",
         statusAll: data.statusAll === "off" ? "off" : "on",
         isHasDelivery: !!data.isHasDelivery,
+        deliveryAllCities: !!data.deliveryAllCities,
+        deliveryCities: Array.isArray(data.deliveryCities)
+          ? data.deliveryCities
+          : [],
       });
     } else if (type === "category") {
       const rawStoreTypeId =
@@ -2382,15 +2543,42 @@ const DataEntryForm = () => {
       setEditLoading(true);
       setMessage({ type: "", text: "" });
 
+      if (
+        editDialog.type === "store" ||
+        editDialog.type === "brand" ||
+        editDialog.type === "company"
+      ) {
+        if (
+          editForm.isHasDelivery &&
+          !editForm.deliveryAllCities &&
+          (!editForm.deliveryCities || editForm.deliveryCities.length === 0)
+        ) {
+          setMessage({
+            type: "error",
+            text: t(
+              "Select delivery cities or enable delivery for all cities.",
+            ),
+          });
+          setEditLoading(false);
+          return;
+        }
+      }
+
       if (editDialog.type === "brand" || editDialog.type === "company") {
         let logoUrl = editForm.logo;
         if (selectedEditImage) {
           logoUrl = await uploadBrandLogo(selectedEditImage);
         }
+        const hasDel = !!editForm.isHasDelivery;
         const brandUpdateData = {
           ...editForm,
           logo: logoUrl,
           expireDate: normalizeExpiryInputForApi(editForm.expireDate),
+          deliveryAllCities: hasDel ? !!editForm.deliveryAllCities : false,
+          deliveryCities:
+            hasDel && !editForm.deliveryAllCities
+              ? editForm.deliveryCities || []
+              : [],
           contactInfo: {
             phone: editForm.phone || "",
             whatsapp: editForm.whatsapp || "",
@@ -2426,10 +2614,17 @@ const DataEntryForm = () => {
         if (selectedEditImage) {
           logoUrl = await uploadStoreLogo(selectedEditImage);
         }
+        const hasDel = !!editForm.isHasDelivery;
         const storeUpdateData = {
           ...editForm,
           logo: logoUrl,
+          branches: branchesToApiPayload(editForm.branches, stores),
           expireDate: normalizeExpiryInputForApi(editForm.expireDate),
+          deliveryAllCities: hasDel ? !!editForm.deliveryAllCities : false,
+          deliveryCities:
+            hasDel && !editForm.deliveryAllCities
+              ? editForm.deliveryCities || []
+              : [],
           contactInfo: {
             phone: editForm.phone || "",
             whatsapp: editForm.whatsapp || "",
@@ -2462,7 +2657,9 @@ const DataEntryForm = () => {
           if (!name) return;
           const prev = prevTypes[index];
           const base =
-            prev && typeof prev === "object" && prev !== null ? { ...prev } : {};
+            prev && typeof prev === "object" && prev !== null
+              ? { ...prev }
+              : {};
           validTypes.push({
             ...base,
             name,
@@ -2816,7 +3013,10 @@ const DataEntryForm = () => {
   const addCategoryType = () => {
     setCategoryForm((prev) => ({
       ...prev,
-      types: [...prev.types.map(normalizeCategoryTypeRow), emptyCategoryTypeRow()],
+      types: [
+        ...prev.types.map(normalizeCategoryTypeRow),
+        emptyCategoryTypeRow(),
+      ],
     }));
   };
 
@@ -3906,7 +4106,7 @@ const DataEntryForm = () => {
                     onClick={async () => {
                       try {
                         setMessage({ type: "", text: "" });
-                                                const num = settingsContactNumber.trim();
+                        const num = settingsContactNumber.trim();
                         await settingsAPI.update(
                           {
                             contactWhatsAppNumber: num,
@@ -4442,7 +4642,9 @@ const DataEntryForm = () => {
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
-                    onClick={() => setAddDialog({ open: true, type: "company" })}
+                    onClick={() =>
+                      setAddDialog({ open: true, type: "company" })
+                    }
                   >
                     {t("New Company")}
                   </Button>
@@ -4459,34 +4661,94 @@ const DataEntryForm = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("No.")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Name")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Logo")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Phone")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Type")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Description")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         VIP
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Status All")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Expire Contact")}
                       </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", backgroundColor: "primary.light", color: "primary.contrastText" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: "bold",
+                          backgroundColor: "primary.light",
+                          color: "primary.contrastText",
+                        }}
+                      >
                         {t("Actions")}
                       </TableCell>
                     </TableRow>
@@ -4499,8 +4761,13 @@ const DataEntryForm = () => {
                       )
                       .map((company, idx) => (
                         <TableRow key={company._id}>
-                          <TableCell>{companiesPage * rowsPerPage + idx + 1}</TableCell>
-                          <TableCell width={200} sx={{ fontSize: "18px", fontWeight: "bold" }}>
+                          <TableCell>
+                            {companiesPage * rowsPerPage + idx + 1}
+                          </TableCell>
+                          <TableCell
+                            width={200}
+                            sx={{ fontSize: "18px", fontWeight: "bold" }}
+                          >
                             {company.name}
                           </TableCell>
                           <TableCell>
@@ -4514,30 +4781,70 @@ const DataEntryForm = () => {
                                 alt={company.name}
                                 width={80}
                                 height={80}
-                                style={{ objectFit: "cover", borderRadius: "4px" }}
+                                style={{
+                                  objectFit: "cover",
+                                  borderRadius: "4px",
+                                }}
                               />
                             )}
                           </TableCell>
                           <TableCell>{company.phone}</TableCell>
-                          <TableCell>{company.brandTypeId?.name || company.type || ""}</TableCell>
-                          <TableCell width="100px" height="100px" sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <TableCell>
+                            {company.brandTypeId?.name || company.type || ""}
+                          </TableCell>
+                          <TableCell
+                            width="100px"
+                            height="100px"
+                            sx={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
                             {company.description}
                           </TableCell>
                           <TableCell>
                             {company.isVip && (
-                              <Box sx={{ backgroundColor: "#FFD700", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.3)", border: "2px solid #FFF", "&::before": { content: '"👑"', fontSize: "16px" } }} />
+                              <Box
+                                sx={{
+                                  backgroundColor: "#FFD700",
+                                  borderRadius: "50%",
+                                  width: 32,
+                                  height: 32,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                                  border: "2px solid #FFF",
+                                  "&::before": {
+                                    content: '"👑"',
+                                    fontSize: "16px",
+                                  },
+                                }}
+                              />
                             )}
                           </TableCell>
                           <TableCell>
                             <Chip
                               size="small"
-                              label={company.statusAll === "off" ? t("off") : t("on")}
-                              color={company.statusAll === "off" ? "error" : "success"}
+                              label={
+                                company.statusAll === "off" ? t("off") : t("on")
+                              }
+                              color={
+                                company.statusAll === "off"
+                                  ? "error"
+                                  : "success"
+                              }
                             />
                           </TableCell>
-                          <TableCell>{formatDisplayDate(company.expireDate)}</TableCell>
                           <TableCell>
-                            <IconButton color="primary" onClick={() => handleEditOpen("company", company)}>
+                            {formatDisplayDate(company.expireDate)}
+                          </TableCell>
+                          <TableCell>
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEditOpen("company", company)}
+                            >
                               <EditIcon />
                             </IconButton>
                             <IconButton
@@ -5883,7 +6190,9 @@ const DataEntryForm = () => {
                                     brandId:
                                       job?.brandId?._id || job?.brandId || "",
                                     companyId:
-                                      job?.companyId?._id || job?.companyId || "",
+                                      job?.companyId?._id ||
+                                      job?.companyId ||
+                                      "",
                                     whatsapp: job.whatsapp || "",
                                     email: job.email || "",
                                     image: job.image || "",
@@ -6407,6 +6716,60 @@ const DataEntryForm = () => {
                     label={t("Has Delivery")}
                   />
                 </Grid>
+                {storeForm.isHasDelivery && (
+                  <>
+                    <Grid xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="deliveryAllCities"
+                            checked={!!storeForm.deliveryAllCities}
+                            onChange={(e) =>
+                              setStoreForm((prev) => ({
+                                ...prev,
+                                deliveryAllCities: e.target.checked,
+                                deliveryCities: e.target.checked
+                                  ? []
+                                  : prev.deliveryCities,
+                              }))
+                            }
+                          />
+                        }
+                        label={t("Delivery for all cities")}
+                      />
+                    </Grid>
+                    {!storeForm.deliveryAllCities && (
+                      <Grid xs={12}>
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={deliveryFormCityOptions.map((o) => o.value)}
+                          value={storeForm.deliveryCities || []}
+                          onChange={(_, v) =>
+                            setStoreForm((prev) => ({
+                              ...prev,
+                              deliveryCities: v,
+                            }))
+                          }
+                          getOptionLabel={(opt) => {
+                            const row = deliveryFormCityOptions.find(
+                              (o) => o.value === opt,
+                            );
+                            return row ? row.label : String(opt);
+                          }}
+                          isOptionEqualToValue={(a, b) => a === b}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Delivery cities")}
+                              placeholder={t("Search...")}
+                            />
+                          )}
+                        />
+                      </Grid>
+                    )}
+                  </>
+                )}
                 <Grid xs={12} sm={6}>
                   <TextField
                     fullWidth
@@ -6436,90 +6799,34 @@ const DataEntryForm = () => {
                   <Typography variant="subtitle1" gutterBottom>
                     {t("Branches")}
                   </Typography>
-                  {storeForm.branches.map((branch, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        mb: 2,
-                        p: 2,
-                        border: "1px solid #ddd",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Grid container spacing={2}>
-                        <Grid xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            label={t("Branch Name")}
-                            value={branch.name || ""}
-                            onChange={(e) => {
-                              const newBranches = [...storeForm.branches];
-                              newBranches[index] = {
-                                ...branch,
-                                name: e.target.value,
-                              };
-                              setStoreForm({
-                                ...storeForm,
-                                branches: newBranches,
-                              });
-                            }}
-                          />
-                        </Grid>
-                        <Grid xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            label={t("Branch Address")}
-                            value={branch.address || ""}
-                            onChange={(e) => {
-                              const newBranches = [...storeForm.branches];
-                              newBranches[index] = {
-                                ...branch,
-                                address: e.target.value,
-                              };
-                              setStoreForm({
-                                ...storeForm,
-                                branches: newBranches,
-                              });
-                            }}
-                          />
-                        </Grid>
-                        <Grid xs={12}>
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            size="small"
-                            onClick={() => {
-                              const newBranches = storeForm.branches.filter(
-                                (_, i) => i !== index,
-                              );
-                              setStoreForm({
-                                ...storeForm,
-                                branches: newBranches,
-                              });
-                            }}
-                          >
-                            {t("Remove Branch")}
-                          </Button>
-                        </Grid>
-                      </Grid>
-                    </Box>
-                  ))}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => {
+                  <Autocomplete
+                    multiple
+                    disableCloseOnSelect
+                    options={stores}
+                    getOptionLabel={(option) => option?.name ?? ""}
+                    isOptionEqualToValue={(a, b) =>
+                      String(a?._id) === String(b?._id)
+                    }
+                    value={(storeForm.branches || [])
+                      .map((id) =>
+                        stores.find((s) => String(s._id) === String(id)),
+                      )
+                      .filter(Boolean)}
+                    onChange={(_, newValue) => {
                       setStoreForm({
                         ...storeForm,
-                        branches: [
-                          ...storeForm.branches,
-                          { name: "", address: "" },
-                        ],
+                        branches: newValue.map((s) => String(s._id)),
                       });
                     }}
-                    sx={{ mt: 1 }}
-                  >
-                    {t("Add Branch")}
-                  </Button>
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t("Branch stores")}
+                        placeholder={t("Search...")}
+                      />
+                    )}
+                    sx={{ mt: 0.5 }}
+                  />
                 </Grid>
                 <Grid xs={12}>
                   <Button
@@ -6879,6 +7186,94 @@ const DataEntryForm = () => {
                     </Select>
                   </FormControl>
                 </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("City")}</InputLabel>
+                    <Select
+                      name="storecity"
+                      value={brandForm.storecity}
+                      onChange={handleBrandFormChange}
+                      label={t("City")}
+                    >
+                      {brandFormCityOptions.map((c) => (
+                        <MenuItem key={c.value} value={c.value}>
+                          {c.flag} {c.label}
+                          {c.inactive
+                            ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                            : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="isHasDelivery"
+                        checked={!!brandForm.isHasDelivery}
+                        onChange={handleBrandFormChange}
+                      />
+                    }
+                    label={t("Has Delivery")}
+                  />
+                </Grid>
+                {brandForm.isHasDelivery && (
+                  <>
+                    <Grid xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="deliveryAllCities"
+                            checked={!!brandForm.deliveryAllCities}
+                            onChange={(e) =>
+                              setBrandForm((prev) => ({
+                                ...prev,
+                                deliveryAllCities: e.target.checked,
+                                deliveryCities: e.target.checked
+                                  ? []
+                                  : prev.deliveryCities,
+                              }))
+                            }
+                          />
+                        }
+                        label={t("Delivery for all cities")}
+                      />
+                    </Grid>
+                    {!brandForm.deliveryAllCities && (
+                      <Grid xs={12}>
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={deliveryBrandFormCityOptions.map(
+                            (o) => o.value,
+                          )}
+                          value={brandForm.deliveryCities || []}
+                          onChange={(_, v) =>
+                            setBrandForm((prev) => ({
+                              ...prev,
+                              deliveryCities: v,
+                            }))
+                          }
+                          getOptionLabel={(opt) => {
+                            const row = deliveryBrandFormCityOptions.find(
+                              (o) => o.value === opt,
+                            );
+                            return row ? row.label : String(opt);
+                          }}
+                          isOptionEqualToValue={(a, b) => a === b}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Delivery cities")}
+                              placeholder={t("Search...")}
+                            />
+                          )}
+                        />
+                      </Grid>
+                    )}
+                  </>
+                )}
                 <Grid xs={12}>
                   <TextField
                     fullWidth
@@ -6949,7 +7344,9 @@ const DataEntryForm = () => {
                       />
                     }
                     label={
-                      addDialog.type === "company" ? t("VIP Company") : t("VIP Brand")
+                      addDialog.type === "company"
+                        ? t("VIP Company")
+                        : t("VIP Brand")
                     }
                   />
                 </Grid>
@@ -8374,7 +8771,9 @@ const DataEntryForm = () => {
                       }
                       label={t("Store")}
                       displayEmpty
-                      disabled={Boolean(videoForm.brandId || videoForm.companyId)}
+                      disabled={Boolean(
+                        videoForm.brandId || videoForm.companyId,
+                      )}
                     >
                       <MenuItem value="">
                         <em>{t("None")}</em>
@@ -8402,7 +8801,9 @@ const DataEntryForm = () => {
                       }
                       label={t("Brand")}
                       displayEmpty
-                      disabled={Boolean(videoForm.storeId || videoForm.companyId)}
+                      disabled={Boolean(
+                        videoForm.storeId || videoForm.companyId,
+                      )}
                     >
                       <MenuItem value="">
                         <em>{t("None")}</em>
@@ -8893,15 +9294,15 @@ const DataEntryForm = () => {
               ? "Edit Brand"
               : editDialog.type === "company"
                 ? "Edit Company"
-              : editDialog.type === "store"
-                ? "Edit Store"
-                : editDialog.type === "gift"
-                  ? "Edit Gift"
-                  : editDialog.type === "storeType"
-                    ? "Edit Store Type"
-                    : editDialog.type === "brandType"
-                      ? "Edit Brand Type"
-                      : "Edit Product",
+                : editDialog.type === "store"
+                  ? "Edit Store"
+                  : editDialog.type === "gift"
+                    ? "Edit Gift"
+                    : editDialog.type === "storeType"
+                      ? "Edit Store Type"
+                      : editDialog.type === "brandType"
+                        ? "Edit Brand Type"
+                        : "Edit Product",
           )}
         </DialogTitle>
         <DialogContent>
@@ -9093,6 +9494,104 @@ const DataEntryForm = () => {
                 value={editForm.waze || ""}
                 onChange={handleEditFormChange}
               />
+              <FormControl fullWidth margin="normal">
+                <InputLabel>{t("City")}</InputLabel>
+                <Select
+                  name="storecity"
+                  value={editForm.storecity || "Erbil"}
+                  onChange={handleEditFormChange}
+                  label={t("City")}
+                >
+                  {editFormCityOptions.map((c) => (
+                    <MenuItem key={c.value} value={c.value}>
+                      {c.flag} {c.label}
+                      {c.inactive
+                        ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                        : ""}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="isHasDelivery"
+                      checked={!!editForm.isHasDelivery}
+                      onChange={(e) =>
+                        setEditForm((prev) => {
+                          const on = e.target.checked;
+                          return {
+                            ...prev,
+                            isHasDelivery: on,
+                            ...(!on
+                              ? {
+                                  deliveryAllCities: false,
+                                  deliveryCities: [],
+                                }
+                              : {}),
+                          };
+                        })
+                      }
+                    />
+                  }
+                  label={t("Has Delivery")}
+                />
+              </Box>
+              {editForm.isHasDelivery && (
+                <>
+                  <Box sx={{ mt: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="deliveryAllCities"
+                          checked={!!editForm.deliveryAllCities}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              deliveryAllCities: e.target.checked,
+                              deliveryCities: e.target.checked
+                                ? []
+                                : prev.deliveryCities || [],
+                            }))
+                          }
+                        />
+                      }
+                      label={t("Delivery for all cities")}
+                    />
+                  </Box>
+                  {!editForm.deliveryAllCities && (
+                    <Box sx={{ mt: 2 }}>
+                      <Autocomplete
+                        multiple
+                        disableCloseOnSelect
+                        options={deliveryEditCityOptions.map((o) => o.value)}
+                        value={editForm.deliveryCities || []}
+                        onChange={(_, v) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            deliveryCities: v,
+                          }))
+                        }
+                        getOptionLabel={(opt) => {
+                          const row = deliveryEditCityOptions.find(
+                            (o) => o.value === opt,
+                          );
+                          return row ? row.label : String(opt);
+                        }}
+                        isOptionEqualToValue={(a, b) => a === b}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={t("Delivery cities")}
+                            placeholder={t("Search...")}
+                          />
+                        )}
+                      />
+                    </Box>
+                  )}
+                </>
+              )}
               <TextField
                 margin="normal"
                 fullWidth
@@ -9157,7 +9656,11 @@ const DataEntryForm = () => {
                       }
                     />
                   }
-                  label={t("VIP Brand")}
+                  label={
+                    editDialog.type === "company"
+                      ? t("VIP Company")
+                      : t("VIP Brand")
+                  }
                 />
               </Box>
             </Box>
@@ -9481,9 +9984,18 @@ const DataEntryForm = () => {
                       name="isHasDelivery"
                       checked={!!editForm.isHasDelivery}
                       onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          isHasDelivery: e.target.checked,
+                        setEditForm((prev) => {
+                          const on = e.target.checked;
+                          return {
+                            ...prev,
+                            isHasDelivery: on,
+                            ...(!on
+                              ? {
+                                  deliveryAllCities: false,
+                                  deliveryCities: [],
+                                }
+                              : {}),
+                          };
                         })
                       }
                     />
@@ -9491,85 +10003,94 @@ const DataEntryForm = () => {
                   label={t("Has Delivery")}
                 />
               </Box>
+              {editForm.isHasDelivery && (
+                <>
+                  <Box sx={{ mt: 2 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="deliveryAllCities"
+                          checked={!!editForm.deliveryAllCities}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              deliveryAllCities: e.target.checked,
+                              deliveryCities: e.target.checked
+                                ? []
+                                : prev.deliveryCities || [],
+                            }))
+                          }
+                        />
+                      }
+                      label={t("Delivery for all cities")}
+                    />
+                  </Box>
+                  {!editForm.deliveryAllCities && (
+                    <Box sx={{ mt: 2 }}>
+                      <Autocomplete
+                        multiple
+                        disableCloseOnSelect
+                        options={deliveryEditCityOptions.map((o) => o.value)}
+                        value={editForm.deliveryCities || []}
+                        onChange={(_, v) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            deliveryCities: v,
+                          }))
+                        }
+                        getOptionLabel={(opt) => {
+                          const row = deliveryEditCityOptions.find(
+                            (o) => o.value === opt,
+                          );
+                          return row ? row.label : String(opt);
+                        }}
+                        isOptionEqualToValue={(a, b) => a === b}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label={t("Delivery cities")}
+                            placeholder={t("Search...")}
+                          />
+                        )}
+                      />
+                    </Box>
+                  )}
+                </>
+              )}
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle1" gutterBottom>
                   {t("Branches")}
                 </Typography>
-                {(editForm.branches || []).map((branch, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      mb: 2,
-                      p: 2,
-                      border: "1px solid #ddd",
-                      borderRadius: 1,
-                    }}
-                  >
-                    <Grid container spacing={2}>
-                      <Grid xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label={t("Branch Name")}
-                          value={branch.name || ""}
-                          onChange={(e) => {
-                            const newBranches = [...(editForm.branches || [])];
-                            newBranches[index] = {
-                              ...branch,
-                              name: e.target.value,
-                            };
-                            setEditForm({ ...editForm, branches: newBranches });
-                          }}
-                        />
-                      </Grid>
-                      <Grid xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label={t("Branch Address")}
-                          value={branch.address || ""}
-                          onChange={(e) => {
-                            const newBranches = [...(editForm.branches || [])];
-                            newBranches[index] = {
-                              ...branch,
-                              address: e.target.value,
-                            };
-                            setEditForm({ ...editForm, branches: newBranches });
-                          }}
-                        />
-                      </Grid>
-                      <Grid xs={12}>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          onClick={() => {
-                            const newBranches = (
-                              editForm.branches || []
-                            ).filter((_, i) => i !== index);
-                            setEditForm({ ...editForm, branches: newBranches });
-                          }}
-                        >
-                          {t("Remove Branch")}
-                        </Button>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                ))}
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => {
+                <Autocomplete
+                  multiple
+                  disableCloseOnSelect
+                  options={stores.filter(
+                    (s) => String(s._id) !== String(editDialog.data?._id),
+                  )}
+                  getOptionLabel={(option) => option?.name ?? ""}
+                  isOptionEqualToValue={(a, b) =>
+                    String(a?._id) === String(b?._id)
+                  }
+                  value={(editForm.branches || [])
+                    .map((id) =>
+                      stores.find((s) => String(s._id) === String(id)),
+                    )
+                    .filter(Boolean)}
+                  onChange={(_, newValue) => {
                     setEditForm({
                       ...editForm,
-                      branches: [
-                        ...(editForm.branches || []),
-                        { name: "", address: "" },
-                      ],
+                      branches: newValue.map((s) => String(s._id)),
                     });
                   }}
-                  sx={{ mt: 1 }}
-                >
-                  {t("Add Branch")}
-                </Button>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={t("Branch stores")}
+                      placeholder={t("Search...")}
+                    />
+                  )}
+                  sx={{ mt: 0.5 }}
+                />
               </Box>
             </Box>
           ) : editDialog.type === "category" ? (
@@ -9708,7 +10229,9 @@ const DataEntryForm = () => {
                             </IconButton>
                           </Box>
                           <MultilingualFieldGroup
-                            sectionLabel={t("Category type name (translations)")}
+                            sectionLabel={t(
+                              "Category type name (translations)",
+                            )}
                             value={{
                               english: row.nameEn,
                               arabic: row.nameAr,
@@ -10622,59 +11145,36 @@ const DataEntryForm = () => {
               deleteDialog.type === "brand"
                 ? handleDeleteBrandConfirm()
                 : deleteDialog.type === "company"
-                ? handleDeleteBrandConfirm()
-                : deleteDialog.type === "gift"
                   ? handleDeleteBrandConfirm()
-                  : deleteDialog.type === "job"
+                  : deleteDialog.type === "gift"
                     ? handleDeleteBrandConfirm()
-                    : deleteDialog.type === "video"
-                      ? handleDeleteStoreConfirm()
-                      : deleteDialog.type === "category"
-                        ? handleDeleteCategoryConfirm()
-                        : deleteDialog.type === "storeType"
-                          ? handleDeleteStoreTypeConfirm()
-                          : deleteDialog.type === "brandType"
-                            ? (async () => {
-                                setDeleteLoading(true);
-                                try {
-                                  await brandTypeAPI.delete(
-                                    deleteDialog.data._id,
-                                  );
-                                  const res = await brandTypeAPI.getAll();
-                                  setBrandTypes(res.data || []);
-                                  setMessage({
-                                    type: "success",
-                                    text: t("Brand Type deleted successfully!"),
-                                  });
-                                } catch (e) {
-                                  setMessage({
-                                    type: "error",
-                                    text: t("Failed to delete brand type."),
-                                  });
-                                } finally {
-                                  setDeleteLoading(false);
-                                  setDeleteDialog({
-                                    open: false,
-                                    type: "",
-                                    data: null,
-                                  });
-                                }
-                              })()
-                            : (async () => {
+                    : deleteDialog.type === "job"
+                      ? handleDeleteBrandConfirm()
+                      : deleteDialog.type === "video"
+                        ? handleDeleteStoreConfirm()
+                        : deleteDialog.type === "category"
+                          ? handleDeleteCategoryConfirm()
+                          : deleteDialog.type === "storeType"
+                            ? handleDeleteStoreTypeConfirm()
+                            : deleteDialog.type === "brandType"
+                              ? (async () => {
                                   setDeleteLoading(true);
                                   try {
-                                    await categoryAPI.delete(
+                                    await brandTypeAPI.delete(
                                       deleteDialog.data._id,
                                     );
+                                    const res = await brandTypeAPI.getAll();
+                                    setBrandTypes(res.data || []);
                                     setMessage({
                                       type: "success",
-                                      text: t("Category deleted successfully!"),
+                                      text: t(
+                                        "Brand Type deleted successfully!",
+                                      ),
                                     });
-                                    fetchCategories();
                                   } catch (e) {
                                     setMessage({
                                       type: "error",
-                                      text: t("Failed to delete category."),
+                                      text: t("Failed to delete brand type."),
                                     });
                                   } finally {
                                     setDeleteLoading(false);
@@ -10685,8 +11185,35 @@ const DataEntryForm = () => {
                                     });
                                   }
                                 })()
-                              ? handleDeleteStoreConfirm()
-                              : null
+                              : (async () => {
+                                    setDeleteLoading(true);
+                                    try {
+                                      await categoryAPI.delete(
+                                        deleteDialog.data._id,
+                                      );
+                                      setMessage({
+                                        type: "success",
+                                        text: t(
+                                          "Category deleted successfully!",
+                                        ),
+                                      });
+                                      fetchCategories();
+                                    } catch (e) {
+                                      setMessage({
+                                        type: "error",
+                                        text: t("Failed to delete category."),
+                                      });
+                                    } finally {
+                                      setDeleteLoading(false);
+                                      setDeleteDialog({
+                                        open: false,
+                                        type: "",
+                                        data: null,
+                                      });
+                                    }
+                                  })()
+                                ? handleDeleteStoreConfirm()
+                                : null
             }
             disabled={deleteLoading}
           >
@@ -10699,6 +11226,3 @@ const DataEntryForm = () => {
 };
 
 export default DataEntryForm;
-
-
-

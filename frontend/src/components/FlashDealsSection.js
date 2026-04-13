@@ -83,7 +83,11 @@ const FlashDealsSection = memo(function FlashDealsSection({
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: isDark ? "rgba(255,255,255,0.5)" : "#b45309", display: "block", lineHeight: 1 }}
+              sx={{
+                color: isDark ? "rgba(255,255,255,0.5)" : "#b45309",
+                display: "block",
+                lineHeight: 1,
+              }}
             >
               {t("Top products right now")}
             </Typography>
@@ -120,7 +124,9 @@ const FlashDealsSection = memo(function FlashDealsSection({
           overflowX: "auto",
           overflowY: "hidden",
           scrollbarWidth: "thin",
-          scrollbarColor: isDark ? "#4a5568 transparent" : "#d1d5db transparent",
+          scrollbarColor: isDark
+            ? "#4a5568 transparent"
+            : "#d1d5db transparent",
           "&::-webkit-scrollbar": { height: 4 },
           "&::-webkit-scrollbar-track": { background: "transparent" },
           "&::-webkit-scrollbar-thumb": {
@@ -139,7 +145,9 @@ const FlashDealsSection = memo(function FlashDealsSection({
               key={`flash-${product._id}`}
               product={product}
               onOpen={onProductOpen}
-              isLiked={likeStates?.[product._id] || isProductLiked?.(product._id)}
+              isLiked={
+                likeStates?.[product._id] || isProductLiked?.(product._id)
+              }
               onLike={onLikeClick}
               likeLoading={likeLoading?.[product._id]}
               formatPrice={formatPrice}

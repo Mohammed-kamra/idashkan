@@ -35,6 +35,8 @@ import { useTranslation } from "react-i18next";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { getAllLocalizedFieldValues } from "../utils/localize";
+import { useCityFilter } from "../context/CityFilterContext";
+import { storeMatchesSelectedCity } from "../utils/cityMatch";
 
 function capitalize(s) {
   return typeof s === "string" && s.length > 0
@@ -44,7 +46,11 @@ function capitalize(s) {
 
 const BrandCard = ({ brand, index, isDark, theme, locName, onClick }) => {
   const accent = theme.palette.primary.main;
-  const title = brand.statusAll === "off" ? "" : locName(brand);
+  const titleRaw = brand.statusAll === "off" ? "" : locName(brand);
+  const title =
+    typeof titleRaw === "string"
+      ? titleRaw.trim()
+      : String(titleRaw || "").trim();
 
   return (
     <Fade in timeout={280 + Math.min(index * 50, 400)}>
@@ -132,35 +138,37 @@ const BrandCard = ({ brand, index, isDark, theme, locName, onClick }) => {
           )}
         </Box>
 
-        <Box
-          sx={{
-            px: 1,
-            py: 1.25,
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            minHeight: 44,
-          }}
-        >
-          <Typography
-            variant="subtitle2"
-            component="h2"
-            align="center"
+        {title ? (
+          <Box
             sx={{
-              width: "100%",
-              fontWeight: 800,
-              fontSize: { xs: "0.78rem", sm: "0.85rem" },
-              lineHeight: 1.3,
-              color: "text.primary",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
+              px: 1,
+              py: 1.25,
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              minHeight: 44,
             }}
           >
-            {title}
-          </Typography>
-        </Box>
+            <Typography
+              variant="subtitle2"
+              component="h2"
+              align="center"
+              sx={{
+                width: "100%",
+                fontWeight: 800,
+                fontSize: { xs: "0.78rem", sm: "0.85rem" },
+                lineHeight: 1.3,
+                color: "text.primary",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
+        ) : null}
       </Card>
     </Fade>
   );
@@ -177,6 +185,7 @@ const BrandCompanyList = ({ variant }) => {
   const isDark = theme.palette.mode === "dark";
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
+  const { selectedCity } = useCityFilter();
   const isCompanyMode = variant === "company";
 
   const [Brands, setBrands] = useState([]);
@@ -360,8 +369,10 @@ const BrandCompanyList = ({ variant }) => {
       });
     }
 
+    list = list.filter((b) => storeMatchesSelectedCity(b, selectedCity));
+
     return list;
-  }, [Brands, selectedType, searchQuery]);
+  }, [Brands, selectedType, searchQuery, selectedCity]);
 
   const handleBrandClick = (brand) => {
     navigate(`${isCompanyMode ? "/companies" : "/brands"}/${brand._id}`);

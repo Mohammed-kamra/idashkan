@@ -30,7 +30,10 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useCityFilter } from "../context/CityFilterContext";
-import { cityStringsMatch } from "../utils/cityMatch";
+import {
+  productStoreMatchesCity,
+  storeMatchesSelectedCity,
+} from "../utils/cityMatch";
 import {
   isExpiryStillValid,
   getExpiryRemainingInfo,
@@ -114,7 +117,7 @@ const ProductDetailDialog = ({
   );
 
   const productMatchesSelectedCity = useCallback(
-    (p) => cityStringsMatch(selectedCity, getProductCityString(p)),
+    (p) => productStoreMatchesCity(p, selectedCity, getProductCityString),
     [selectedCity, getProductCityString],
   );
 
@@ -217,7 +220,10 @@ const ProductDetailDialog = ({
         const res = await brandAPI.getAll();
         if (!cancelled) {
           const data = res?.data;
-          setFallbackBrands(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          setFallbackBrands(
+            list.filter((b) => storeMatchesSelectedCity(b, selectedCity)),
+          );
         }
       } catch {
         if (!cancelled) setFallbackBrands([]);
@@ -226,7 +232,7 @@ const ProductDetailDialog = ({
     return () => {
       cancelled = true;
     };
-  }, [open, product?._id, related.length]);
+  }, [open, product?._id, related.length, selectedCity]);
 
   useEffect(() => {
     if (open && product?._id && isAuthenticated) {

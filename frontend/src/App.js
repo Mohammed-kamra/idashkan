@@ -10,7 +10,14 @@ import {
 } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { Container, Typography, Box, Alert, IconButton, Collapse } from "@mui/material";
+import {
+  Container,
+  Typography,
+  Box,
+  Alert,
+  IconButton,
+  Collapse,
+} from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
@@ -67,10 +74,7 @@ import {
   ActiveThemeProvider,
   useActiveTheme,
 } from "./context/ActiveThemeContext";
-import {
-  DarkModeProvider,
-  useDarkMode,
-} from "./context/DarkModeContext";
+import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext";
 
 // Footer component remains the same
 const Footer = () => (
@@ -103,6 +107,7 @@ function AppContent() {
   const [lang, setLang] = useState(i18n.language || "en");
   const isMobile = useIsMobileLayout();
   const isReelsPage = location.pathname === "/reels";
+  const isHomePage = location.pathname === "/";
   const { effectiveTheme, activeFontKey } = useActiveTheme();
   const [showTestBanner, setShowTestBanner] = useState(() => {
     try {
@@ -236,7 +241,17 @@ function AppContent() {
           >
             <Container
               maxWidth={isReelsPage ? false : "lg"}
-              disableGutters={isReelsPage}
+              disableGutters={isReelsPage || (isHomePage && isMobile)}
+              sx={
+                isHomePage && isMobile
+                  ? {
+                      px: 1,
+                      width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
+                    }
+                  : undefined
+              }
             >
               <Routes>
                 <Route path="/" element={<MainPage />} />

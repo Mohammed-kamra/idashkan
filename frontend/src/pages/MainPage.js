@@ -81,6 +81,7 @@ import {
 } from "../utils/mainPageCache";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import { storeMatchesSelectedCity } from "../utils/cityMatch";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
@@ -833,10 +834,10 @@ const MainPage = () => {
     () =>
       new Set(
         stores
-          .filter((s) => doesCityMatch(s.storecity || s.city))
+          .filter((s) => storeMatchesSelectedCity(s, selectedCity))
           .map((s) => getID(s._id)),
       ),
-    [stores, selectedCityCanonical],
+    [stores, selectedCity],
   );
 
   const storeById = useMemo(() => {
@@ -919,15 +920,10 @@ const MainPage = () => {
       const hasMatchingProducts = storeIdsWithProducts.includes(storeID);
       const storeNameMatch =
         search && store.name?.toLowerCase().includes(search.toLowerCase());
-      const cityMatch = doesCityMatch(store.storecity || store.city);
+      const cityMatch = storeMatchesSelectedCity(store, selectedCity);
       return (hasMatchingProducts || storeNameMatch) && cityMatch;
     });
-  }, [
-    filteredProductsForStoreTypeChips,
-    stores,
-    search,
-    selectedCityCanonical,
-  ]);
+  }, [filteredProductsForStoreTypeChips, stores, search, selectedCity]);
 
   const visibleStoreTypes = useMemo(() => {
     const ids = new Set(
@@ -1166,19 +1162,13 @@ const MainPage = () => {
         String(getID(store.storeTypeId)) === String(selectedStoreTypeId);
 
       // And the store must match the city filter
-      const cityMatch = doesCityMatch(store.storecity || store.city);
+      const cityMatch = storeMatchesSelectedCity(store, selectedCity);
 
       return (
         (hasMatchingProducts || storeNameMatch) && storeTypeMatch && cityMatch
       );
     });
-  }, [
-    filteredProducts,
-    stores,
-    search,
-    selectedStoreTypeId,
-    selectedCityCanonical,
-  ]);
+  }, [filteredProducts, stores, search, selectedStoreTypeId, selectedCity]);
 
   const sortedFilteredStores = useMemo(() => {
     const baseStores = [...finalFilteredStores];
@@ -1231,8 +1221,7 @@ const MainPage = () => {
   const storeCityById = useMemo(() => {
     const map = {};
     stores.forEach((store) => {
-      map[String(getID(store?._id))] =
-        store?.storecity || store?.city || "";
+      map[String(getID(store?._id))] = store?.storecity || store?.city || "";
     });
     return map;
   }, [stores]);
@@ -1247,13 +1236,21 @@ const MainPage = () => {
     return [...filteredProducts]
       .filter((product) => {
         const productStoreId = String(getID(product?.storeId));
+        const st = storeById[productStoreId];
+        if (st) return storeMatchesSelectedCity(st, selectedCity);
         const productStoreCity =
           product?.storeId?.storecity || storeCityById[productStoreId];
         return !selectedCityCanonical || doesCityMatch(productStoreCity);
       })
       .sort((a, b) => getViews(b) - getViews(a))
       .slice(0, 15);
-  }, [filteredProducts, selectedCityCanonical, storeCityById]);
+  }, [
+    filteredProducts,
+    selectedCityCanonical,
+    storeCityById,
+    storeById,
+    selectedCity,
+  ]);
 
   // Filtered followed stores and their products for Following tab
   const filteredFollowedStoresWithProducts = useMemo(() => {
@@ -1267,7 +1264,7 @@ const MainPage = () => {
           return false;
         }
         // City filter
-        if (!doesCityMatch(store.storecity || store.city)) {
+        if (!storeMatchesSelectedCity(store, selectedCity)) {
           return false;
         }
         // Store name search match (if search, store can show if name matches)
@@ -1386,7 +1383,7 @@ const MainPage = () => {
     search,
     priceRange,
     showOnlyDiscount,
-    selectedCityCanonical,
+    selectedCity,
   ]);
 
   const mainFeedItems = useMemo(() => {
@@ -1409,17 +1406,32 @@ const MainPage = () => {
     return items;
   }, [displayedStores, getID]);
 
+  const brandsInSelectedCity = useMemo(
+    () => brands.filter((b) => storeMatchesSelectedCity(b, selectedCity)),
+    [brands, selectedCity],
+  );
+  const companiesInSelectedCity = useMemo(
+    () => companies.filter((c) => storeMatchesSelectedCity(c, selectedCity)),
+    [companies, selectedCity],
+  );
+
   const renderRotatingShowcase = useCallback(
     (blockIndex) => {
       const variant = blockIndex % 4;
       if (variant === 0) {
         const offset = blockIndex * 8;
-        return <BrandShowcase brands={brands.slice(offset, offset + 8)} />;
+        return (
+          <BrandShowcase
+            brands={brandsInSelectedCity.slice(offset, offset + 8)}
+          />
+        );
       }
       if (variant === 1) {
         const offset = blockIndex * 8;
         return (
-          <CompanyShowcase companies={companies.slice(offset, offset + 8)} />
+          <CompanyShowcase
+            companies={companiesInSelectedCity.slice(offset, offset + 8)}
+          />
         );
       }
       if (variant === 2) {
@@ -1441,7 +1453,12 @@ const MainPage = () => {
       }
       return <GiftShowcase gifts={showcaseEligibleGifts} />;
     },
-    [brands, companies, showcaseEligibleGifts, sortedFilteredStores],
+    [
+      brandsInSelectedCity,
+      companiesInSelectedCity,
+      showcaseEligibleGifts,
+      sortedFilteredStores,
+    ],
   );
 
   useEffect(() => {
@@ -1696,7 +1713,8 @@ const MainPage = () => {
     return (
       <Box
         sx={{
-          px: { xs: 1, sm: 1.5, md: 3 },
+          /* xs: no extra horizontal padding — App Container supplies narrow inset on mobile */
+          px: { xs: 0, sm: 1.5, md: 3 },
           pt: { xs: "100px", sm: "113px", md: "113px" },
           pb: { xs: 10, sm: 4 },
           width: "100%",
@@ -1836,7 +1854,6 @@ const MainPage = () => {
   return (
     <Box
       sx={{
-        px: { xs: 1, sm: 1.5, md: 3 },
         pt: { xs: "100px", sm: "113px", md: "113px" },
         pb: { xs: 10, sm: 4 },
       }}

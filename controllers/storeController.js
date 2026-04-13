@@ -1,5 +1,6 @@
 const Store = require("../models/Store");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
+const { syncBranchCluster } = require("../utils/syncBranchCluster");
 const Product = require("../models/Product");
 
 const publicStoreFilter = { statusAll: { $ne: "off" } };
@@ -86,6 +87,9 @@ const createStore = async (req, res) => {
 
     const store = new Store(storeData);
     await store.save();
+    if (storeData.branches !== undefined) {
+      await syncBranchCluster(store._id, storeData.branches || [], store);
+    }
     const populated = await Store.findById(store._id).populate(
       "storeTypeId",
       "name icon"
@@ -101,6 +105,9 @@ const createStore = async (req, res) => {
 // @route   PUT /api/stores/:id
 const updateStore = async (req, res) => {
   try {
+    const oldStore = await Store.findById(req.params.id).lean();
+    if (!oldStore) return res.status(404).json({ msg: "Store not found" });
+
     const { storeTypeId, storeType: storeTypeName, ...rest } = req.body;
     const StoreType = require("../models/StoreType");
     const updateDoc = { ...rest };
@@ -112,9 +119,9 @@ const updateStore = async (req, res) => {
       updateDoc.storeTypeId = storeTypeId;
     }
 
-    // Ensure branches and show fields are properly handled
+    // Branches are synced across the cluster in syncBranchCluster (full mesh + cleanup)
     if (rest.branches !== undefined) {
-      updateDoc.branches = rest.branches;
+      delete updateDoc.branches;
     }
     if (rest.show !== undefined) {
       updateDoc.show = rest.show;
@@ -135,6 +142,16 @@ const updateStore = async (req, res) => {
       new: true,
     }).populate("storeTypeId", "name icon");
     if (!store) return res.status(404).json({ msg: "Store not found" });
+
+    if (rest.branches !== undefined) {
+      await syncBranchCluster(req.params.id, rest.branches || [], oldStore);
+      const refreshed = await Store.findById(req.params.id).populate(
+        "storeTypeId",
+        "name icon"
+      );
+      return res.json(refreshed);
+    }
+
     res.json(store);
   } catch (err) {
     console.error(err.message);

@@ -40,6 +40,10 @@ const companySchema = new mongoose.Schema({
     enum: ["on", "off"],
     default: "on",
   },
+  storecity: { type: String, trim: true, default: "Erbil" },
+  isHasDelivery: { type: Boolean, default: false },
+  deliveryAllCities: { type: Boolean, default: false },
+  deliveryCities: [{ type: String, trim: true }],
 });
 
 module.exports = mongoose.model("Company", companySchema);

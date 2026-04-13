@@ -51,7 +51,7 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductDetailDialog from "../components/ProductDetailDialog";
-import { cityStringsMatch } from "../utils/cityMatch";
+import { productStoreMatchesCity } from "../utils/cityMatch";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
@@ -519,9 +519,8 @@ const ProductCategory = () => {
     }
 
     filtered = filtered.filter((product) =>
-      cityStringsMatch(
-        selectedCity,
-        product.storeId?.storecity || product.storeId?.city || "",
+      productStoreMatchesCity(product, selectedCity, (p) =>
+        String(p.storeId?.storecity || p.storeId?.city || "").trim(),
       ),
     );
 
