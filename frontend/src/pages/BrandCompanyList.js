@@ -44,13 +44,14 @@ function capitalize(s) {
     : s;
 }
 
-const BrandCard = ({ brand, index, isDark, theme, locName, onClick }) => {
+const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }) => {
   const accent = theme.palette.primary.main;
   const titleRaw = brand.statusAll === "off" ? "" : locName(brand);
   const title =
     typeof titleRaw === "string"
       ? titleRaw.trim()
       : String(titleRaw || "").trim();
+  const displayAddress = String(locAddress(brand) || "").trim();
 
   return (
     <Fade in timeout={280 + Math.min(index * 50, 400)}>
@@ -169,6 +170,27 @@ const BrandCard = ({ brand, index, isDark, theme, locName, onClick }) => {
             </Typography>
           </Box>
         ) : null}
+
+        {displayAddress ? (
+          <Typography
+            variant="caption"
+            component="div"
+            sx={{
+              px: 1,
+              pb: 1.25,
+              color: "text.secondary",
+              fontSize: "0.72rem",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {displayAddress}
+          </Typography>
+        ) : null}
       </Card>
     </Fade>
   );
@@ -184,7 +206,7 @@ const BrandCompanyList = ({ variant }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { t } = useTranslation();
-  const { locName } = useLocalizedContent();
+  const { locName, locAddress } = useLocalizedContent();
   const { selectedCity } = useCityFilter();
   const isCompanyMode = variant === "company";
 
@@ -807,6 +829,7 @@ const BrandCompanyList = ({ variant }) => {
               isDark={isDark}
               theme={theme}
               locName={locName}
+              locAddress={locAddress}
               onClick={() => handleBrandClick(brand)}
             />
           ))}

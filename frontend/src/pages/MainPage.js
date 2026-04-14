@@ -898,16 +898,9 @@ const MainPage = () => {
         return false;
       }
 
-      if (
-        search &&
-        !product.name?.toLowerCase().includes(search.toLowerCase())
-      ) {
-        return false;
-      }
-
       return true;
     });
-  }, [allProducts, storeIdsInCity, search, priceRange, showOnlyDiscount]);
+  }, [allProducts, storeIdsInCity, priceRange, showOnlyDiscount]);
 
   const finalFilteredStoresForStoreTypeChips = useMemo(() => {
     const storeIdsWithProducts = [
@@ -978,13 +971,6 @@ const MainPage = () => {
         return false;
       }
 
-      if (
-        search &&
-        !product.name?.toLowerCase().includes(search.toLowerCase())
-      ) {
-        return false;
-      }
-
       return true;
     });
   }, [
@@ -993,7 +979,6 @@ const MainPage = () => {
     storeById,
     selectedStoreTypeId,
     selectedCategoryType,
-    search,
     priceRange,
     showOnlyDiscount,
   ]);
@@ -1038,6 +1023,9 @@ const MainPage = () => {
   // 1. Memoize the filtered products list
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
+      // Same city universe as filter chips: discounted products in selected city only
+      if (!storeIdsInCity.has(getID(product.storeId))) return false;
+
       // Filter by Store Type (product or parent store)
       if (
         selectedStoreTypeId !== "all" &&
@@ -1116,6 +1104,7 @@ const MainPage = () => {
   }, [
     allProducts,
     storeById,
+    storeIdsInCity,
     selectedStoreTypeId,
     selectedCategory,
     selectedCategoryType,

@@ -94,7 +94,7 @@ const Footer = () => (
     }}
   >
     <Typography variant="body2" color="text.secondary">
-      Powered By MK2026
+      Powered By iDashkan2026
     </Typography>
   </Box>
 );

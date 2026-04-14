@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const { deleteUserAndAssociatedData } = require("./deleteUserAndAssociatedData");
 
 const GRACE_DAYS = 30;
@@ -10,6 +11,20 @@ const generateToken = (userId) => {
     expiresIn: "7d",
   });
 };
+
+/** Username from email local part; ensure min length + uniqueness. */
+async function uniqueUsernameFromEmail(email) {
+  const raw = (email.split("@")[0] || "user").replace(/[^a-zA-Z0-9_]/g, "");
+  let base = raw.length >= 3 ? raw.slice(0, 26) : `usr_${raw || "user"}`.slice(0, 26);
+  if (base.length < 3) base = "user";
+  let candidate = base;
+  let n = 0;
+  while (await User.findOne({ username: candidate })) {
+    n += 1;
+    candidate = `${base.slice(0, 20)}_${n}`;
+  }
+  return candidate;
+}
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -284,6 +299,14 @@ const changePassword = async (req, res) => {
       });
     }
 
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No password on file for this account. Sign in with Google or use account recovery.",
+      });
+    }
+
     // Verify current password
     const isCurrentPasswordValid = await user.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
@@ -370,9 +393,143 @@ const deactivate = async (req, res) => {
   }
 };
 
+// @desc    Sign in / register with Google ID token (Gmail / Google account)
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = async (req, res) => {
+  try {
+    const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+    if (!clientId) {
+      return res.status(503).json({
+        success: false,
+        message: "Google sign-in is not configured on the server",
+      });
+    }
+
+    const idToken = (req.body.idToken || "").trim();
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Google credential is required",
+      });
+    }
+
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: clientId,
+    });
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid Google token",
+      });
+    }
+
+    if (!payload.email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Google email must be verified",
+      });
+    }
+
+    const googleId = payload.sub;
+    const email = (payload.email || "").toLowerCase().trim();
+    const displayName = (payload.name || "").trim() || null;
+    const picture = (payload.picture || "").trim() || null;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Google account has no email",
+      });
+    }
+
+    let user =
+      (await User.findOne({ googleId })) ||
+      (await User.findOne({ email }));
+
+    if (user && user.deviceId && !user.username) {
+      return res.status(400).json({
+        success: false,
+        message: "This email is linked to a guest session. Use a full account or another email.",
+      });
+    }
+
+    if (user && !user.isActive && user.scheduledDeletionAt) {
+      const now = new Date();
+      if (now >= user.scheduledDeletionAt) {
+        await deleteUserAndAssociatedData(user._id);
+        return res.status(401).json({
+          success: false,
+          message: "Account has been permanently deleted after the grace period",
+        });
+      }
+      user.isActive = true;
+      user.deactivatedAt = undefined;
+      user.scheduledDeletionAt = undefined;
+      if (!user.googleId) user.googleId = googleId;
+      if (picture && !user.avatar) user.avatar = picture;
+      if (displayName && !user.displayName) user.displayName = displayName;
+      user.lastLogin = new Date();
+      await user.save();
+      const token = generateToken(user._id);
+      return res.json({
+        success: true,
+        data: { user: user.getPublicProfile(), token },
+        message: "Login successful. Account reactivated.",
+      });
+    }
+
+    if (user && !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Account is deactivated",
+      });
+    }
+
+    if (!user) {
+      const username = await uniqueUsernameFromEmail(email);
+      user = new User({
+        username,
+        email,
+        googleId,
+        displayName,
+        avatar: picture || undefined,
+        isVerified: true,
+      });
+      await user.save();
+    } else {
+      if (!user.googleId) user.googleId = googleId;
+      if (picture && !user.avatar) user.avatar = picture;
+      if (displayName && !user.displayName) user.displayName = displayName;
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    const token = generateToken(user._id);
+    res.json({
+      success: true,
+      data: {
+        user: user.getPublicProfile(),
+        token,
+      },
+      message: "Login successful",
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during Google sign-in",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
+  googleLogin,
   getProfile,
   updateProfile,
   changePassword,

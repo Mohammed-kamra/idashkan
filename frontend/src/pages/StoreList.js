@@ -9,10 +9,8 @@ import {
   Box,
   Typography,
   Card,
-  CardContent,
   CardMedia,
   Chip,
-  IconButton,
   Fade,
   useTheme,
   Skeleton,
@@ -28,9 +26,6 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import PhoneIcon from "@mui/icons-material/Phone";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import SearchIcon from "@mui/icons-material/Search";
 import Loader from "../components/Loader";
 import { useTranslation } from "react-i18next";
@@ -47,6 +42,7 @@ function getID(id) {
   return id;
 }
 
+/** Matches `BrandCard` in `BrandCompanyList.js` (square logo, title, address). */
 const StoreCard = ({
   store,
   index,
@@ -57,38 +53,27 @@ const StoreCard = ({
   theme,
 }) => {
   const accent = theme.palette.primary.main;
+  const titleRaw = store.statusAll === "off" ? "" : locName(store);
+  const title =
+    typeof titleRaw === "string"
+      ? titleRaw.trim()
+      : String(titleRaw || "").trim();
   const displayAddress = String(locAddress(store) || "").trim();
-  const displayPhone = String(
-    store?.contactInfo?.phone || store?.phone || "",
-  ).trim();
-  /** Readable label on pale tints in light mode */
-  const primaryOnSurface =
-    theme.palette.primary.dark ||
-    (theme.palette.mode === "light" ? "#1565c0" : accent);
-  const typeRaw = store?.storeTypeId;
-  const typeLabel =
-    typeof store?.storeType === "string"
-      ? store.storeType
-      : typeRaw && typeof typeRaw === "object"
-        ? locName(typeRaw)
-        : "";
 
   return (
-    <Fade in timeout={280 + Math.min(index * 60, 400)}>
+    <Fade in timeout={280 + Math.min(index * 50, 400)}>
       <Card
         elevation={0}
         onClick={onClick}
         sx={{
           cursor: "pointer",
           display: "flex",
-          flexDirection: { xs: "row", sm: "column" },
-          alignItems: { xs: "stretch", sm: "initial" },
-          borderRadius: 3,
+          flexDirection: "column",
+          alignItems: "stretch",
+          borderRadius: 2.5,
           overflow: "hidden",
           width: "100%",
-          maxWidth: { sm: 280, md: 300 },
-          mx: { sm: "auto" },
-          height: { xs: 180, sm: "auto" },
+          height: "100%",
           border: "1px solid",
           borderColor: isDark
             ? alpha("#fff", 0.08)
@@ -97,208 +82,122 @@ const StoreCard = ({
             ? alpha("#1a2235", 0.92)
             : theme.palette.background.paper,
           transition:
-            "transform 0.22s ease, box-shadow 0.22s ease, border-color 0.2s",
+            "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s",
           "&:hover": {
-            transform: { xs: "none", sm: "translateY(-6px)" },
+            transform: "translateY(-4px)",
             boxShadow: isDark
-              ? `0 14px 36px ${alpha("#000", 0.4)}`
-              : `0 14px 36px ${alpha(accent, 0.16)}`,
-            borderColor: alpha(accent, isDark ? 0.45 : 0.3),
-            "& .store-list-card-media": {
-              transform: { xs: "none", sm: "scale(1.06)" },
-            },
-            "& .store-list-card-arrow": {
-              opacity: 1,
-              transform: "translateX(4px)",
-            },
+              ? `0 10px 28px ${alpha("#000", 0.35)}`
+              : `0 10px 28px ${alpha(accent, 0.14)}`,
+            borderColor: alpha(accent, isDark ? 0.4 : 0.28),
+            "& .store-card-logo": { transform: "scale(1.04)" },
           },
         }}
       >
-        {/* Logo / image — left on mobile, top on sm+ */}
         <Box
-          className="store-list-card-media-wrap"
+          className="store-card-logo"
           sx={{
             position: "relative",
-            height: { xs: "100%", sm: 180 },
-            width: { xs: 120, sm: "100%" },
-            flexShrink: { xs: 0, sm: 1 },
-            background:
-              theme.palette.mode === "dark"
-                ? `linear-gradient(135deg, ${alpha("#2d3a52", 0.95)} 0%, ${alpha("#1a2235", 1)} 100%)`
-                : alpha(theme.palette.background.default, 0.5),
+            width: "100%",
+            aspectRatio: "1",
+            maxHeight: { xs: 140, sm: 160 },
+            background: isDark
+              ? `linear-gradient(145deg, ${alpha("#2d3a52", 0.9)} 0%, ${alpha("#1a2235", 1)} 100%)`
+              : `linear-gradient(145deg, ${alpha(accent, 0.06)} 0%, ${alpha("#f8fafc", 1)} 100%)`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform 0.3s ease",
           }}
         >
           {store.logo ? (
             <CardMedia
               component="img"
               image={resolveMediaUrl(store.logo)}
-              alt={store.name}
-              className="store-list-card-media"
+              alt={title || store.name}
               sx={{
                 objectFit: "contain",
                 width: "100%",
                 height: "100%",
                 p: 1.5,
-                transition: "transform 0.35s ease",
               }}
             />
           ) : (
-            <Box
-              sx={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: alpha(accent, 0.4),
-              }}
-            >
-              <StorefrontIcon sx={{ fontSize: { xs: 56, sm: 72 } }} />
-            </Box>
+            <StorefrontIcon sx={{ fontSize: 56, color: alpha(accent, 0.35) }} />
           )}
-
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              background:
-                "linear-gradient(to bottom, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.18) 100%)",
-            }}
-          />
 
           {store.isVip && (
             <Box
               sx={{
                 position: "absolute",
-                top: 8,
-                left: 8,
+                top: 6,
+                left: 6,
                 zIndex: 2,
                 backgroundColor: "white",
                 borderRadius: "50%",
-                width: 34,
-                height: 34,
+                width: 28,
+                height: 28,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                "&::before": {
-                  content: '"👑"',
-                  fontSize: "16px",
-                },
+                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                "&::before": { content: '"👑"', fontSize: "13px" },
               }}
             />
           )}
-
-          <IconButton
-            className="store-list-card-arrow"
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 10,
-              right: 10,
-              backgroundColor: "rgba(255,255,255,0.28)",
-              color: "white",
-              opacity: 0,
-              transition: "all 0.25s ease",
-              backdropFilter: "blur(6px)",
-              display: { xs: "none", sm: "flex" },
-              "&:hover": { backgroundColor: "rgba(255,255,255,0.4)" },
-            }}
-            aria-hidden
-          >
-            <ArrowForwardIcon fontSize="small" />
-          </IconButton>
         </Box>
 
-        <CardContent
-          sx={{
-            p: { xs: 1.25, sm: 2 },
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.75,
-            flexGrow: 1,
-            minWidth: 0,
-            textAlign: { xs: "left", sm: "center" },
-            justifyContent: { xs: "center", sm: "flex-start" },
-          }}
-        >
-          <Typography
-            variant="h6"
-            component="h2"
+        {title ? (
+          <Box
             sx={{
-              fontWeight: 800,
-              fontSize: { xs: "0.95rem", sm: "1.1rem" },
-              color: "text.primary",
-              textAlign: { xs: "left", sm: "center" },
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
+              px: 1,
+              py: 1.25,
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              minHeight: 44,
             }}
           >
-            {locName(store)}
-          </Typography>
-
-          {typeLabel ? (
-            <Chip
-              label={typeLabel}
-              size="small"
-              sx={{
-                alignSelf: { xs: "flex-start", sm: "center" },
-                fontWeight: 700,
-                fontSize: "0.7rem",
-                height: 26,
-                ...(isDark
-                  ? {
-                      bgcolor: alpha(accent, 0.22),
-                      color: alpha("#fff", 0.95),
-                      border: `1px solid ${alpha(accent, 0.38)}`,
-                    }
-                  : {
-                      bgcolor: alpha(primaryOnSurface, 0.1),
-                      color: primaryOnSurface,
-                      border: `1px solid ${alpha(primaryOnSurface, 0.42)}`,
-                    }),
-              }}
-            />
-          ) : null}
-
-          {displayAddress ? (
             <Typography
-              variant="body2"
+              variant="subtitle2"
+              component="h2"
+              align="center"
               sx={{
-                color: "text.secondary",
-                display: { xs: "block", sm: "-webkit-box" },
-                WebkitLineClamp: { sm: 2 },
-                WebkitBoxOrient: { sm: "vertical" },
+                width: "100%",
+                fontWeight: 800,
+                fontSize: { xs: "0.78rem", sm: "0.85rem" },
+                lineHeight: 1.3,
+                color: "text.primary",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                fontSize: "0.8rem",
-                textAlign: { xs: "left", sm: "center" },
               }}
             >
-              <LocationOnIcon
-                sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
-              />
-              {displayAddress}
+              {title}
             </Typography>
-          ) : null}
+          </Box>
+        ) : null}
 
-          {displayPhone ? (
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.secondary",
-                fontSize: "0.8rem",
-                textAlign: { xs: "left", sm: "center" },
-              }}
-            >
-              <PhoneIcon
-                sx={{ fontSize: 15, mr: 0.35, verticalAlign: "middle" }}
-              />
-              {displayPhone}
-            </Typography>
-          ) : null}
-        </CardContent>
+        {/* {displayAddress ? (
+          <Typography
+            variant="caption"
+            component="div"
+            sx={{
+              px: 1,
+              pb: 1.25,
+              color: "text.secondary",
+              fontSize: "0.72rem",
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {displayAddress}
+          </Typography>
+        ) : null} */}
       </Card>
     </Fade>
   );
@@ -537,17 +436,13 @@ const StoreList = () => {
               borderRadius: 3,
             }}
           />
-          <Skeleton variant="rounded" width="55%" height={36} sx={{ mb: 2 }} />
-          <Skeleton variant="rounded" width="100%" height={48} sx={{ mb: 3 }} />
+          <Skeleton variant="rounded" width="55%" height={32} sx={{ mb: 2 }} />
+          <Skeleton variant="rounded" width="100%" height={44} sx={{ mb: 3 }} />
           <Box
             sx={{
               display: "grid",
-              gap: 2,
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                md: "repeat(3, 1fr)",
-              },
+              gap: 1.5,
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             }}
           >
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -555,26 +450,24 @@ const StoreList = () => {
                 key={i}
                 elevation={0}
                 sx={{
-                  borderRadius: 3,
+                  borderRadius: 2.5,
                   overflow: "hidden",
                   display: "flex",
-                  flexDirection: { xs: "row", sm: "column" },
-                  height: { xs: 180, sm: "auto" },
+                  flexDirection: "column",
                 }}
               >
                 <Skeleton
                   variant="rectangular"
-                  sx={{
-                    width: { xs: 120, sm: "100%" },
-                    height: { xs: "100%", sm: 180 },
-                    flexShrink: 0,
-                  }}
+                  sx={{ aspectRatio: "1", width: "100%" }}
                 />
-                <CardContent sx={{ flex: 1, py: 1.5 }}>
-                  <Skeleton variant="text" width="75%" height={28} />
-                  <Skeleton variant="text" width="40%" />
-                  <Skeleton variant="text" width="90%" />
-                </CardContent>
+                <Box sx={{ px: 1, py: 1 }}>
+                  <Skeleton
+                    variant="text"
+                    width="90%"
+                    height={20}
+                    sx={{ mx: "auto" }}
+                  />
+                </Box>
               </Card>
             ))}
           </Box>
@@ -596,9 +489,12 @@ const StoreList = () => {
         bgcolor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2 } }}>
+      <Container
+        maxWidth="lg"
+        sx={{ px: { xs: 1.5, sm: 2 }, mt: { xs: 4, md: 5 } }}
+      >
         {/* Banner */}
-        <Box sx={{ mb: 3, mt: { xs: 4, md: 5 } }}>
+        <Box sx={{ mb: 3 }}>
           <Box
             sx={{
               width: "100%",
@@ -819,17 +715,12 @@ const StoreList = () => {
           </Box>
         </Box>
 
-        {/* Grid */}
+        {/* Grid — same as BrandCompanyList */}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, minmax(0, 1fr))",
-              md: "repeat(3, minmax(0, 1fr))",
-              lg: "repeat(3, minmax(0, 1fr))",
-            },
-            gap: { xs: 2, sm: 2.5, md: 3 },
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           {filteredStores.map((store, index) => (
@@ -885,8 +776,3 @@ const StoreList = () => {
 };
 
 export default StoreList;
-
-
-
-
-

@@ -84,7 +84,10 @@ import TranslateIcon from "@mui/icons-material/Translate";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { isAdminEmail } from "../utils/adminAccess";
+import {
+  isAdminEmail,
+  canUseDataEntryNotifications,
+} from "../utils/adminAccess";
 import { useCityFilter } from "../context/CityFilterContext";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
@@ -183,6 +186,7 @@ const DataEntryForm = () => {
   const { t } = useTranslation();
   const { getAuthHeaders, user } = useAuth();
   const isAdmin = isAdminEmail(user);
+  const canUseNotificationsTab = canUseDataEntryNotifications(user);
   const { cities: publicCities, citiesNonce } = useCityFilter();
   const {
     contactWhatsAppNumber,
@@ -331,6 +335,7 @@ const DataEntryForm = () => {
     storecity: "Erbil",
     branches: [],
     show: true,
+    showingOnStoreBranchShowcase: true,
     expireDate: "",
     statusAll: "on",
     isHasDelivery: false,
@@ -700,12 +705,12 @@ const DataEntryForm = () => {
         telegram: contactInfo?.telegram || "",
       });
     }
-    if (activeListTab === LIST_TAB.NOTIFICATIONS && isAdmin) {
+    if (activeListTab === LIST_TAB.NOTIFICATIONS && canUseNotificationsTab) {
       setNotificationTitle("");
       setNotificationBody("");
       setNotificationType("general");
     }
-  }, [activeListTab, contactWhatsAppNumber, contactInfo, isAdmin]);
+  }, [activeListTab, contactWhatsAppNumber, contactInfo, canUseNotificationsTab]);
 
   const fetchStores = async () => {
     try {
@@ -867,9 +872,9 @@ const DataEntryForm = () => {
       activeListTab <= LIST_TAB.BRAND_TYPES;
     const settings =
       activeListTab === LIST_TAB.SETTINGS ||
-      (isAdmin && activeListTab === LIST_TAB.NOTIFICATIONS);
+      (canUseNotificationsTab && activeListTab === LIST_TAB.NOTIFICATIONS);
     return { managing, service, mainSystem, settings };
-  }, [activeListTab, isAdmin]);
+  }, [activeListTab, canUseNotificationsTab]);
 
   /** Which tab group row strip to show (only those tabs are mounted). */
   const dataListVisibleGroup = useMemo(() => {
@@ -887,12 +892,12 @@ const DataEntryForm = () => {
     }
     if (
       activeListTab === LIST_TAB.SETTINGS ||
-      (isAdmin && activeListTab === LIST_TAB.NOTIFICATIONS)
+      (canUseNotificationsTab && activeListTab === LIST_TAB.NOTIFICATIONS)
     ) {
       return "settings";
     }
     return "managing";
-  }, [activeListTab, isAdmin]);
+  }, [activeListTab, canUseNotificationsTab]);
 
   const formatDisplayDate = (dateInput) => {
     if (!dateInput) return "-";
@@ -2065,6 +2070,7 @@ const DataEntryForm = () => {
         storecity: "Erbil",
         branches: [],
         show: true,
+        showingOnStoreBranchShowcase: true,
         expireDate: "",
         statusAll: "on",
         isHasDelivery: false,
@@ -2393,6 +2399,10 @@ const DataEntryForm = () => {
         descriptionKu: data.descriptionKu || "",
         branches: branchesFromApiToForm(data.branches, stores),
         show: data.show !== undefined ? data.show : true,
+        showingOnStoreBranchShowcase:
+          data.showingOnStoreBranchShowcase !== undefined
+            ? !!data.showingOnStoreBranchShowcase
+            : true,
         expireDate: data.expireDate
           ? toDatetimeLocalValue(data.expireDate)
           : "",
@@ -3466,7 +3476,7 @@ const DataEntryForm = () => {
                 icon={<SettingsIcon />}
                 iconPosition="start"
               />,
-              ...(isAdmin
+              ...(canUseNotificationsTab
                 ? [
                     <Tab
                       key="notifications"
@@ -4143,7 +4153,7 @@ const DataEntryForm = () => {
           )}
 
           {/* Notifications Panel - Send to all users */}
-          {activeListTab === LIST_TAB.NOTIFICATIONS && isAdmin && (
+          {activeListTab === LIST_TAB.NOTIFICATIONS && canUseNotificationsTab && (
             <Box>
               <Typography variant="h6" gutterBottom>
                 {t("Send Notification to All Users")}
@@ -6702,6 +6712,25 @@ const DataEntryForm = () => {
                       />
                     }
                     label={t("Show in Store List")}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="showingOnStoreBranchShowcase"
+                        checked={
+                          storeForm.showingOnStoreBranchShowcase !== false
+                        }
+                        onChange={(e) =>
+                          setStoreForm({
+                            ...storeForm,
+                            showingOnStoreBranchShowcase: e.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label={t("Show in branch showcase")}
                   />
                 </Grid>
                 <Grid xs={12}>
@@ -9975,6 +10004,25 @@ const DataEntryForm = () => {
                     />
                   }
                   label={t("Show in Store List")}
+                />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="showingOnStoreBranchShowcase"
+                      checked={
+                        editForm.showingOnStoreBranchShowcase !== false
+                      }
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          showingOnStoreBranchShowcase: e.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label={t("Show in branch showcase")}
                 />
               </Box>
               <Box sx={{ mt: 2 }}>

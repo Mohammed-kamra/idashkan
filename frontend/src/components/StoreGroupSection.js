@@ -6,19 +6,52 @@ import {
   Chip,
   IconButton,
   Button,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { Link } from "react-router-dom";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import BusinessIcon from "@mui/icons-material/Business";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductCard from "./ProductCard";
+
+const MAX_PRODUCTS_IN_STORE_GROUP = 8;
+
+const showMoreCardSx = (isDark) => ({
+  flexShrink: 0,
+  width: { xs: 148, sm: 190, md: 240 },
+  minWidth: { xs: 148, sm: 190, md: 240 },
+  borderRadius: "16px",
+  textDecoration: "none",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  background: isDark
+    ? "linear-gradient(145deg, rgba(30,111,217,0.2), rgba(30,111,217,0.08))"
+    : "linear-gradient(145deg, #eff6ff, #ffffff)",
+  border: isDark
+    ? "1px dashed rgba(74,144,226,0.45)"
+    : "1px dashed rgba(30,111,217,0.35)",
+  boxShadow: "none",
+  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    boxShadow: isDark
+      ? "0 8px 24px rgba(0,0,0,0.35)"
+      : "0 8px 24px rgba(30,111,217,0.15)",
+  },
+});
 
 const StoreGroupSection = memo(function StoreGroupSection({
   store,
@@ -35,9 +68,10 @@ const StoreGroupSection = memo(function StoreGroupSection({
   productLayout = "row",
 }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { locName, locAddress } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = i18n.language === "ar" || i18n.language === "ku";
 
   const followed = isStoreFollowed(store._id);
   const discountedCount = products.filter(
@@ -45,6 +79,58 @@ const StoreGroupSection = memo(function StoreGroupSection({
       p.isDiscount ||
       (p.previousPrice && p.newPrice && p.previousPrice > p.newPrice),
   ).length;
+
+  const visibleProducts = products.slice(0, MAX_PRODUCTS_IN_STORE_GROUP);
+  const hasMoreOnStore = products.length > MAX_PRODUCTS_IN_STORE_GROUP;
+  const moreCount = hasMoreOnStore
+    ? products.length - MAX_PRODUCTS_IN_STORE_GROUP
+    : 0;
+
+  const showMoreCard = (
+    <Card
+      component={Link}
+      to={`/stores/${store._id}`}
+      sx={{
+        ...showMoreCardSx(isDark),
+        ...(productLayout === "grid2" && visibleProducts.length >= 3
+          ? {
+              gridRow: "span 2",
+              width: { xs: 148, sm: 182, md: 220 },
+              minWidth: { xs: 148, sm: 182, md: 220 },
+              minHeight: { xs: 306, sm: 374 },
+            }
+          : {}),
+      }}
+    >
+      <CardContent
+        sx={{
+          py: 2,
+          px: 1.25,
+          textAlign: "center",
+          "&:last-child": { pb: 2 },
+        }}
+      >
+        {isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+        <Typography
+          variant="subtitle2"
+          fontWeight={800}
+          sx={{
+            color: isDark ? "rgba(255,255,255,0.92)" : "primary.dark",
+            lineHeight: 1.25,
+          }}
+        >
+          {t("Show more")}
+        </Typography>
+        <Typography
+          variant="caption"
+          display="block"
+          sx={{ mt: 0.75, color: "text.secondary", fontWeight: 600 }}
+        >
+          {t("storeGroupMoreProducts", { count: moreCount })}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box
@@ -209,7 +295,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                maxWidth: { xs: 200, sm: 350, md: 600 },
+                maxWidth: { xs: 300, sm: 350, md: 600 },
                 fontSize: "0.72rem",
               }}
             >
@@ -294,7 +380,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
 
       {/* Products — single row or 2-row grid */}
       {products.length > 0 ? (
-        productLayout === "grid2" && products.length >= 3 ? (
+        productLayout === "grid2" && visibleProducts.length >= 3 ? (
           /* ── 2-row horizontal grid ── */
           <Box
             sx={{
@@ -319,7 +405,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
               },
             }}
           >
-            {products.map((product) => (
+            {visibleProducts.map((product) => (
               <ProductCard
                 key={product._id}
                 product={product}
@@ -331,6 +417,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 t={t}
               />
             ))}
+            {hasMoreOnStore ? showMoreCard : null}
           </Box>
         ) : (
           /* ── single row horizontal scroll ── */
@@ -354,7 +441,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
               },
             }}
           >
-            {products.map((product) => (
+            {visibleProducts.map((product) => (
               <ProductCard
                 key={product._id}
                 product={product}
@@ -366,6 +453,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 t={t}
               />
             ))}
+            {hasMoreOnStore ? showMoreCard : null}
           </Box>
         )
       ) : (

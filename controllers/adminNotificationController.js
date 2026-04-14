@@ -6,12 +6,15 @@ const ADMIN_EMAILS = ["mshexani45@gmail.com", "admin@gmail.com"];
 
 const isAdmin = (user) => user && user.email && ADMIN_EMAILS.includes(user.email);
 
-// @desc    Send notification to all users (admin only)
+const canSendBroadcastNotification = (user) =>
+  isAdmin(user) || user?.role === "support";
+
+// @desc    Send notification to all users (admin or support role)
 // @route   POST /api/admin/notifications/send
-// @access  Private (protect + admin check)
+// @access  Private (protect + admin/support check)
 const sendNotification = async (req, res) => {
   try {
-    if (!isAdmin(req.user)) {
+    if (!canSendBroadcastNotification(req.user)) {
       return res.status(403).json({
         success: false,
         message: "Access denied. Admin only.",

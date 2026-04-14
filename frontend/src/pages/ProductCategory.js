@@ -32,6 +32,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import { useTranslation } from "react-i18next";
@@ -66,11 +67,11 @@ const ProductCategory = () => {
   const isMobile = useIsMobileLayout();
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { dataLanguage, locName, locDescription } = useLocalizedContent();
   const { toggleLike, isProductLiked, recordView } = useUserTracking();
   const { selectedCity } = useCityFilter();
-
+  const isRtl = i18n.language === "ar" || i18n.language === "ku";
   const [categories, setCategories] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
   const [products, setProducts] = useState([]);
@@ -90,8 +91,7 @@ const ProductCategory = () => {
   const [selectedStoreTypeId, setSelectedStoreTypeId] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 900 ? null : "all",
   );
-  
-  
+
   // Mobile view mode: 'categories' → list categories, 'products' → show products of selected category
   const [mobileViewMode, setMobileViewMode] = useState("categories");
 
@@ -225,8 +225,7 @@ const ProductCategory = () => {
     };
   }, [categories, loading]);
   const fetchCategories = async () => {
-    const isMobile =
-      typeof window !== "undefined" && window.innerWidth < 900;
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 900;
     const pending = location.state?.category;
     const hasCategoryNav =
       pending &&
@@ -845,14 +844,25 @@ const ProductCategory = () => {
                     },
                   }}
                 >
-                  <ArrowBackIcon
-                    sx={{
-                      fontSize: "1.1rem",
-                      color: isDark
-                        ? "rgba(255,255,255,0.85)"
-                        : "rgba(0,0,0,0.7)",
-                    }}
-                  />
+                  {isRtl ? (
+                    <ArrowForwardIcon
+                      sx={{
+                        fontSize: "1.1rem",
+                        color: isDark
+                          ? "rgba(255,255,255,0.85)"
+                          : "rgba(0,0,0,0.7)",
+                      }}
+                    />
+                  ) : (
+                    <ArrowBackIcon
+                      sx={{
+                        fontSize: "1.1rem",
+                        color: isDark
+                          ? "rgba(255,255,255,0.85)"
+                          : "rgba(0,0,0,0.7)",
+                      }}
+                    />
+                  )}
                 </IconButton>
                 <Typography
                   sx={{
@@ -983,205 +993,209 @@ const ProductCategory = () => {
                       px: 1,
                     }}
                   >
-                  {filteredProducts.map((product) => {
-                    const discountPct = calculateDiscount(
-                      product.previousPrice,
-                      product.newPrice,
-                    );
-                    const hasDiscount = isDiscountValid(product);
-                    const discountLabel =
-                      discountPct !== null ? `-${discountPct}%` : t("Discount");
+                    {filteredProducts.map((product) => {
+                      const discountPct = calculateDiscount(
+                        product.previousPrice,
+                        product.newPrice,
+                      );
+                      const hasDiscount = isDiscountValid(product);
+                      const discountLabel =
+                        discountPct !== null
+                          ? `-${discountPct}%`
+                          : t("Discount");
 
-                    return (
-                      <ProductViewTracker
-                        key={product._id}
-                        productId={product._id}
-                        onVisible={handleProductBecameVisible}
-                        recordedIdsRef={productViewRecordedRef}
-                      >
-                        <Card
-                          onClick={() => handleProductClick(product)}
-                          sx={{
-                            cursor: "pointer",
-                            borderRadius: 3,
-                            overflow: "hidden",
-                            backgroundColor: cardBg,
-                            boxShadow: isDark
-                              ? "0 2px 8px rgba(0,0,0,0.4)"
-                              : "0 2px 8px rgba(0,0,0,0.07)",
-                            border: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"}`,
-                            display: "flex",
-                            flexDirection: "column",
-                            transition: "transform 0.15s ease",
-                            "&:active": { transform: "scale(0.97)" },
-                          }}
+                      return (
+                        <ProductViewTracker
+                          key={product._id}
+                          productId={product._id}
+                          onVisible={handleProductBecameVisible}
+                          recordedIdsRef={productViewRecordedRef}
                         >
-                          {/* Image area */}
-                          <Box sx={{ position: "relative", flexShrink: 0 }}>
-                            {product.image ? (
-                              <CardMedia
-                                component="img"
-                                image={resolveMediaUrl(product.image)}
-                                alt={locName(product) || "Product"}
-                                sx={{
-                                  height: 130,
-                                  objectFit: "contain",
-                                  backgroundColor: isDark
-                                    ? "rgba(255,255,255,0.04)"
-                                    : "rgba(0,0,0,0.03)",
-                                }}
-                              />
-                            ) : (
-                              <Box
-                                sx={{
-                                  height: 130,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  backgroundColor: isDark
-                                    ? "rgba(255,255,255,0.04)"
-                                    : "rgba(0,0,0,0.03)",
-                                }}
-                              >
-                                <ShoppingCartIcon
-                                  sx={{ fontSize: 36, opacity: 0.25 }}
-                                />
-                              </Box>
-                            )}
-
-                            {/* Discount badge */}
-                            {hasDiscount && (
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  top: 6,
-                                  left: 6,
-                                  background:
-                                    "linear-gradient(135deg,#e53e3e,#c53030)",
-                                  color: "#fff",
-                                  fontSize: "0.62rem",
-                                  fontWeight: 800,
-                                  px: 0.75,
-                                  py: 0.25,
-                                  borderRadius: 1,
-                                  pointerEvents: "none",
-                                  zIndex: 2,
-                                  boxShadow: "0 2px 6px rgba(229,62,62,0.45)",
-                                }}
-                              >
-                                {discountLabel}
-                              </Box>
-                            )}
-
-                            {/* View count */}
-                            {product.viewCount > 0 && (
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  top: 6,
-                                  right: 6,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 0.25,
-                                  backgroundColor: "rgba(0,0,0,0.6)",
-                                  backdropFilter: "blur(4px)",
-                                  color: "#fff",
-                                  px: 0.6,
-                                  py: 0.2,
-                                  borderRadius: 1,
-                                  fontSize: "0.6rem",
-                                  fontWeight: 600,
-                                  pointerEvents: "none",
-                                  zIndex: 2,
-                                }}
-                              >
-                                <VisibilityIcon sx={{ fontSize: "0.65rem" }} />
-                                {product.viewCount}
-                              </Box>
-                            )}
-                          </Box>
-
-                          {/* Content */}
-                          <CardContent
+                          <Card
+                            onClick={() => handleProductClick(product)}
                             sx={{
-                              p: 1,
-                              pt: 0.75,
-                              flexGrow: 1,
+                              cursor: "pointer",
+                              borderRadius: 3,
+                              overflow: "hidden",
+                              backgroundColor: cardBg,
+                              boxShadow: isDark
+                                ? "0 2px 8px rgba(0,0,0,0.4)"
+                                : "0 2px 8px rgba(0,0,0,0.07)",
+                              border: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"}`,
                               display: "flex",
                               flexDirection: "column",
-                              gap: 0.35,
+                              transition: "transform 0.15s ease",
+                              "&:active": { transform: "scale(0.97)" },
                             }}
                           >
-                            <Typography
+                            {/* Image area */}
+                            <Box sx={{ position: "relative", flexShrink: 0 }}>
+                              {product.image ? (
+                                <CardMedia
+                                  component="img"
+                                  image={resolveMediaUrl(product.image)}
+                                  alt={locName(product) || "Product"}
+                                  sx={{
+                                    height: 130,
+                                    objectFit: "contain",
+                                    backgroundColor: isDark
+                                      ? "rgba(255,255,255,0.04)"
+                                      : "rgba(0,0,0,0.03)",
+                                  }}
+                                />
+                              ) : (
+                                <Box
+                                  sx={{
+                                    height: 130,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    backgroundColor: isDark
+                                      ? "rgba(255,255,255,0.04)"
+                                      : "rgba(0,0,0,0.03)",
+                                  }}
+                                >
+                                  <ShoppingCartIcon
+                                    sx={{ fontSize: 36, opacity: 0.25 }}
+                                  />
+                                </Box>
+                              )}
+
+                              {/* Discount badge */}
+                              {hasDiscount && (
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    top: 6,
+                                    left: 6,
+                                    background:
+                                      "linear-gradient(135deg,#e53e3e,#c53030)",
+                                    color: "#fff",
+                                    fontSize: "0.62rem",
+                                    fontWeight: 800,
+                                    px: 0.75,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    pointerEvents: "none",
+                                    zIndex: 2,
+                                    boxShadow: "0 2px 6px rgba(229,62,62,0.45)",
+                                  }}
+                                >
+                                  {discountLabel}
+                                </Box>
+                              )}
+
+                              {/* View count */}
+                              {product.viewCount > 0 && (
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    top: 6,
+                                    right: 6,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.25,
+                                    backgroundColor: "rgba(0,0,0,0.6)",
+                                    backdropFilter: "blur(4px)",
+                                    color: "#fff",
+                                    px: 0.6,
+                                    py: 0.2,
+                                    borderRadius: 1,
+                                    fontSize: "0.6rem",
+                                    fontWeight: 600,
+                                    pointerEvents: "none",
+                                    zIndex: 2,
+                                  }}
+                                >
+                                  <VisibilityIcon
+                                    sx={{ fontSize: "0.65rem" }}
+                                  />
+                                  {product.viewCount}
+                                </Box>
+                              )}
+                            </Box>
+
+                            {/* Content */}
+                            <CardContent
                               sx={{
-                                fontWeight: 600,
-                                fontSize: "0.78rem",
-                                lineHeight: 1.3,
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                                color: isDark
-                                  ? "rgba(255,255,255,0.9)"
-                                  : "rgba(0,0,0,0.85)",
+                                p: 1,
+                                pt: 0.75,
+                                flexGrow: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 0.35,
                               }}
                             >
-                              {locName(product) || "\u00A0"}
-                            </Typography>
-
-                            {product.storeId && locName(product.storeId) && (
                               <Typography
                                 sx={{
-                                  fontSize: "0.66rem",
-                                  color: accentColor,
                                   fontWeight: 600,
+                                  fontSize: "0.78rem",
+                                  lineHeight: 1.3,
                                   display: "-webkit-box",
-                                  WebkitLineClamp: 1,
+                                  WebkitLineClamp: 2,
                                   WebkitBoxOrient: "vertical",
                                   overflow: "hidden",
+                                  color: isDark
+                                    ? "rgba(255,255,255,0.9)"
+                                    : "rgba(0,0,0,0.85)",
                                 }}
                               >
-                                {locName(product.storeId)}
+                                {locName(product) || "\u00A0"}
                               </Typography>
-                            )}
 
-                            <Box sx={{ mt: "auto", pt: 0.5 }}>
-                              {isDiscountValid(product) &&
-                                product.previousPrice &&
-                                Number(product.previousPrice) >
-                                  Number(product.newPrice) && (
+                              {product.storeId && locName(product.storeId) && (
+                                <Typography
+                                  sx={{
+                                    fontSize: "0.66rem",
+                                    color: accentColor,
+                                    fontWeight: 600,
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 1,
+                                    WebkitBoxOrient: "vertical",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {locName(product.storeId)}
+                                </Typography>
+                              )}
+
+                              <Box sx={{ mt: "auto", pt: 0.5 }}>
+                                {isDiscountValid(product) &&
+                                  product.previousPrice &&
+                                  Number(product.previousPrice) >
+                                    Number(product.newPrice) && (
+                                    <Typography
+                                      sx={{
+                                        fontSize: "0.65rem",
+                                        textDecoration: "line-through",
+                                        color: isDark
+                                          ? "rgba(255,100,100,0.7)"
+                                          : "rgba(200,0,0,0.55)",
+                                        fontWeight: 500,
+                                        lineHeight: 1.2,
+                                      }}
+                                    >
+                                      {formatPrice(product.previousPrice)}
+                                    </Typography>
+                                  )}
+                                {product.newPrice && (
                                   <Typography
                                     sx={{
-                                      fontSize: "0.65rem",
-                                      textDecoration: "line-through",
-                                      color: isDark
-                                        ? "rgba(255,100,100,0.7)"
-                                        : "rgba(200,0,0,0.55)",
-                                      fontWeight: 500,
+                                      fontSize: "0.88rem",
+                                      fontWeight: 800,
+                                      color: "var(--color-secondary, #0d47a1)",
                                       lineHeight: 1.2,
                                     }}
                                   >
-                                    {formatPrice(product.previousPrice)}
+                                    {formatPrice(product.newPrice)}
                                   </Typography>
                                 )}
-                              {product.newPrice && (
-                                <Typography
-                                  sx={{
-                                    fontSize: "0.88rem",
-                                    fontWeight: 800,
-                                    color: "var(--color-secondary, #0d47a1)",
-                                    lineHeight: 1.2,
-                                  }}
-                                >
-                                  {formatPrice(product.newPrice)}
-                                </Typography>
-                              )}
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </ProductViewTracker>
-                    );
-                  })}
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </ProductViewTracker>
+                      );
+                    })}
                   </Box>
                 </Fade>
               )}
@@ -1875,9 +1889,7 @@ const ProductCategory = () => {
             />
           )}
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-            {isNetwork
-              ? t("No connection")
-              : t("Could not load categories")}
+            {isNetwork ? t("No connection") : t("Could not load categories")}
           </Typography>
           <Typography
             variant="body2"
@@ -1963,8 +1975,3 @@ const ProductCategory = () => {
 };
 
 export default ProductCategory;
-
-
-
-
-

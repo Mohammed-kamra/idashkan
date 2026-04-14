@@ -1,4 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -8,6 +14,7 @@ import {
   Typography,
   Paper,
   Container,
+  Divider,
   Alert,
   Avatar,
   InputAdornment,
@@ -25,13 +32,83 @@ import { useTranslation } from "react-i18next";
 
 const BRAND = "var(--brand-primary-blue, #1E6FD9)";
 
+/** GSI `initialize()` may only run once per page load; remounting <LoginPage> must not call it again. */
+let googleIdentityInitialized = false;
+
+function GoogleGLogo({ size = 20 }) {
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        lineHeight: 0,
+      }}
+    >
+      <svg width={size} height={size} viewBox="0 0 48 48">
+        <path
+          fill="#FFC107"
+          d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.641-.142-3.225-.406-4.771z"
+        />
+        <path
+          fill="#FF3D00"
+          d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
+        />
+        <path
+          fill="#4CAF50"
+          d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
+        />
+        <path
+          fill="#1976D2"
+          d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.574l.002-.001 6.19 5.238C37.83 39.411 44 34.956 44 24c0-1.641-.142-3.225-.406-4.771z"
+        />
+      </svg>
+    </Box>
+  );
+}
+
+function loadGsiScript() {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== "undefined" && window.google?.accounts?.id) {
+      resolve();
+      return;
+    }
+    const existing = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]',
+    );
+    if (existing) {
+      if (window.google?.accounts?.id) {
+        resolve();
+        return;
+      }
+      const done = () => resolve();
+      existing.addEventListener("load", done);
+      existing.addEventListener("error", () =>
+        reject(new Error("Google script failed to load")),
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Google script failed to load"));
+    document.body.appendChild(script);
+  });
+}
+
 const LoginPage = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
+  const googleHandlerRef = useRef(async () => {});
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -49,6 +126,7 @@ const LoginPage = () => {
   });
 
   const [activeTab, setActiveTab] = useState("login");
+  const googleRenderRef = useRef(null);
 
   const fieldSx = useMemo(
     () => ({
@@ -180,6 +258,112 @@ const LoginPage = () => {
   const goBack = () => {
     navigate(location.state?.from?.pathname || "/", { replace: true });
   };
+
+  const handleGoogleCredential = useCallback(
+    async (credential) => {
+      if (!credential) return;
+      setError("");
+      setLoading(true);
+      try {
+        const result = await loginWithGoogle(credential);
+        if (result.success) {
+          const from = location.state?.from?.pathname || "/";
+          navigate(from, { replace: true });
+        } else {
+          setError(result.message || t("Google sign-in failed"));
+        }
+      } catch (err) {
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            t("Google sign-in failed"),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loginWithGoogle, navigate, location.state, t],
+  );
+
+  googleHandlerRef.current = handleGoogleCredential;
+
+  const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
+
+  /**
+   * Use Google's `renderButton` (iframe) instead of One Tap `prompt()` — One Tap is
+   * often blocked or empty on mobile Safari / in-app browsers; the rendered button works.
+   */
+  useEffect(() => {
+    if (!googleClientId) return undefined;
+
+    let cancelled = false;
+
+    const renderGoogleButton = async () => {
+      await loadGsiScript();
+      if (cancelled) return;
+      const el = googleRenderRef.current;
+      if (!el || !window.google?.accounts?.id) return;
+
+      el.innerHTML = "";
+      try {
+        if (!googleIdentityInitialized) {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: (response) => {
+              const c = response?.credential;
+              if (c) void googleHandlerRef.current?.(c);
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          googleIdentityInitialized = true;
+        }
+
+        const rectW = el.getBoundingClientRect().width || el.offsetWidth || 0;
+        const vw =
+          typeof window !== "undefined"
+            ? Math.min(window.innerWidth - 64, 480)
+            : 320;
+        const w = Math.max(rectW || vw, 280);
+        window.google.accounts.id.renderButton(el, {
+          theme: "outline",
+          size: "large",
+          width: w,
+          text: "continue_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+          locale: typeof navigator !== "undefined" ? navigator.language : "en",
+        });
+      } catch (e) {
+        console.warn("Google Sign-In renderButton:", e);
+      }
+    };
+
+    let frames = 0;
+    const maxFrames = 45;
+    const tick = () => {
+      if (cancelled) return;
+      if (googleRenderRef.current && window.google?.accounts?.id) {
+        void renderGoogleButton();
+        return;
+      }
+      frames += 1;
+      if (frames < maxFrames) {
+        requestAnimationFrame(tick);
+        return;
+      }
+      void renderGoogleButton();
+    };
+
+    void loadGsiScript().then(() => {
+      requestAnimationFrame(tick);
+    });
+
+    return () => {
+      cancelled = true;
+      if (googleRenderRef.current) googleRenderRef.current.innerHTML = "";
+    };
+  }, [googleClientId]);
 
   return (
     <Box
@@ -325,32 +509,6 @@ const LoginPage = () => {
               {error}
             </Alert>
           )}
-
-          <Button
-            fullWidth
-            variant="outlined"
-            size="large"
-            onClick={goBack}
-            sx={{
-              mb: 2.5,
-              py: 1.35,
-              borderRadius: "14px",
-              textTransform: "none",
-              fontWeight: 600,
-              borderColor: isDark
-                ? "rgba(255,255,255,0.2)"
-                : "rgba(0,0,0,0.12)",
-              color: isDark ? "rgba(255,255,255,0.9)" : "text.primary",
-              "&:hover": {
-                borderColor: BRAND,
-                bgcolor: isDark
-                  ? "rgba(30,111,217,0.12)"
-                  : "rgba(30,111,217,0.06)",
-              },
-            }}
-          >
-            {t("Continue as Guest")}
-          </Button>
 
           <Box
             sx={{
@@ -632,6 +790,119 @@ const LoginPage = () => {
               </Button>
             </Box>
           )}
+
+          <Box
+            sx={{
+              mt: 2.5,
+              pt: 2.5,
+              borderTop: `1px solid ${
+                isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"
+              }`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            {!googleClientId ? (
+              <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                {t("googleEnvMissing")}
+              </Alert>
+            ) : (
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 1,
+                }}
+              >
+                {/* <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    mb: 0.5,
+                  }}
+                >
+                  <GoogleGLogo size={22} />
+                  <Typography
+                    component="span"
+                    variant="subtitle2"
+                    sx={{
+                      fontWeight: 700,
+                      color: isDark
+                        ? "rgba(255,255,255,0.9)"
+                        : "text.primary",
+                    }}
+                  >
+                    {t("Continue with Google")}
+                  </Typography>
+                </Box> */}
+                <Box
+                  ref={googleRenderRef}
+                  className="gsi-google-button-mount"
+                  sx={{
+                    width: "100%",
+                    minHeight: 48,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    /** Let Google's iframe use full card width on narrow screens */
+                    "& > div": { width: "100% !important" },
+                    "& iframe": {
+                      width: "100% !important",
+                      maxWidth: "100% !important",
+                    },
+                  }}
+                />
+              </Box>
+            )}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+              }}
+            >
+              <Divider sx={{ flex: 1 }} />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isDark ? "rgba(255,255,255,0.45)" : "text.secondary",
+                  fontWeight: 600,
+                }}
+              >
+                {t("or")}
+              </Typography>
+              <Divider sx={{ flex: 1 }} />
+            </Box>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              onClick={goBack}
+              sx={{
+                py: 1.35,
+                borderRadius: "14px",
+                textTransform: "none",
+                fontWeight: 600,
+                borderColor: isDark
+                  ? "rgba(255,255,255,0.2)"
+                  : "rgba(0,0,0,0.12)",
+                color: isDark ? "rgba(255,255,255,0.9)" : "text.primary",
+                "&:hover": {
+                  borderColor: BRAND,
+                  bgcolor: isDark
+                    ? "rgba(30,111,217,0.12)"
+                    : "rgba(30,111,217,0.06)",
+                },
+              }}
+            >
+              {t("Continue as Guest")}
+            </Button>
+          </Box>
         </Paper>
       </Container>
     </Box>
@@ -639,5 +910,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-
-

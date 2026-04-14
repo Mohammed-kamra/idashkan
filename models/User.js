@@ -27,9 +27,17 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function () {
-      return !this.deviceId;
-    }, // Only required if no deviceId
+      return !this.deviceId && !this.googleId;
+    },
     minlength: 6,
+  },
+
+  /** Google account `sub` — when set, user may sign in with Google (no password). */
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
   },
 
   // Profile fields
@@ -184,6 +192,7 @@ userSchema.methods.getPublicProfile = function () {
       displayName: this.displayName,
       email: this.email,
       avatar: this.avatar,
+      googleId: this.googleId || undefined,
       isActive: this.isActive,
       role: this.role || "user",
       likedProducts: this.likedProducts,

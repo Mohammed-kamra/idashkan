@@ -58,3 +58,13 @@
 [data-lang="ku"] label {
   font-family: var(--app-font-family, "NRT", "Noto Sans Kurdish", "Scheherazade New", "Arial", sans-serif) !important;
 }
+
+/* NavigationBar Latin brand — must beat [data-lang="ku"] * (Brush Script has no Kurdish glyphs) */
+html[data-lang="ku"] .nav-brand-title,
+[data-lang="ku"] .nav-brand-title.MuiTypography-root,
+[data-lang="ku"] a.nav-brand-title {
+  font-family: "Brush Script MT", "Brush Script", "Segoe Script", cursive !important;
+  font-weight: 400 !important;
+  direction: ltr !important;
+  unicode-bidi: isolate;
+}

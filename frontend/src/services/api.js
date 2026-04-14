@@ -249,6 +249,7 @@ export const userAPI = {
 export const authAPI = {
   register: (userData) => api.post("/auth/register", userData),
   login: (email, password) => api.post("/auth/login", { email, password }),
+  googleLogin: (idToken) => api.post("/auth/google", { idToken }),
   getProfile: (headers) => api.get("/auth/profile", { headers }),
   updateProfile: (profileData, headers) =>
     api.put("/auth/profile", profileData, { headers }),

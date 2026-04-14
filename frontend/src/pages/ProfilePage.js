@@ -561,7 +561,7 @@ const ProfilePage = () => {
               sx={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 1,
+                gap: 0.5,
               }}
             >
               <Button
@@ -571,7 +571,7 @@ const ProfilePage = () => {
                 }
                 onClick={() => setDataLanguage(DATA_LANG_NORMAL)}
               >
-                🌐 {t("Normal")}
+                {t("Normal")}
               </Button>
 
               <Button

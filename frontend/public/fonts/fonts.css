@@ -1593,6 +1593,14 @@
 }
 
 @font-face {
+  font-family: "BRUSHSCI";
+  src: url("/fonts/BRUSHSCI.TTF") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "NotoNaskhArabic-Medium";
   src: url("/fonts/NotoNaskhArabic-Medium.ttf") format("truetype");
   font-weight: 400;

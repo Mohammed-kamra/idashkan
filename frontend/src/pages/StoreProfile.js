@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  useParams,
-  useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -28,8 +24,6 @@ import {
   Skeleton,
 } from "@mui/material";
 import {
-  ArrowBack,
-  Phone,
   LocationOn,
   Business,
   WhatsApp,
@@ -39,10 +33,13 @@ import {
   CameraAlt,
   VideoLibrary,
   WorkOutline,
+  ArrowForward,
+  ArrowBack,
 } from "@mui/icons-material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import Phone from "@mui/icons-material/Phone";  
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import CloseIcon from "@mui/icons-material/Close";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -112,7 +109,8 @@ const StoreProfile = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language === "ar" || i18n.language === "ku";
   const { locName, locDescription, locTitle, locAddress } =
     useLocalizedContent();
   const {
@@ -144,7 +142,7 @@ const StoreProfile = () => {
   });
   const [expandedTypes, setExpandedTypes] = useState({});
   const [displayCounts, setDisplayCounts] = useState({});
-  
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedGift, setSelectedGift] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -599,9 +597,7 @@ const StoreProfile = () => {
       category.types.find(
         (type) => type._id?.toString() === product.categoryTypeId?.toString(),
       ) || category.types.find((type) => type.name === product.categoryTypeId);
-    return categoryType
-      ? locName(categoryType)
-      : locName(category) || "";
+    return categoryType ? locName(categoryType) : locName(category) || "";
   };
 
   // Filter products based on current filters
@@ -898,7 +894,10 @@ const StoreProfile = () => {
       >
         <Fade in={true} timeout={300 + index * 50}>
           <Card
-            onClick={() => { setSelectedProduct(product); setProductDialogOpen(true); }}
+            onClick={() => {
+              setSelectedProduct(product);
+              setProductDialogOpen(true);
+            }}
             sx={{
               width: { xs: 155, sm: 190, md: 230 },
               minWidth: { xs: 155, sm: 190, md: 230 },
@@ -931,7 +930,10 @@ const StoreProfile = () => {
           >
             {/* Product Image */}
             <Box
-              onClick={() => { setSelectedProduct(product); setProductDialogOpen(true); }}
+              onClick={() => {
+                setSelectedProduct(product);
+                setProductDialogOpen(true);
+              }}
               sx={{
                 position: "relative",
                 overflow: "hidden",
@@ -1461,7 +1463,12 @@ const StoreProfile = () => {
             }}
           >
             <Box sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.2, sm: 1.4 } }}>
-              <Skeleton variant="text" width="55%" height={28} sx={{ mb: 0.5 }} />
+              <Skeleton
+                variant="text"
+                width="55%"
+                height={28}
+                sx={{ mb: 0.5 }}
+              />
             </Box>
             <Box
               sx={{
@@ -1604,17 +1611,17 @@ const StoreProfile = () => {
     const socialItems = socialLinks.filter((item) => Boolean(item.value));
     if (socialItems.length === 0) return null;
     return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 1,
-        flexWrap: "nowrap",
-        overflowX: "auto",
-      }}
-    >
-      {socialItems.map((item) => {
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 1,
+          flexWrap: "nowrap",
+          overflowX: "auto",
+        }}
+      >
+        {socialItems.map((item) => {
           const href = normalizeUrl(item.value, item.key);
           if (item.key === "whatsapp" && href) {
             return (
@@ -1656,7 +1663,7 @@ const StoreProfile = () => {
             </IconButton>
           );
         })}
-    </Box>
+      </Box>
     );
   };
 
@@ -1726,7 +1733,13 @@ const StoreProfile = () => {
 
       {/* Back Button */}
       <Button
-        startIcon={<ArrowBack sx={{ fontSize: "1rem !important" }} />}
+        startIcon={
+          isRtl ? (
+            <ArrowForward sx={{ fontSize: "1rem !important" }} />
+          ) : (
+            <ArrowBack sx={{ fontSize: "1rem !important" }} />
+          )
+        }
         onClick={() => navigate(-1)}
         size="small"
         sx={{
@@ -2283,8 +2296,7 @@ const StoreProfile = () => {
         storeCityById={
           store?._id
             ? {
-                [String(store._id)]:
-                  store.storecity || store.city || "",
+                [String(store._id)]: store.storecity || store.city || "",
               }
             : undefined
         }
@@ -2297,12 +2309,12 @@ const StoreProfile = () => {
         maxWidth="sm"
         fullWidth
       >
-          <Box display="flex" alignItems="center" gap={1}>
-            <ShoppingCartIcon color="primary" />
-            <Typography variant="h6" component="span">
-              {t("Gift Information")}
-            </Typography>
-          </Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          <ShoppingCartIcon color="primary" />
+          <Typography variant="h6" component="span">
+            {t("Gift Information")}
+          </Typography>
+        </Box>
         <DialogContent>
           {selectedGift && (
             <Paper
@@ -2381,11 +2393,11 @@ const StoreProfile = () => {
         maxWidth="xs"
         fullWidth
       >
-          <Box display="flex" alignItems="center" gap={1}>
-            <Typography variant="h6" component="span">
-              {t("Login Required")}
-            </Typography>
-          </Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="h6" component="span">
+            {t("Login Required")}
+          </Typography>
+        </Box>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
             {t("You must login to like products. Do you want to login?")}
@@ -2427,7 +2439,7 @@ const StoreProfile = () => {
           },
         }}
       >
-          {t("Cart")} ({cartCount})
+        {t("Cart")} ({cartCount})
         <DialogContent sx={{ overflowX: "hidden" }}>
           {cartSyncing ? (
             <Typography color="text.secondary" sx={{ py: 2 }}>
@@ -2562,9 +2574,3 @@ const StoreProfile = () => {
 };
 
 export default StoreProfile;
-
-
-
-
-
-

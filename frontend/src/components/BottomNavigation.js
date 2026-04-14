@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Paper,
   BottomNavigation,
@@ -72,12 +72,15 @@ function persistMainPageScrollState(y) {
   }
 }
 
-/** Same as top AppBar in every language (RTL must not mirror this gradient). */
+/** Solid brand bar (light). Dark uses translucent glass gradient. */
 const BOTTOM_NAV_GRADIENT =
   "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)";
+const BOTTOM_NAV_GRADIENT_DARK_GLASS =
+  "linear-gradient(118deg, rgba(7,11,20,0.82) 0%, rgba(15,23,42,0.74) 42%, rgba(23,37,84,0.66) 78%, rgba(37,99,235,0.48) 100%)";
 
 const BottomNavigationBar = () => {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -231,43 +234,109 @@ const BottomNavigationBar = () => {
             actionMap.gifts,
           ];
 
-  const actionSx = (isActive) => ({
-    color: isActive ? "white !important" : "rgba(255,255,255,0.8) !important",
-    backgroundColor: isActive
-      ? "rgba(255,255,255,0.16) !important"
-      : "transparent !important",
-    borderRadius: isActive ? 1 : 0,
-    minWidth: "auto",
-    padding: "6px 8px",
-    transition: "all 0.3s ease",
-    "&.Mui-selected": {
-      color: "white !important",
-      backgroundColor: "rgba(255,255,255,0.16) !important",
+  const actionSx = useCallback(
+    (isActive) => {
+      if (!isDark) {
+        return {
+          color: isActive
+            ? "white !important"
+            : "rgba(255,255,255,0.8) !important",
+          backgroundColor: isActive
+            ? "rgba(255,255,255,0.16) !important"
+            : "transparent !important",
+          borderRadius: isActive ? 1 : 0,
+          minWidth: "auto",
+          padding: "6px 8px",
+          transition: "all 0.3s ease",
+          "&.Mui-selected": {
+            color: "white !important",
+            backgroundColor: "rgba(255,255,255,0.16) !important",
+          },
+          "&.MuiBottomNavigationAction-root": {
+            color: isActive
+              ? "white !important"
+              : "rgba(255,255,255,0.8) !important",
+            backgroundColor: isActive
+              ? "rgba(255,255,255,0.16) !important"
+              : "transparent !important",
+          },
+          "& .MuiBottomNavigationAction-label": {
+            fontSize: isActive ? "0.75rem" : "0.7rem",
+            fontWeight: isActive ? 600 : 500,
+            marginTop: "4px",
+            transition: "all 0.3s ease",
+            color: isActive
+              ? "white !important"
+              : "rgba(255,255,255,0.8) !important",
+          },
+          "& .MuiSvgIcon-root": {
+            fontSize: "1.5rem",
+            transform: isActive ? "scale(1.1)" : "scale(1)",
+            transition: "all 0.3s ease",
+            color: isActive
+              ? "white !important"
+              : "rgba(255,255,255,0.8) !important",
+          },
+          "&:hover": {
+            backgroundColor: "rgba(255,255,255,0.1) !important",
+            borderRadius: 1,
+          },
+        };
+      }
+      return {
+        color: isActive
+          ? "#f8fafc !important"
+          : "rgba(226,232,240,0.78) !important",
+        backgroundColor: isActive
+          ? "rgba(255,255,255,0.14) !important"
+          : "transparent !important",
+        backdropFilter: isActive ? "blur(10px) saturate(150%)" : "none",
+        WebkitBackdropFilter: isActive ? "blur(10px) saturate(150%)" : "none",
+        borderRadius: isActive ? 2 : 0,
+        minWidth: "auto",
+        padding: "6px 8px",
+        transition: "all 0.25s ease",
+        boxShadow: isActive
+          ? "inset 0 1px 0 rgba(255,255,255,0.25), 0 0 0 1px rgba(255,255,255,0.12)"
+          : "none",
+        "&.Mui-selected": {
+          color: "#f8fafc !important",
+          backgroundColor: "rgba(255,255,255,0.14) !important",
+        },
+        "&.MuiBottomNavigationAction-root": {
+          color: isActive
+            ? "#f8fafc !important"
+            : "rgba(226,232,240,0.78) !important",
+          backgroundColor: isActive
+            ? "rgba(255,255,255,0.14) !important"
+            : "transparent !important",
+        },
+        "& .MuiBottomNavigationAction-label": {
+          fontSize: isActive ? "0.75rem" : "0.7rem",
+          fontWeight: isActive ? 600 : 500,
+          marginTop: "4px",
+          transition: "all 0.25s ease",
+          color: isActive
+            ? "#f8fafc !important"
+            : "rgba(226,232,240,0.78) !important",
+        },
+        "& .MuiSvgIcon-root": {
+          fontSize: "1.5rem",
+          transform: isActive ? "scale(1.08)" : "scale(1)",
+          transition: "all 0.25s ease",
+          color: isActive
+            ? "#f8fafc !important"
+            : "rgba(226,232,240,0.78) !important",
+          filter: isActive ? "drop-shadow(0 0 10px rgba(59,130,246,0.35))" : "none",
+        },
+        "&:hover": {
+          backgroundColor: "rgba(255,255,255,0.08) !important",
+          borderRadius: 1.5,
+        },
+      };
     },
-    "&.MuiBottomNavigationAction-root": {
-      color: isActive ? "white !important" : "rgba(255,255,255,0.8) !important",
-      backgroundColor: isActive
-        ? "rgba(255,255,255,0.16) !important"
-        : "transparent !important",
-    },
-    "& .MuiBottomNavigationAction-label": {
-      fontSize: isActive ? "0.75rem" : "0.7rem",
-      fontWeight: isActive ? 600 : 500,
-      marginTop: "4px",
-      transition: "all 0.3s ease",
-      color: isActive ? "white !important" : "rgba(255,255,255,0.8) !important",
-    },
-    "& .MuiSvgIcon-root": {
-      fontSize: "1.5rem",
-      transform: isActive ? "scale(1.1)" : "scale(1)",
-      transition: "all 0.3s ease",
-      color: isActive ? "white !important" : "rgba(255,255,255,0.8) !important",
-    },
-    "&:hover": {
-      backgroundColor: "rgba(255,255,255,0.1) !important",
-      borderRadius: 1,
-    },
-  });
+    [isDark],
+  );
 
   if (!isMobile) {
     return null;
@@ -281,25 +350,52 @@ const BottomNavigationBar = () => {
         left: 0,
         right: 0,
         zIndex: 1000,
-        pb: 0,
+        px: 0,
+        pb: "max(0px, env(safe-area-inset-bottom))",
       }}
     >
       <Paper
-        elevation={8}
-        style={{ background: BOTTOM_NAV_GRADIENT }}
+        elevation={isDark ? 0 : 8}
+        style={{
+          background: isDark ? BOTTOM_NAV_GRADIENT_DARK_GLASS : BOTTOM_NAV_GRADIENT,
+        }}
         sx={{
-          // borderRadius: "70px 70px",
-          backdropFilter: "blur(20px)",
-          border: `1px solid ${
-            theme.palette.mode === "dark"
-              ? "rgba(255,255,255,0.1)"
-              : "rgba(255,255,255,0.2)"
-          }`,
-          borderBottom: "none",
-          overflow: "hidden",
-          minHeight: "64px",
-          display: "flex",
-          flexDirection: "column",
+          ...(isDark
+            ? {
+                backdropFilter: "blur(22px) saturate(170%)",
+                WebkitBackdropFilter: "blur(22px) saturate(170%)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderBottom: "none",
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                overflow: "hidden",
+                minHeight: "64px",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative",
+                boxShadow:
+                  "0 -12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "20px 20px 0 0",
+                  pointerEvents: "none",
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 42%)",
+                  zIndex: 0,
+                },
+              }
+            : {
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderBottom: "none",
+                overflow: "hidden",
+                minHeight: "64px",
+                display: "flex",
+                flexDirection: "column",
+              }),
         }}
       >
         <BottomNavigation
@@ -307,13 +403,21 @@ const BottomNavigationBar = () => {
           onChange={() => {}}
           showLabels
           sx={{
+            position: "relative",
+            zIndex: isDark ? 1 : "auto",
             background: "transparent !important",
             minHeight: "64px",
             "& .MuiBottomNavigationAction-root": {
-              color: "rgba(255,255,255,0.8) !important",
+              color: isDark
+                ? "rgba(226,232,240,0.78) !important"
+                : "rgba(255,255,255,0.8) !important",
               "&.Mui-selected": {
-                color: "white !important",
-                backgroundColor: "rgba(255,255,255,0.16) !important",
+                color: isDark
+                  ? "#f8fafc !important"
+                  : "white !important",
+                backgroundColor: isDark
+                  ? "rgba(255,255,255,0.14) !important"
+                  : "rgba(255,255,255,0.16) !important",
               },
             },
           }}

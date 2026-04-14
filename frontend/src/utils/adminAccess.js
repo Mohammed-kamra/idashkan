@@ -8,4 +8,8 @@ export const isAdminEmail = (user) =>
 export const canAccessDataEntry = (user) =>
   isAdminEmail(user) || user?.role === "support";
 
+/** Notifications tab + composer in Data Entry — list admins or `support` role. */
+export const canUseDataEntryNotifications = (user) =>
+  isAdminEmail(user) || user?.role === "support";
+
 export const normalizeUserRole = (user) => user?.role || "user";

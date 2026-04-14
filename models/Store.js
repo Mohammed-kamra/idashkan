@@ -57,6 +57,8 @@ const storeSchema = new mongoose.Schema({
     },
   ],
   show: { type: Boolean, default: true },
+  /** When false, this store is omitted from other stores’ branch showcase carousel. */
+  showingOnStoreBranchShowcase: { type: Boolean, default: true },
   followerCount: { type: Number, default: 0 },
   lastReleaseDiscountDate: { type: Date, default: null },
   isHasDelivery: { type: Boolean, default: false },

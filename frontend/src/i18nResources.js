@@ -15,6 +15,8 @@ export const resources = {
       "All Category Types": "All Category Types",
       "Search for items...": "Search for items...",
       "View all products": "View all products",
+      "Show more": "Show more",
+      storeGroupMoreProducts: "+{{count}} more products",
       Available: "Available",
       "Click to explore products": "Click to explore products",
       "No stores found": "No stores found",
@@ -212,6 +214,8 @@ export const resources = {
       "Please select an Excel file.": "Please select an Excel file.",
       Branches: "Branches",
       "Show in Store List": "Show in Store List",
+      "Show in branch showcase":
+        "Show in branch showcase (when linked as a branch)",
       "Branch Name": "Branch Name",
       "Branch Address": "Branch Address",
       "Add Branch": "Add Branch",
@@ -277,6 +281,13 @@ export const resources = {
       "Sign in to your account or create a new one":
         "Sign in to your account or create a new one",
       "Continue as Guest": "Continue as Guest",
+      "Continue with Google": "Continue with Google",
+      or: "or",
+      "Google sign-in failed": "Google sign-in failed",
+      "Google sign-in not showing? Tap here":
+        "Google sign-in not showing? Tap here",
+      googleEnvMissing:
+        "Google sign-in is not configured in this build. Add REACT_APP_GOOGLE_CLIENT_ID to frontend/.env (same value as server GOOGLE_CLIENT_ID), save the file, then stop and run npm start again.",
       "sign in to sync across devices": "sign in to sync across devices",
       "Create an account to save your favourites":
         "Create an account to save your favourites",
@@ -589,6 +600,8 @@ export const resources = {
         "خطأ في الشبكة. تحقق من اتصالك.",
       "Search for items...": "ابحث عن عناصر...",
       "View all products": "عرض جميع المنتجات",
+      "Show more": "عرض المزيد",
+      storeGroupMoreProducts: "+{{count}} منتجات إضافية",
       "Please log in to like products.":
         "الرجاء تسجيل الدخول للإعجاب بالمنتجات.",
       "Please log in to leave reviews.": "الرجاء تسجيل الدخول لترك المراجعات.",
@@ -623,6 +636,13 @@ export const resources = {
       "Scroll right": "التمرير لليمين",
       "Premium Store": "متجر مميز",
       "Create an account to save your favourites": "أنشئ حساباً لحفظ إعجاباتك",
+      "Continue with Google": "المتابعة باستخدام Google",
+      or: "أو",
+      "Google sign-in failed": "فشل تسجيل الدخول عبر Google",
+      "Google sign-in not showing? Tap here":
+        "لا يظهر تسجيل الدخول عبر Google؟ اضغط هنا",
+      googleEnvMissing:
+        "تسجيل الدخول عبر Google غير مُعدّ في هذا الإصدار. أضف REACT_APP_GOOGLE_CLIENT_ID إلى frontend/.env ثم أعد تشغيل npm start.",
       "Sign in to sync across devices": "تسجيل الدخول لمزامنة الأجهزة",
       Electronic: "إلكترونيات",
       Cosmetic: "تجميل",
@@ -839,6 +859,8 @@ export const resources = {
       "Please select an Excel file.": "يرجى اختيار ملف إكسل.",
       Branches: "الفروع",
       "Show in Store List": "إظهار في قائمة الأسواق",
+      "Show in branch showcase":
+        "إظهار في عرض الفروع (عند الربط كفرع)",
       "Branch Name": "اسم الفرع",
       "Branch Address": "عنوان الفرع",
       "Add Branch": "إضافة فرع",
@@ -1133,6 +1155,8 @@ export const resources = {
         "پەیوەندییەکەت پچڕا . تکایە چێکى ئینتەرنێتەکەت بکە",
       "Search for items...": "گەڕان بۆ شتەکان...",
       "View all products": "پیشاندانی هەموو کاڵاکان",
+      "Show more": "زیاتر پیشان بدە",
+      storeGroupMoreProducts: "+{{count}} کاڵای تر",
       "Please log in to like products.": "پێویستە هەژمار دروست بکەى",
       "Please log in to leave reviews.": "پێویستە هەژمار دروست بکەى",
       Available: "بەردەست",
@@ -1206,6 +1230,13 @@ export const resources = {
       "Premium Brand": "بڕاندی دڵخوازت",
       "Create an account to save your favourites":
         "هەژمار دروست بکە بۆ چوونەژوورەوە لەهەر شوێنێک",
+      "Continue with Google": "بەردەوام بە لەگەڵ گووگڵ",
+      or: "یان",
+      "Google sign-in failed": "چوونەژوورەوە لەگەڵ گووگڵ سەرکەوتوو نەبوو",
+      "Google sign-in not showing? Tap here":
+        "چوونەژوورەوەی گووگڵ نابینیت؟ ئێرە دابگرە",
+      googleEnvMissing:
+        "چوونەژوورەوەی گووگڵ لەم وەشانەدا ڕێک نەکراوە. REACT_APP_GOOGLE_CLIENT_ID زیاد بکە لە frontend/.env دواتر npm start دووبارە بکەوە.",
       "Sign in to sync across devices": "لەڕێگەى هەژمارەکەتەوە بڕۆ ژوورەوە",
       Theme: "ڕەنگ",
       "This brand hasn't added any products yet. Check back later!":
@@ -1445,6 +1476,8 @@ export const resources = {
       Branches: "لقەکان",
       Account: "هەژمار",
       "Show in Store List": "لە لیستی فرۆشگاکاندا پیشان بدە",
+      "Show in branch showcase":
+        "لە پیشاندانی لقەکاندا پیشان بدە (کاتێک وەک لق بەستراوە)",
       "Branch Name": "ناوی لق",
       "Branch Address": "ناونیشانی لق",
       "Add Branch": "لق زیاد بکە",

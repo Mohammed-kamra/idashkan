@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -34,8 +34,6 @@ import {
   Skeleton,
 } from "@mui/material";
 import {
-  ArrowBack,
-  Phone,
   LocationOn,
   Business,
   Store,
@@ -46,6 +44,9 @@ import {
   CameraAlt,
   VideoLibrary,
   WorkOutline,
+  Phone,
+  ArrowForward,
+  ArrowBack,
 } from "@mui/icons-material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -72,10 +73,7 @@ import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { useCityFilter } from "../context/CityFilterContext";
-import {
-  cityStringsMatch,
-  productStoreMatchesCity,
-} from "../utils/cityMatch";
+import { cityStringsMatch, productStoreMatchesCity } from "../utils/cityMatch";
 import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -136,7 +134,8 @@ const BrandProfile = () => {
   const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language === "ar" || i18n.language === "ku";
   const isCompanyMode = location.pathname.startsWith("/companies");
   const { locName, locDescription, locTitle, locAddress } =
     useLocalizedContent();
@@ -192,7 +191,6 @@ const BrandProfile = () => {
     barcode: "",
     type: "",
   });
-  
 
   // Filter states
 
@@ -385,9 +383,7 @@ const BrandProfile = () => {
       category.types.find(
         (type) => type._id?.toString() === product.categoryTypeId?.toString(),
       ) || category.types.find((type) => type.name === product.categoryTypeId);
-    return categoryType
-      ? locName(categoryType)
-      : locName(category) || "";
+    return categoryType ? locName(categoryType) : locName(category) || "";
   };
 
   // Filter products based on current filters
@@ -588,22 +584,22 @@ const BrandProfile = () => {
             {locDescription(gift)}
           </Typography>
 
-            {gift.storeId && gift.storeId.length > 0 && (
+          {gift.storeId && gift.storeId.length > 0 && (
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 0.8 }}>
               {gift.storeId.slice(0, 3).map((store) => (
                 <Chip
-                      key={store._id}
+                  key={store._id}
                   label={locName(store)}
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                        navigate(`/stores/${store._id}?tab=gifts`);
-                      }}
-                      sx={{
+                    navigate(`/stores/${store._id}?tab=gifts`);
+                  }}
+                  sx={{
                     height: 20,
                     fontSize: "0.65rem",
                     fontWeight: 600,
-                        cursor: "pointer",
+                    cursor: "pointer",
                     bgcolor: isDark
                       ? "rgba(30,111,217,0.2)"
                       : "rgba(30,111,217,0.08)",
@@ -612,8 +608,8 @@ const BrandProfile = () => {
                   }}
                 />
               ))}
-              </Box>
-            )}
+            </Box>
+          )}
 
           <Box>
             {gift.expireDate ? (
@@ -665,17 +661,20 @@ const BrandProfile = () => {
         recordedIdsRef={productViewRecordedRef}
       >
         <Fade in={true} timeout={300 + index * 50}>
-        <Card
-            onClick={() => { setSelectedProduct(product); setProductDialogOpen(true); }}
-          sx={{
+          <Card
+            onClick={() => {
+              setSelectedProduct(product);
+              setProductDialogOpen(true);
+            }}
+            sx={{
               width: { xs: 155, sm: 190, md: 230 },
               minWidth: { xs: 155, sm: 190, md: 230 },
               maxWidth: { xs: 155, sm: 190, md: 230 },
               borderRadius: "16px",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            flexShrink: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              flexShrink: 0,
               cursor: "pointer",
               textDecoration: "none",
               background: isDark
@@ -688,7 +687,7 @@ const BrandProfile = () => {
                 ? "0 4px 16px rgba(0,0,0,0.3)"
                 : "0 2px 12px rgba(0,0,0,0.06)",
               transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-            "&:hover": {
+              "&:hover": {
                 transform: "translateY(-3px)",
                 boxShadow: isDark
                   ? "0 8px 28px rgba(0,0,0,0.45)"
@@ -696,49 +695,49 @@ const BrandProfile = () => {
                 borderColor: isDark ? "rgba(255,255,255,0.14)" : "#dce8ff",
               },
               "&:active": { transform: "translateY(0)" },
-          }}
-        >
-          {/* Product Image */}
-          <Box
-            sx={{
-              position: "relative",
-              overflow: "hidden",
-                height: { xs: 140, sm: 160 },
-              flexShrink: 0,
-                background: isDark ? "rgba(255,255,255,0.04)" : "#f8f9fb",
             }}
           >
-            {product.image ? (
-              <CardMedia
-                component="img"
+            {/* Product Image */}
+            <Box
+              sx={{
+                position: "relative",
+                overflow: "hidden",
+                height: { xs: 140, sm: 160 },
+                flexShrink: 0,
+                background: isDark ? "rgba(255,255,255,0.04)" : "#f8f9fb",
+              }}
+            >
+              {product.image ? (
+                <CardMedia
+                  component="img"
                   image={resolveMediaUrl(product.image)}
                   alt={locName(product)}
-                sx={{
-                  objectFit: "contain",
-                  width: "100%",
-                  height: "100%",
+                  sx={{
+                    objectFit: "contain",
+                    width: "100%",
+                    height: "100%",
                     transition: "transform 0.35s ease",
                     ".MuiCard-root:hover &": { transform: "scale(1.04)" },
-                }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  height: "100%",
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <StorefrontIcon
-                  sx={{
-                      fontSize: 44,
-                      color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db",
                   }}
                 />
-              </Box>
-            )}
+              ) : (
+                <Box
+                  sx={{
+                    height: "100%",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <StorefrontIcon
+                    sx={{
+                      fontSize: 44,
+                      color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db",
+                    }}
+                  />
+                </Box>
+              )}
 
               {/* Discount badge + like button */}
               <Box
@@ -810,56 +809,56 @@ const BrandProfile = () => {
               </Box>
 
               {/* View count */}
-            {product.viewCount > 0 && (
-              <Box
-                sx={{
-                  position: "absolute",
+              {product.viewCount > 0 && (
+                <Box
+                  sx={{
+                    position: "absolute",
                     bottom: 7,
                     right: 7,
-                  display: "flex",
-                  alignItems: "center",
+                    display: "flex",
+                    alignItems: "center",
                     gap: 0.4,
                     bgcolor: "rgba(0,0,0,0.6)",
-                  color: "white",
+                    color: "white",
                     px: 0.8,
                     py: 0.3,
-                  borderRadius: 1,
+                    borderRadius: 1,
                     fontSize: "0.65rem",
                     backdropFilter: "blur(4px)",
-                }}
-              >
+                  }}
+                >
                   <VisibilityIcon sx={{ fontSize: "0.75rem" }} />
-                {product.viewCount}
-              </Box>
-            )}
-          </Box>
+                  {product.viewCount}
+                </Box>
+              )}
+            </Box>
 
             {/* Content */}
-          <CardContent
-            sx={{
-                p: "10px 10px 10px !important",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-                gap: 0.4,
-            }}
-          >
-              {product.storeId && locName(product.storeId) && (
-            <Typography
-                  variant="caption"
+            <CardContent
               sx={{
+                p: "10px 10px 10px !important",
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.4,
+              }}
+            >
+              {product.storeId && locName(product.storeId) && (
+                <Typography
+                  variant="caption"
+                  sx={{
                     color: "var(--brand-primary-blue, #1E6FD9)",
-                fontWeight: 600,
+                    fontWeight: 600,
                     display: "block",
                     whiteSpace: "nowrap",
-                overflow: "hidden",
+                    overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontSize: "0.68rem",
                     lineHeight: 1.2,
-              }}
-            >
+                  }}
+                >
                   {locName(product.storeId)}
-            </Typography>
+                </Typography>
               )}
               <Typography
                 variant="body2"
@@ -877,7 +876,7 @@ const BrandProfile = () => {
               >
                 {locName(product)}
               </Typography>
-            {showPrice && (
+              {showPrice && (
                 <Box sx={{ mt: "auto", pt: 0.5 }}>
                   {hasPreviousPrice && (
                     <Typography
@@ -893,19 +892,19 @@ const BrandProfile = () => {
                       {formatPrice(product.previousPrice)}
                     </Typography>
                   )}
-                <Typography
+                  <Typography
                     variant="body2"
-                  sx={{
+                    sx={{
                       fontWeight: 800,
                       fontSize: { xs: "0.9rem", sm: "0.95rem" },
                       color: "var(--color-secondary, #1E6FD9)",
                       lineHeight: 1.2,
-                  }}
-                >
-                  {formatPrice(product.newPrice)}
-                </Typography>
-              </Box>
-            )}
+                    }}
+                  >
+                    {formatPrice(product.newPrice)}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Fade>
@@ -926,7 +925,7 @@ const BrandProfile = () => {
       return (
         <Box
           key={type}
-              sx={{
+          sx={{
             mb: 2,
             borderRadius: "18px",
             overflow: "hidden",
@@ -943,7 +942,7 @@ const BrandProfile = () => {
         >
           {/* Category header */}
           <Box
-                  sx={{
+            sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -970,9 +969,9 @@ const BrandProfile = () => {
               >
                 <StorefrontIcon sx={{ fontSize: 16, color: "white" }} />
               </Box>
-                <Typography
+              <Typography
                 variant="h6"
-                  sx={{
+                sx={{
                   fontWeight: 800,
                   fontSize: { xs: "0.9rem", sm: "1rem" },
                   color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
@@ -980,11 +979,11 @@ const BrandProfile = () => {
                 }}
               >
                 {t(type)}
-                </Typography>
+              </Typography>
               <Chip
                 label={`${typeProducts.length}`}
                 size="small"
-                  sx={{
+                sx={{
                   height: 20,
                   fontSize: "0.68rem",
                   fontWeight: 700,
@@ -995,8 +994,8 @@ const BrandProfile = () => {
                   "& .MuiChip-label": { px: 0.8 },
                 }}
               />
-              </Box>
             </Box>
+          </Box>
 
           {/* Products horizontal scroll */}
           <Box
@@ -1047,17 +1046,17 @@ const BrandProfile = () => {
                   },
                 }}
               >
-              <Typography
-                variant="caption"
-                sx={{
+                <Typography
+                  variant="caption"
+                  sx={{
                     fontWeight: 700,
                     fontSize: "0.7rem",
-                  textAlign: "center",
+                    textAlign: "center",
                     lineHeight: 1.3,
                   }}
                 >
                   +{typeProducts.length - displayProducts.length} {t("more")}
-              </Typography>
+                </Typography>
               </Box>
             )}
           </Box>
@@ -1188,7 +1187,12 @@ const BrandProfile = () => {
             }}
           >
             <Box sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.2, sm: 1.4 } }}>
-              <Skeleton variant="text" width="55%" height={28} sx={{ mb: 0.5 }} />
+              <Skeleton
+                variant="text"
+                width="55%"
+                height={28}
+                sx={{ mb: 0.5 }}
+              />
             </Box>
             <Box
               sx={{
@@ -1400,7 +1404,13 @@ const BrandProfile = () => {
     >
       {/* Back Button */}
       <Button
-        startIcon={<ArrowBack sx={{ fontSize: "1rem !important" }} />}
+        startIcon={
+          isRtl ? (
+            <ArrowForward sx={{ fontSize: "1rem !important" }} />
+          ) : (
+            <ArrowBack sx={{ fontSize: "1rem !important" }} />
+          )
+        }
         onClick={() => navigate(-1)}
         size="small"
         sx={{
@@ -1433,10 +1443,10 @@ const BrandProfile = () => {
           boxShadow: isDark
             ? "0 8px 32px rgba(0,0,0,0.45)"
             : "0 8px 32px rgba(99,102,241,0.3)",
-            position: "relative",
-            "&::before": {
-              content: '""',
-              position: "absolute",
+          position: "relative",
+          "&::before": {
+            content: '""',
+            position: "absolute",
             top: "-40%",
             right: "-10%",
             width: 280,
@@ -1444,11 +1454,11 @@ const BrandProfile = () => {
             borderRadius: "50%",
             background: "rgba(255,255,255,0.06)",
             pointerEvents: "none",
-            },
-          }}
-        >
-          <Box
-            sx={{
+          },
+        }}
+      >
+        <Box
+          sx={{
             p: { xs: "18px 16px", sm: "24px 28px", md: "28px 36px" },
             position: "relative",
             zIndex: 1,
@@ -1456,17 +1466,17 @@ const BrandProfile = () => {
         >
           {/* Logo + Name row */}
           <Box
-                sx={{
+            sx={{
               display: "flex",
               alignItems: "flex-start",
               gap: { xs: 1.5, sm: 2.5 },
               mb: 1.5,
             }}
           >
-              <Avatar
+            <Avatar
               src={brand.logo ? resolveMediaUrl(brand.logo) : undefined}
               alt={locName(brand)}
-                sx={{
+              sx={{
                 width: { xs: 64, sm: 88, md: 110 },
                 height: { xs: 64, sm: 88, md: 110 },
                 border: "3px solid rgba(255,255,255,0.3)",
@@ -1478,7 +1488,7 @@ const BrandProfile = () => {
             >
               {!brand.logo && (
                 <Business
-              sx={{
+                  sx={{
                     fontSize: { xs: 32, sm: 44 },
                     color: "rgba(255,255,255,0.85)",
                   }}
@@ -1487,10 +1497,10 @@ const BrandProfile = () => {
             </Avatar>
 
             <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
                   gap: 1,
                   flexWrap: "wrap",
                   mb: 0.8,
@@ -1512,12 +1522,12 @@ const BrandProfile = () => {
                   <Chip
                     label={t("VIP")}
                     size="small"
-                sx={{
+                    sx={{
                       height: 22,
                       fontSize: "0.65rem",
                       fontWeight: 800,
                       bgcolor: "#f59e0b",
-                  color: "white",
+                      color: "white",
                       border: "none",
                       boxShadow: "0 2px 6px rgba(245,158,11,0.5)",
                       "& .MuiChip-label": { px: 0.8 },
@@ -1531,29 +1541,29 @@ const BrandProfile = () => {
                 <Chip
                   icon={
                     <Store
-              sx={{
+                      sx={{
                         fontSize: "0.8rem !important",
                         color: "rgba(255,255,255,0.85) !important",
-              }}
+                      }}
                     />
                   }
-                label={`${productsInSelectedCityCount} ${t("Products")}`}
-                size="small"
-                sx={{
+                  label={`${productsInSelectedCityCount} ${t("Products")}`}
+                  size="small"
+                  sx={{
                     height: 22,
                     fontSize: "0.68rem",
                     fontWeight: 600,
                     bgcolor: "rgba(255,255,255,0.15)",
-                  color: "white",
+                    color: "white",
                     border: "1px solid rgba(255,255,255,0.2)",
                     "& .MuiChip-label": { px: 0.7 },
                   }}
                 />
                 {discountedProducts.length > 0 && (
-              <Chip
+                  <Chip
                     icon={
                       <LocalOfferIcon
-                sx={{
+                        sx={{
                           fontSize: "0.8rem !important",
                           color: "rgba(255,255,255,0.85) !important",
                         }}
@@ -1561,12 +1571,12 @@ const BrandProfile = () => {
                     }
                     label={`${discountedProducts.length} ${t("Discounted")}`}
                     size="small"
-                sx={{
+                    sx={{
                       height: 22,
                       fontSize: "0.68rem",
                       fontWeight: 600,
                       bgcolor: "rgba(239,68,68,0.5)",
-                  color: "white",
+                      color: "white",
                       border: "none",
                       "& .MuiChip-label": { px: 0.7 },
                     }}
@@ -1581,7 +1591,7 @@ const BrandProfile = () => {
             {locAddress(brand) && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
                 <LocationOn
-                    sx={{
+                  sx={{
                     fontSize: { xs: 16, md: 18 },
                     color: "rgba(255,255,255,0.8)",
                   }}
@@ -1602,10 +1612,10 @@ const BrandProfile = () => {
               </Box>
             )}
             {(locationLinks.length > 0 || displayPhone) && (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
                   gap: 1,
                   flexWrap: "wrap",
                 }}
@@ -1614,28 +1624,28 @@ const BrandProfile = () => {
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                     <Phone
                       sx={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}
-                      />
-                      <Typography
+                    />
+                    <Typography
                       variant="caption"
-                        sx={{
+                      sx={{
                         color: "rgba(255,255,255,0.85)",
-                          fontFamily: "monospace",
+                        fontFamily: "monospace",
                         fontWeight: 600,
                         fontSize: "0.8rem",
-                        }}
-                      >
+                      }}
+                    >
                       {displayPhone}
-                      </Typography>
-                    </Box>
-                  )}
+                    </Typography>
+                  </Box>
+                )}
                 {renderLocationRow()}
-                </Box>
+              </Box>
             )}
             {renderContactRow()}
             {locDescription(brand) && (
-                  <Typography
+              <Typography
                 variant="body2"
-                    sx={{
+                sx={{
                   color: "rgba(255,255,255,0.75)",
                   fontSize: "0.8rem",
                   lineHeight: 1.5,
@@ -1643,11 +1653,11 @@ const BrandProfile = () => {
                 }}
               >
                 {locDescription(brand)}
-                  </Typography>
-                )}
-                </Box>
+              </Typography>
+            )}
           </Box>
         </Box>
+      </Box>
 
       {/* Enhanced Products Section with Tabs */}
       <Box sx={{ mb: 4 }}>
@@ -1657,7 +1667,7 @@ const BrandProfile = () => {
         {/* Tabs — pill style */}
         {visibleTabs.length > 0 && (
           <Box
-          sx={{
+            sx={{
               mb: 2.5,
               display: "flex",
               gap: 0.8,
@@ -1678,7 +1688,7 @@ const BrandProfile = () => {
                   })}
                   label={tab.label}
                   onClick={() => handleTabChange(null, idx)}
-            sx={{
+                  sx={{
                     height: 36,
                     fontSize: "0.78rem",
                     fontWeight: isActive ? 700 : 500,
@@ -1688,7 +1698,7 @@ const BrandProfile = () => {
                       ? {
                           background:
                             "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                  color: "white",
+                          color: "white",
                           border: "none",
                           boxShadow: "0 3px 10px rgba(99,102,241,0.4)",
                           "& .MuiChip-icon": {
@@ -1746,8 +1756,8 @@ const BrandProfile = () => {
 
         {activeTabKey === "reels" && (
           <Box>
-              <Box
-                sx={{
+            <Box
+              sx={{
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
                 gap: 2,
@@ -1760,7 +1770,7 @@ const BrandProfile = () => {
                 return (
                   <Card
                     key={reel._id}
-                  sx={{
+                    sx={{
                       borderRadius: 3,
                       overflow: "hidden",
                       cursor: "pointer",
@@ -1813,7 +1823,7 @@ const BrandProfile = () => {
         )}
 
         {activeTabKey === "jobs" && (
-              <Box>
+          <Box>
             <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 1.5 }}>
               {jobsInSelectedCity.map((job) => (
                 <JobCardRow
@@ -1851,7 +1861,7 @@ const BrandProfile = () => {
               onError={(e) => {
                 e.currentTarget.src = "/logo192.png";
               }}
-                      sx={{
+              sx={{
                 width: 110,
                 height: 110,
                 borderRadius: 2,
@@ -2019,8 +2029,3 @@ const BrandProfile = () => {
 };
 
 export default BrandProfile;
-
-
-
-
-

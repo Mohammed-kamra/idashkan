@@ -67,13 +67,24 @@ import { isAdminEmail, canAccessDataEntry } from "./utils/adminAccess";
 // Enable notification center (bell + menu)
 const NOTIFICATIONS_CENTER_ENABLED = true;
 
-/** Same gradient in every UI language. Applied via inline style so RTL (ar/ku) does not mirror it. */
+/** App bar brand (Latin); same in every locale so Brush Script MT renders consistently. */
+const NAV_BRAND_TITLE = "iDashkan";
+
+/** Brand title — @font-face: public/fonts/brush-script-mt.css (BRUSHSCI.TTF) */
+const NAV_BRAND_TITLE_FONT_FAMILY =
+  '"Brush Script MT", "Brush Script", "Segoe Script", cursive';
+
+/** Original solid brand bar (light mode). RTL-safe via inline style on AppBar. */
 const NAV_BAR_GRADIENT =
   "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)";
+const NAV_BAR_GRADIENT_DARK_GLASS =
+  "linear-gradient(118deg, rgba(7,11,20,0.78) 0%, rgba(15,23,42,0.7) 42%, rgba(23,37,84,0.62) 78%, rgba(37,99,235,0.45) 100%)";
+
 const HOME_DOUBLE_TAP_MS = 450;
 
 const NavigationBar = ({ darkMode, setDarkMode }) => {
   const theme = useTheme();
+  const isDarkNav = theme.palette.mode === "dark";
   const { t, i18n } = useTranslation();
   const { user, logout, deactivate } = useAuth();
   const { user: guestUser, updateGuestName } = useUserTracking();
@@ -425,23 +436,81 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isSmUp]);
 
+  const navAppBarStyle = useMemo(
+    () => ({
+      background: isDarkNav ? NAV_BAR_GRADIENT_DARK_GLASS : NAV_BAR_GRADIENT,
+    }),
+    [isDarkNav],
+  );
+
+  const navIconBtnSx = useMemo(
+    () =>
+      isDarkNav
+        ? {
+            color: "#f8fafc",
+            backgroundColor: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(14px) saturate(160%)",
+            WebkitBackdropFilter: "blur(14px) saturate(160%)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28)",
+            transition: "all 0.25s ease",
+            width: 40,
+            height: 40,
+            "&:hover": {
+              backgroundColor: "rgba(255,255,255,0.2)",
+              transform: "scale(1.06)",
+              boxShadow:
+                "0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
+            },
+          }
+        : {
+            color: "white",
+            backgroundColor: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            transition: "all 0.3s ease",
+            width: 40,
+            height: 40,
+            "&:hover": {
+              backgroundColor: "rgba(255,255,255,0.2)",
+              transform: "scale(1.1)",
+            },
+          },
+    [isDarkNav],
+  );
+
+  const navBrandTitleSx = useMemo(
+    () => ({
+      fontFamily: NAV_BRAND_TITLE_FONT_FAMILY,
+      color: "white",
+      fontWeight: 400,
+      fontSize: "2.8rem",
+      backgroundColor: "white",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+      backgroundClip: "text",
+      transition: "all 0.3s ease",
+    }),
+    [],
+  );
+
   return (
     <>
       <AppBar
         position="fixed"
         elevation={0}
-        style={{ background: NAV_BAR_GRADIENT }}
+        style={navAppBarStyle}
         sx={{
-          backdropFilter: "blur(20px)",
-          // borderBottom: `1px solid ${
-          //   theme.palette.mode === "dark"
-          //     ? "rgba(255,255,255,0.1)"
-          //     : theme.palette.primary.main
-          // }`,
-          boxShadow:
-            theme.palette.mode === "dark"
-              ? "0 8px 32px rgba(0,0,0,0.3)"
-              : "0 8px 32px rgba(0,0,0,0.1)",
+          backdropFilter: isDarkNav
+            ? "blur(22px) saturate(170%)"
+            : "blur(20px)",
+          WebkitBackdropFilter: isDarkNav
+            ? "blur(22px) saturate(170%)"
+            : "blur(20px)",
+          borderBottom: isDarkNav ? "1px solid rgba(255,255,255,0.12)" : "none",
+          boxShadow: isDarkNav
+            ? "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)"
+            : "0 8px 32px rgba(0,0,0,0.1)",
           transform: isSmUp
             ? "translateY(0)"
             : showMobileNavbar
@@ -455,9 +524,23 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
           sx={{
             justifyContent: isSmUp ? "space-between" : "flex-start",
             px: { xs: 1, sm: 2, md: 4 },
-            borderBottomLeftRadius: "50%",
-            borderBottomRightRadius: "50%",
+            borderBottomLeftRadius: isDarkNav ? 22 : "50%",
+            borderBottomRightRadius: isDarkNav ? 22 : "50%",
             ...(isSmUp ? {} : { minHeight: 56 }),
+            position: "relative",
+            ...(isDarkNav
+              ? {
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "inherit",
+                    pointerEvents: "none",
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 42%)",
+                  },
+                }
+              : {}),
           }}
         >
           {/* Mobile navbar templates */}
@@ -475,143 +558,52 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 {NOTIFICATIONS_CENTER_ENABLED && (
                   <IconButton
                     onClick={handleNotificationMenuOpen}
-                    sx={{
-                      color: "white",
-                      backgroundColor: "rgba(255,255,255,0.1)",
-                      backdropFilter: "blur(10px)",
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      transition: "all 0.3s ease",
-                      width: 40,
-                      height: 40,
-                      "&:hover": {
-                        backgroundColor: "rgba(255,255,255,0.2)",
-                        transform: "scale(1.1)",
-                      },
-                    }}
+                    sx={navIconBtnSx}
                   >
                     <Badge badgeContent={unreadCount} color="error">
                       <NotificationsIcon />
                     </Badge>
                   </IconButton>
                 )}
-                <IconButton
-                  component={Link}
-                  to="/search"
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
+                <IconButton component={Link} to="/search" sx={navIconBtnSx}>
                   <SearchIcon />
                 </IconButton>
                 <IconButton
                   component={Link}
                   to="/"
                   onClick={handleHomeTopAction}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
+                  sx={navIconBtnSx}
                   aria-label={t("Home")}
                 >
                   <HomeIcon />
                 </IconButton>
                 <IconButton
                   onClick={() => triggerRefresh?.()}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
+                  sx={navIconBtnSx}
                   aria-label={t("Refresh")}
                 >
                   <RefreshIcon />
                 </IconButton>
               </Box>
               <Typography
+                className="nav-brand-title"
                 component={Link}
                 to="/"
                 sx={{
                   flex: 1,
                   textAlign: "center",
                   textDecoration: "none",
-                  color: "white",
-                  fontWeight: 900,
-                  fontSize: "1.75rem",
-                  textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                  backgroundColor: "white",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  transition: "all 0.3s ease",
+                  ...navBrandTitleSx,
                   "&:hover": { transform: "scale(1.05)" },
                 }}
               >
-                {t("Discount Center")}
+                {NAV_BRAND_TITLE}
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.9 }}>
-                <IconButton
-                  component={Link}
-                  to="/favourites"
-                  sx={{
-                    color: "white",
-                    // backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
+                <IconButton component={Link} to="/favourites" sx={navIconBtnSx}>
                   <FavoriteIcon />
                 </IconButton>
-                <IconButton
-                  component={Link}
-                  to="/profile"
-                  sx={{
-                    color: "white",
-                    // backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
+                <IconButton component={Link} to="/profile" sx={navIconBtnSx}>
                   <PersonIcon />
                 </IconButton>
               </Box>
@@ -632,19 +624,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 <IconButton
                   component={Link}
                   to="/search"
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.05)",
-                    },
-                  }}
+                  sx={navIconBtnSx}
                   aria-label={t("Search")}
                 >
                   <SearchIcon />
@@ -652,20 +632,14 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               </Box>
 
               <Typography
+                className="nav-brand-title"
                 sx={{
                   flex: 1,
                   textAlign: "center",
-                  color: "white",
-                  fontWeight: 900,
-                  fontSize: "1.75rem",
-                  textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                  backgroundColor: "white",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
+                  ...navBrandTitleSx,
                 }}
               >
-                {t("Discount Center")}
+                {NAV_BRAND_TITLE}
               </Typography>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.9 }}>
@@ -673,38 +647,14 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   component={Link}
                   to="/"
                   onClick={handleHomeTopAction}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.05)",
-                    },
-                  }}
+                  sx={navIconBtnSx}
                   aria-label={t("Home")}
                 >
                   <HomeIcon />
                 </IconButton>
                 <IconButton
                   onClick={() => triggerRefresh?.()}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.05)",
-                    },
-                  }}
+                  sx={navIconBtnSx}
                   aria-label={t("Refresh")}
                 >
                   <RefreshIcon />
@@ -725,19 +675,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
             >
               {(() => {
                 const top = navConfig?.topSlots || {};
-                const sxBtn = {
-                  color: "white",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  transition: "all 0.3s ease",
-                  width: 40,
-                  height: 40,
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.2)",
-                    transform: "scale(1.05)",
-                  },
-                };
+                const sxBtn = navIconBtnSx;
 
                 const map = {
                   home: { to: "/", icon: <HomeIcon /> },
@@ -835,25 +773,18 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     </Box>
 
                     <Typography
+                      className="nav-brand-title"
                       component={centerIsLabel ? Link : "div"}
                       to={centerIsLabel ? "/" : undefined}
                       sx={{
                         flex: 1,
                         textAlign: "center",
                         textDecoration: "none",
-                        color: "white",
-                        fontWeight: 900,
-                        fontSize: "1.75rem",
-                        textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                        // backgroundColor: "white",
-                        // WebkitBackgroundClip: "text",
-                        // WebkitTextFillColor: "transparent",
-                        // backgroundClip: "text",
-                        // opacity: centerIsLabel ? 1 : 0,
+                        ...navBrandTitleSx,
                         pointerEvents: centerIsLabel ? "auto" : "none",
                       }}
                     >
-                      {t("Discount Center")}
+                      {NAV_BRAND_TITLE}
                     </Typography>
 
                     <Box
@@ -955,34 +886,38 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   mr: 2,
                   width: 40,
                   height: 40,
-                  // background: "linear-gradient(135deg, #ffffff20, #ffffff40)",
-                  backdropFilter: "blur(10px)",
-                  border: "2px solid rgba(255,255,255,0.3)",
+                  ...(isDarkNav
+                    ? {
+                        bgcolor: "rgba(255,255,255,0.1)",
+                        backdropFilter: "blur(12px) saturate(150%)",
+                        WebkitBackdropFilter: "blur(12px) saturate(150%)",
+                        border: "2px solid rgba(255,255,255,0.28)",
+                        boxShadow:
+                          "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
+                      }
+                    : {
+                        backdropFilter: "blur(10px)",
+                        border: "2px solid rgba(255,255,255,0.3)",
+                      }),
                 }}
               >
                 <StoreIcon sx={{ color: "white", fontSize: 24 }} />
               </Avatar>
               <Typography
+                className="nav-brand-title"
                 variant="h5"
                 component={Link}
                 to="/"
                 sx={{
                   textDecoration: "none",
-                  color: "white",
-                  fontWeight: 900,
                   fontSize: { xs: "1.75rem", sm: "1.75rem", md: "1.75rem" },
-                  textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                  backgroundColor: "white",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  transition: "all 0.3s ease",
+                  ...navBrandTitleSx,
                   "&:hover": {
                     transform: "scale(1.05)",
                   },
                 }}
               >
-                {t("Discount Center")}
+                {NAV_BRAND_TITLE}
               </Typography>
             </Box>
           )}
@@ -1269,20 +1204,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               {NOTIFICATIONS_CENTER_ENABLED && (
                 <IconButton
                   onClick={handleNotificationMenuOpen}
-                  sx={{
-                    color: "white",
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    backdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    transition: "all 0.3s ease",
-                    width: 40,
-                    height: 40,
-                    ml: 0.5,
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.2)",
-                      transform: "scale(1.1)",
-                    },
-                  }}
+                  sx={{ ...navIconBtnSx, ml: 0.5 }}
                 >
                   <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon />
@@ -1293,20 +1215,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               <IconButton
                 component={Link}
                 to="/profile"
-                sx={{
-                  color: "white",
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  transition: "all 0.3s ease",
-                  width: 40,
-                  height: 40,
-                  ml: 0.5,
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.2)",
-                    transform: "scale(1.1)",
-                  },
-                }}
+                sx={{ ...navIconBtnSx, ml: 0.5 }}
               >
                 <PersonIcon />
               </IconButton>
@@ -1331,9 +1240,22 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               maxWidth: 380,
               maxHeight: 400,
               backgroundColor:
-                theme.palette.mode === "dark" ? "#1E6FD9" : "#fff",
-              border: `1px solid ${theme.palette.divider}`,
+                theme.palette.mode === "dark"
+                  ? "rgba(15, 23, 42, 0.98)"
+                  : "#fff",
+              backdropFilter:
+                theme.palette.mode === "dark" ? "blur(14px)" : "none",
+              WebkitBackdropFilter:
+                theme.palette.mode === "dark" ? "blur(14px)" : "none",
+              border:
+                theme.palette.mode === "dark"
+                  ? "1px solid rgba(148,163,184,0.18)"
+                  : `1px solid ${theme.palette.divider}`,
               borderRadius: 2,
+              boxShadow:
+                theme.palette.mode === "dark"
+                  ? "0 18px 48px rgba(0,0,0,0.55)"
+                  : undefined,
             },
           }}
         >

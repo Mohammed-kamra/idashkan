@@ -34,6 +34,15 @@ function getBranchStoreId(branch) {
   return String(raw);
 }
 
+/** Logo may exist on populated `branches[].storeId` even when catalog lookup misses. */
+function getLogoHintFromBranch(branch) {
+  const raw = branch?.storeId;
+  if (!raw || typeof raw !== "object") return null;
+  const logo = raw.logo;
+  if (logo == null || String(logo).trim() === "") return null;
+  return String(logo).trim();
+}
+
 /** Case- and whitespace-insensitive name match (same visible list as admin). */
 function normalizeBranchNameKey(name) {
   return String(name ?? "")
@@ -99,7 +108,9 @@ const StoreBranchesShowcase = ({ store }) => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await storeAPI.getVisible();
+        // Use GET /stores (not /visible): branch stores may have `show: false` and still
+        // need logos; /visible only returns `show: true` and was hiding logos for those.
+        const res = await storeAPI.getAll();
         const list = Array.isArray(res?.data) ? res.data : [];
         if (!cancelled) setCatalog(list);
       } catch {
@@ -136,11 +147,18 @@ const StoreBranchesShowcase = ({ store }) => {
       }
       if (match && String(match._id) === sid) continue;
 
+      if (match && match.showingOnStoreBranchShowcase === false) continue;
+
+      const logoHint = getLogoHintFromBranch(b);
+      if (match && logoHint && !match.logo) {
+        match = { ...match, logo: logoHint };
+      }
+
       if (!match && branchStoreId) {
         match = {
           _id: branchStoreId,
           name: name || "",
-          logo: undefined,
+          logo: logoHint || undefined,
         };
       }
 
@@ -179,10 +197,14 @@ const StoreBranchesShowcase = ({ store }) => {
   const cardMinWidth = { xs: 92, sm: 100, md: 108 };
 
   const renderCard = ({ name, storeDoc }, index) => {
+    const logoRaw =
+      storeDoc?.logo != null ? String(storeDoc.logo).trim() : "";
+    const avatarSrc = logoRaw ? resolveMediaUrl(logoRaw) : undefined;
+
     const inner = (
       <>
         <Avatar
-          src={storeDoc?.logo ? resolveMediaUrl(storeDoc.logo) : undefined}
+          src={avatarSrc}
           alt={name}
           className="branch-avatar"
           sx={{
@@ -198,7 +220,7 @@ const StoreBranchesShowcase = ({ store }) => {
             borderRadius: "16px",
           }}
         >
-          {!storeDoc?.logo && (
+          {!logoRaw && (
             <BusinessIcon
               sx={{
                 fontSize: { xs: 28, sm: 32 },
