@@ -32,6 +32,10 @@ const jobSchema = new mongoose.Schema(
     whatsapp: { type: String, default: "", trim: true, maxlength: 40 },
     /** Contact email for applications; shown when set */
     email: { type: String, default: "", trim: true, maxlength: 320 },
+    /** e.g. full-time, contract — free text */
+    jobType: { type: String, default: "", trim: true, maxlength: 120 },
+    /** Indeed posting URL or reference */
+    indeed: { type: String, default: "", trim: true, maxlength: 2000 },
   },
   { timestamps: true }
 );

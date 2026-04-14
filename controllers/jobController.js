@@ -143,6 +143,10 @@ const createJob = async (req, res) => {
         req.body?.email != null && String(req.body.email).trim() !== ""
           ? String(req.body.email).trim()
           : "",
+      jobType:
+        req.body?.jobType != null ? String(req.body.jobType).trim() : "",
+      indeed:
+        req.body?.indeed != null ? String(req.body.indeed).trim() : "",
       expireDate: req.body?.expireDate || null,
       active: req.body?.active !== undefined ? Boolean(req.body.active) : true,
     });
@@ -186,6 +190,8 @@ const updateJob = async (req, res) => {
       "city",
       "whatsapp",
       "email",
+      "jobType",
+      "indeed",
       "expireDate",
       "active",
     ];

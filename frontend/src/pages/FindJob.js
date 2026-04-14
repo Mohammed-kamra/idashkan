@@ -13,7 +13,9 @@ import {
   FormControl,
   IconButton,
   InputLabel,
+  Link,
   MenuItem,
+  Paper,
   Select,
   Skeleton,
   Typography,
@@ -21,6 +23,8 @@ import {
 } from "@mui/material";
 import BusinessIcon from "@mui/icons-material/Business";
 import EmailIcon from "@mui/icons-material/Email";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
@@ -195,9 +199,7 @@ const FindJob = () => {
         py: { xs: 3, md: 6 },
         mt: { xs: 3, md: 5 },
         minHeight: "100vh",
-        backgroundColor: isDark
-          ? "rgba(13,17,28,1)"
-          : "rgba(248,249,252,1)",
+        backgroundColor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
       }}
     >
       <Container maxWidth="lg">
@@ -329,9 +331,7 @@ const FindJob = () => {
         <Divider
           sx={{
             mb: 3,
-            borderColor: isDark
-              ? "rgba(255,255,255,0.08)"
-              : "rgba(0,0,0,0.08)",
+            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
           }}
         />
 
@@ -376,18 +376,14 @@ const FindJob = () => {
                 variant="h6"
                 sx={{
                   fontWeight: 700,
-                  color: isDark
-                    ? "rgba(255,255,255,0.5)"
-                    : "rgba(0,0,0,0.4)",
+                  color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)",
                 }}
               >
                 {t("No jobs available")}
               </Typography>
               <Typography
                 sx={{
-                  color: isDark
-                    ? "rgba(255,255,255,0.35)"
-                    : "rgba(0,0,0,0.35)",
+                  color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)",
                   mt: 0.5,
                 }}
               >
@@ -422,9 +418,7 @@ const FindJob = () => {
                       boxShadow: isDark
                         ? "0 6px 24px rgba(0,0,0,0.45)"
                         : "0 6px 20px rgba(30,111,217,0.12)",
-                      borderColor: isDark
-                        ? "rgba(74,144,226,0.4)"
-                        : "#dce8ff",
+                      borderColor: isDark ? "rgba(74,144,226,0.4)" : "#dce8ff",
                       transform: "translateY(-1px)",
                     },
                   }}
@@ -557,221 +551,419 @@ const FindJob = () => {
         onClose={() => setSelectedJob(null)}
         fullWidth
         maxWidth="sm"
+        scroll="body"
         PaperProps={{
           sx: {
-            borderRadius: 4,
-            backgroundColor: isDark ? "rgba(22,28,44,1)" : "#fff",
+            borderRadius: 3,
+            overflow: "hidden",
+            backgroundColor: isDark ? "rgba(18,22,38,1)" : "#fafbfc",
             backgroundImage: "none",
-            border: isDark ? "1px solid rgba(255,255,255,0.08)" : "none",
+            border: isDark
+              ? "1px solid rgba(255,255,255,0.07)"
+              : "1px solid rgba(15,23,42,0.08)",
+            boxShadow: isDark
+              ? "0 24px 56px rgba(0,0,0,0.55)"
+              : "0 24px 48px rgba(15,23,42,0.1)",
           },
         }}
       >
-        {/* Dialog header */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: 2.5,
-            py: 1.5,
-            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-          }}
-        >
-          <IconButton
-            size="small"
-            onClick={() => setSelectedJob(null)}
-            sx={{
-              mr: 1.5,
-              backgroundColor: isDark
-                ? "rgba(255,255,255,0.07)"
-                : "rgba(0,0,0,0.05)",
-              borderRadius: 2,
-            }}
-          >
-            <CloseIcon sx={{ fontSize: "1.1rem" }} />
-          </IconButton>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: "1.05rem",
-              flex: 1,
-              color: isDark ? "#fff" : "#111827",
-            }}
-          >
-            {locTitle(selectedJob) || t("Job")}
-          </Typography>
-        </Box>
+        {selectedJob && (
+          <>
+            <Box sx={{ position: "relative" }}>
+              <IconButton
+                aria-label={t("Close")}
+                onClick={() => setSelectedJob(null)}
+                sx={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  zIndex: 3,
+                  color: "#fff",
+                  backgroundColor: "rgba(0,0,0,0.38)",
+                  backdropFilter: "blur(10px)",
+                  "&:hover": {
+                    backgroundColor: "rgba(0,0,0,0.52)",
+                  },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
 
-        <DialogContent sx={{ px: 2.5, py: 2.5 }}>
-          <Box sx={{ display: "flex", gap: 2, mb: 2.5 }}>
-            <Box
-              component="img"
-              src={resolveMediaUrl(selectedJob?.image) || "/logo192.png"}
-              alt="job"
-              onError={(e) => { e.currentTarget.src = "/logo192.png"; }}
+              <Box
+                sx={{
+                  position: "relative",
+                  minHeight: { xs: 200, sm: 228 },
+                  backgroundColor: isDark ? "#0f172a" : "#e2e8f0",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={resolveMediaUrl(selectedJob?.image) || "/logo192.png"}
+                  alt=""
+                  onError={(e) => {
+                    e.currentTarget.src = "/logo192.png";
+                  }}
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    background: [
+                      "linear-gradient(180deg, rgba(15,23,42,0.15) 0%, transparent 35%)",
+                      "linear-gradient(180deg, transparent 25%, rgba(15,23,42,0.92) 100%)",
+                    ].join(","),
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    p: { xs: 2, sm: 2.5 },
+                    pt: 5,
+                  }}
+                >
+                  <Typography
+                    component="h2"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: { xs: "1.2rem", sm: "1.35rem" },
+                      lineHeight: 1.25,
+                      color: "#fff",
+                      textShadow: "0 2px 12px rgba(0,0,0,0.45)",
+                      pr: 5,
+                    }}
+                  >
+                    {locTitle(selectedJob) || t("Job")}
+                  </Typography>
+                  {(() => {
+                    const expInfo = getExpiryRemainingInfo(
+                      selectedJob?.expireDate,
+                    );
+                    const showExp = shouldShowExpiryChip(expInfo);
+                    if (!showExp) return null;
+                    return (
+                      <Chip
+                        label={formatExpiryChipLabel(expInfo, t)}
+                        size="small"
+                        sx={{
+                          mt: 1.25,
+                          backgroundColor: expiryChipBg(expInfo),
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "0.7rem",
+                          height: 24,
+                        }}
+                      />
+                    );
+                  })()}
+                </Box>
+              </Box>
+            </Box>
+
+            <DialogContent
               sx={{
-                width: 100,
-                height: 100,
-                borderRadius: 3,
-                objectFit: "cover",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f3f4f6",
-                flexShrink: 0,
+                px: { xs: 2, sm: 2.75 },
+                py: 2.5,
+                bgcolor: isDark ? "rgba(18,22,38,1)" : "#fafbfc",
               }}
-            />
-            <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 0.75 }}>
-              <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
                 <Chip
                   size="small"
                   label={`${t("Gender")}: ${genderLabel(selectedJob?.gender)}`}
                   sx={{
-                    height: 24,
-                    fontSize: "0.72rem",
+                    height: 28,
+                    fontSize: "0.75rem",
                     fontWeight: 700,
                     backgroundColor: isDark
-                      ? "rgba(74,144,226,0.15)"
-                      : "rgba(30,111,217,0.08)",
-                    color: isDark ? "#4a90e2" : "#1E6FD9",
-                    borderRadius: 99,
+                      ? "rgba(74,144,226,0.2)"
+                      : "rgba(30,111,217,0.1)",
+                    color: isDark ? "#7ab8ff" : "#1E6FD9",
+                    border: `1px solid ${isDark ? "rgba(74,144,226,0.35)" : "rgba(30,111,217,0.22)"}`,
                   }}
                 />
+                {String(selectedJob?.jobType || "").trim() && (
+                  <Chip
+                    size="small"
+                    label={String(selectedJob.jobType).trim()}
+                    sx={{
+                      height: 28,
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(15,23,42,0.06)",
+                      color: isDark
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(15,23,42,0.85)",
+                    }}
+                  />
+                )}
+                {String(selectedJob?.city || "").trim() && (
+                  <Chip
+                    size="small"
+                    icon={
+                      <LocationOnOutlinedIcon
+                        sx={{
+                          fontSize: "1rem !important",
+                          ml: "4px !important",
+                        }}
+                      />
+                    }
+                    label={t(`city.${String(selectedJob.city).trim()}`, {
+                      defaultValue: String(selectedJob.city).trim(),
+                    })}
+                    sx={{
+                      height: 28,
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(15,23,42,0.06)",
+                      color: isDark
+                        ? "rgba(255,255,255,0.85)"
+                        : "rgba(15,23,42,0.8)",
+                      "& .MuiChip-icon": { color: "inherit" },
+                    }}
+                  />
+                )}
+                {getOwnerName(selectedJob) && (
+                  <Chip
+                    size="small"
+                    icon={getOwnerIcon(selectedJob)}
+                    label={getOwnerName(selectedJob)}
+                    sx={{
+                      height: 28,
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      maxWidth: "100%",
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.08)"
+                        : "rgba(15,23,42,0.06)",
+                      color: isDark
+                        ? "rgba(255,255,255,0.88)"
+                        : "rgba(15,23,42,0.85)",
+                      "& .MuiChip-icon": {
+                        color: "inherit",
+                        fontSize: "1rem !important",
+                      },
+                    }}
+                  />
+                )}
               </Box>
-              {getOwnerName(selectedJob) && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <Box
-                    sx={{
-                      fontSize: "1rem",
-                      color: isDark
-                        ? "rgba(255,255,255,0.45)"
-                        : "rgba(0,0,0,0.4)",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    {getOwnerIcon(selectedJob)}
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.88rem",
-                      color: isDark
-                        ? "rgba(255,255,255,0.8)"
-                        : "rgba(0,0,0,0.7)",
-                    }}
-                  >
-                    {getOwnerName(selectedJob)}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Box>
 
-          <Divider
-            sx={{
-              mb: 2,
-              borderColor: isDark
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(0,0,0,0.08)",
-            }}
-          />
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  fontWeight: 800,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: isDark
+                    ? "rgba(255,255,255,0.45)"
+                    : "rgba(15,23,42,0.45)",
+                  mb: 1,
+                }}
+              >
+                {t("Description")}
+              </Typography>
 
-          <Typography
-            sx={{
-              fontWeight: 800,
-              mb: 0.75,
-              fontSize: "0.9rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)",
-            }}
-          >
-            {t("Description")}
-          </Typography>
-          <Typography
-            sx={{
-              whiteSpace: "pre-wrap",
-              lineHeight: 1.7,
-              color: isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.75)",
-              fontSize: "0.92rem",
-            }}
-          >
-            {locDescription(selectedJob) || "-"}
-          </Typography>
-
-          {(() => {
-            const titleLine =
-              locTitle(selectedJob) ||
-              selectedJob?.title ||
-              "";
-            const waDigits = jobWhatsAppDigits(selectedJob?.whatsapp);
-            const waUrl = buildJobWhatsAppApiUrl(waDigits);
-            const mailHref = buildJobMailtoUrl(selectedJob?.email, titleLine);
-            if (!waUrl && !mailHref) return null;
-            return (
-              <Box sx={{ mt: 2.5 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  mb: 2.5,
+                  borderRadius: 2,
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.08)"}`,
+                  backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#fff",
+                }}
+              >
                 <Typography
                   sx={{
-                    fontWeight: 800,
-                    mb: 1.25,
-                    fontSize: "0.9rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.75,
                     color: isDark
-                      ? "rgba(255,255,255,0.5)"
-                      : "rgba(0,0,0,0.45)",
+                      ? "rgba(255,255,255,0.88)"
+                      : "rgba(15,23,42,0.82)",
+                    fontSize: "0.94rem",
                   }}
                 >
-                  {t("Contact about this job")}
+                  {locDescription(selectedJob) || "—"}
                 </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: 1.25,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {waUrl && (
-                    <Button
-                      variant="contained"
-                      size="medium"
-                      startIcon={<WhatsAppIcon />}
-                      onClick={() => openWhatsAppLink(waUrl)}
+              </Paper>
+              {(() => {
+                const raw = String(selectedJob?.indeed ?? "").trim();
+                if (!raw) return null;
+                const isUrl = /^https?:\/\//i.test(raw);
+                return (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      mb: 2,
+                      borderRadius: 2,
+                      border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.1)"}`,
+                      backgroundColor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "#fff",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
                       sx={{
-                        textTransform: "none",
-                        fontWeight: 700,
-                        borderRadius: 2.5,
-                        backgroundColor: "#25D366",
-                        "&:hover": { backgroundColor: "#1ebe57" },
+                        display: "block",
+                        fontWeight: 800,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        color: isDark
+                          ? "rgba(255,255,255,0.45)"
+                          : "rgba(15,23,42,0.45)",
+                        mb: 0.75,
                       }}
                     >
-                      {t("Apply via WhatsApp")}
-                    </Button>
-                  )}
-                  {mailHref && (
-                    <Button
-                      variant="outlined"
-                      size="medium"
-                      startIcon={<EmailIcon />}
-                      href={mailHref}
-                      component="a"
+                      {t("Indeed")}
+                    </Typography>
+                    {isUrl ? (
+                      <Link
+                        href={raw}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        underline="hover"
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          fontWeight: 600,
+                          fontSize: "0.9rem",
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {t("View on Indeed")}
+                        <OpenInNewIcon
+                          sx={{ fontSize: "1rem", opacity: 0.85 }}
+                        />
+                      </Link>
+                    ) : (
+                      <Typography
+                        sx={{
+                          fontSize: "0.9rem",
+                          lineHeight: 1.55,
+                          color: isDark
+                            ? "rgba(255,255,255,0.85)"
+                            : "rgba(15,23,42,0.85)",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {raw}
+                      </Typography>
+                    )}
+                  </Paper>
+                );
+              })()}
+              {(() => {
+                const titleLine =
+                  locTitle(selectedJob) || selectedJob?.title || "";
+                const waDigits = jobWhatsAppDigits(selectedJob?.whatsapp);
+                const waUrl = buildJobWhatsAppApiUrl(waDigits);
+                const mailHref = buildJobMailtoUrl(
+                  selectedJob?.email,
+                  titleLine,
+                );
+                if (!waUrl && !mailHref) return null;
+                return (
+                  <Box>
+                    <Typography
+                      variant="caption"
                       sx={{
-                        textTransform: "none",
-                        fontWeight: 700,
-                        borderRadius: 2.5,
+                        display: "block",
+                        fontWeight: 800,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: isDark
+                          ? "rgba(255,255,255,0.45)"
+                          : "rgba(15,23,42,0.45)",
+                        mb: 1.25,
                       }}
                     >
-                      {t("Email about this job")}
-                    </Button>
-                  )}
-                </Box>
-              </Box>
-            );
-          })()}
-        </DialogContent>
+                      {t("Contact about this job")}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        gap: 1.25,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {waUrl && (
+                        <Button
+                          variant="contained"
+                          size="medium"
+                          startIcon={<WhatsAppIcon />}
+                          onClick={() => openWhatsAppLink(waUrl)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            py: 1.1,
+                            backgroundColor: "#25D366",
+                            boxShadow: "none",
+                            "&:hover": {
+                              backgroundColor: "#1ebe57",
+                              boxShadow: "0 6px 16px rgba(37,211,102,0.35)",
+                            },
+                          }}
+                        >
+                          {t("Apply via WhatsApp")}
+                        </Button>
+                      )}
+                      {mailHref && (
+                        <Button
+                          variant="outlined"
+                          size="medium"
+                          startIcon={<EmailIcon />}
+                          href={mailHref}
+                          component="a"
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            py: 1.1,
+                            borderColor: isDark
+                              ? "rgba(255,255,255,0.25)"
+                              : "rgba(15,23,42,0.2)",
+                            color: isDark ? "#fff" : "primary.main",
+                          }}
+                        >
+                          {t("Email about this job")}
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })()}
+            </DialogContent>
+          </>
+        )}
       </Dialog>
     </Box>
   );
 };
 
 export default FindJob;
-

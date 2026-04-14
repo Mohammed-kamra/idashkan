@@ -402,6 +402,8 @@ const DataEntryForm = () => {
     city: "Erbil",
     whatsapp: "",
     email: "",
+    jobType: "",
+    indeed: "",
     image: "",
     expireDate: "",
     active: true,
@@ -1547,6 +1549,8 @@ const DataEntryForm = () => {
         companyId: cid,
         whatsapp: (jobForm.whatsapp || "").trim(),
         email: (jobForm.email || "").trim(),
+        jobType: (jobForm.jobType || "").trim(),
+        indeed: (jobForm.indeed || "").trim(),
         city: String(jobForm.city).trim(),
         expireDate: normalizeExpiryInputForApi(jobForm.expireDate) || undefined,
         active: jobForm.active !== false,
@@ -6205,6 +6209,8 @@ const DataEntryForm = () => {
                                       "",
                                     whatsapp: job.whatsapp || "",
                                     email: job.email || "",
+                                    jobType: job.jobType || "",
+                                    indeed: job.indeed || "",
                                     image: job.image || "",
                                     expireDate: job.expireDate
                                       ? toDatetimeLocalValue(job.expireDate)
@@ -8654,6 +8660,28 @@ const DataEntryForm = () => {
                     value={jobForm.email || ""}
                     onChange={(e) =>
                       setJobForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Job type")}
+                    placeholder={t("e.g. Full-time, Contract")}
+                    value={jobForm.jobType || ""}
+                    onChange={(e) =>
+                      setJobForm((p) => ({ ...p, jobType: e.target.value }))
+                    }
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Indeed")}
+                    placeholder={t("Indeed URL or job ID")}
+                    value={jobForm.indeed || ""}
+                    onChange={(e) =>
+                      setJobForm((p) => ({ ...p, indeed: e.target.value }))
                     }
                   />
                 </Grid>
