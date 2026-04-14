@@ -144,7 +144,7 @@ const ProfilePage = () => {
   ].filter((item) => Boolean(item.value));
 
   return (
-    <Box sx={{ pt: 5, px: { xs: 1, sm: 2 }, pb: 3 }}>
+    <Box sx={{ pt: 8, px: { xs: 1, sm: 2 }, pb: 3 }}>
       <Paper
         elevation={0}
         sx={{
@@ -581,7 +581,7 @@ const ProfilePage = () => {
                 }
                 onClick={() => setDataLanguage(DATA_LANG_EN)}
               >
-                🇺🇸 {t("English")}
+                {t("English")}
               </Button>
               <Button
                 size="small"
@@ -590,7 +590,7 @@ const ProfilePage = () => {
                 }
                 onClick={() => setDataLanguage(DATA_LANG_AR)}
               >
-                🇸🇦 {t("Arabic")}
+                {t("Arabic")}
               </Button>
               <Button
                 size="small"
@@ -603,16 +603,6 @@ const ProfilePage = () => {
                   component="span"
                   sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
                 >
-                  <img
-                    src={kurdishFlag}
-                    alt="Kurdish"
-                    style={{
-                      width: 16,
-                      height: 12,
-                      objectFit: "cover",
-                      borderRadius: 2,
-                    }}
-                  />
                   {t("Kurdish")}
                 </Box>
               </Button>

@@ -1891,6 +1891,7 @@ const MainPage = () => {
           }}
           sx={{
             minHeight: 44,
+            pt: 0.5,
             px: 0.5,
             "& .MuiTabs-indicator": {
               display: "flex",

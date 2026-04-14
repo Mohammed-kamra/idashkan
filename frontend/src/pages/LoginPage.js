@@ -270,19 +270,18 @@ const LoginPage = () => {
           const from = location.state?.from?.pathname || "/";
           navigate(from, { replace: true });
         } else {
-          setError(result.message || t("Google sign-in failed"));
+          console.error(
+            "Google sign-in failed:",
+            result.message || "Google sign-in failed",
+          );
         }
       } catch (err) {
-        setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            t("Google sign-in failed"),
-        );
+        console.error("Google sign-in failed:", err);
       } finally {
         setLoading(false);
       }
     },
-    [loginWithGoogle, navigate, location.state, t],
+    [loginWithGoogle, navigate, location.state],
   );
 
   googleHandlerRef.current = handleGoogleCredential;
