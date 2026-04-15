@@ -39,7 +39,7 @@ import {
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import Phone from "@mui/icons-material/Phone";  
+import Phone from "@mui/icons-material/Phone";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import CloseIcon from "@mui/icons-material/Close";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -67,6 +67,7 @@ import JobCardRow from "../components/JobCardRow";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { motion } from "framer-motion";
 import { resolveMediaUrl } from "../utils/mediaUrl";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
   normalizeWhatsAppUrl,
   openWhatsAppLink,
@@ -1073,7 +1074,10 @@ const StoreProfile = () => {
                     backdropFilter: "blur(4px)",
                   }}
                 >
-                  {product.viewCount}
+                  <VisibilityIcon sx={{ fontSize: "0.7rem" }} />
+                  <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>
+                    {product.viewCount}
+                  </Typography>
                 </Box>
               )}
               {/* Expiry chip */}
@@ -1664,9 +1668,7 @@ const StoreProfile = () => {
               target="_blank"
               rel="noopener noreferrer"
               size="small"
-              onClick={() =>
-                trackOwnerContactClick("store", id, item.key)
-              }
+              onClick={() => trackOwnerContactClick("store", id, item.key)}
               sx={{
                 color: "white",
                 bgcolor: "rgba(255,255,255,0.15)",

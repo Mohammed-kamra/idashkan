@@ -132,8 +132,23 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
     // Remove header row if it exists
     const rows = looksLikeTemplate ? data.slice(1) : data;
 
+    let bulkStoreIds = [];
+    try {
+      if (req.body.storeIds) {
+        const parsed = JSON.parse(req.body.storeIds);
+        if (Array.isArray(parsed)) {
+          bulkStoreIds = parsed.map(String).filter(Boolean);
+        }
+      }
+    } catch (e) {
+      /* ignore invalid JSON */
+    }
+
     let createdCount = 0;
     const errors = [];
+
+    const Product = require("../models/Product");
+    const StoreType = require("../models/StoreType");
 
     // Process each row
     for (let i = 0; i < rows.length; i++) {
@@ -146,7 +161,27 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
       if (!hasAnyValue) continue;
 
       try {
-        const productData = {
+        const rowStoreId =
+          row[8] != null && String(row[8]).trim() !== ""
+            ? String(row[8]).trim()
+            : "";
+        const storesForRow =
+          bulkStoreIds.length > 0
+            ? bulkStoreIds
+            : rowStoreId
+              ? [rowStoreId]
+              : [];
+
+        if (storesForRow.length === 0) {
+          errors.push(
+            `Row ${
+              i + 2
+            }: Select store(s) in the upload dialog or enter Store ID in column I`,
+          );
+          continue;
+        }
+
+        const baseProductData = {
           barcode: row[0] || "",
           name: row[1] || "",
           categoryId: row[2] || "",
@@ -155,65 +190,66 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
           newPrice: row[5] ? parseFloat(row[5]) : null,
           isDiscount: row[6] === "true" || row[6] === "1" || row[6] === true,
           brandId: row[7] || "",
-          storeId: row[8] || "",
           description: row[9] || "",
           expireDate: row[10] ? new Date(row[10]).toISOString() : null,
           weight: row[11] || "",
           status: "pending",
         };
 
-        // Validate required fields
         if (
-          !productData.name ||
-          productData.isDiscount === undefined ||
-          !productData.categoryId ||
-          !productData.categoryTypeId ||
-          !productData.storeId
+          !baseProductData.name ||
+          baseProductData.isDiscount === undefined ||
+          !baseProductData.categoryId ||
+          !baseProductData.categoryTypeId
         ) {
           errors.push(
             `Row ${
               i + 2
-            }: Missing required fields (name, isDiscount, categoryId, categoryTypeId, storeId)`
+            }: Missing required fields (name, isDiscount, categoryId, categoryTypeId)`,
           );
           continue;
         }
 
-        // Create the product
-        const Product = require("../models/Product");
-        const StoreType = require("../models/StoreType");
-
-        // Optional legacy storeType name may be in row[12]
-        if (!productData.storeTypeId && row[12]) {
+        let storeTypeFromColumn = null;
+        if (row[12]) {
           const st = await StoreType.findOne({ name: row[12] });
-          if (st) productData.storeTypeId = st._id;
+          if (st) storeTypeFromColumn = st._id;
         }
 
-        // If not provided in file, infer storeTypeId from selected store
-        if (!productData.storeTypeId && productData.storeId) {
-          const storeDoc = await Store.findById(productData.storeId).select(
-            "storeTypeId"
-          );
-          if (!storeDoc) {
-            errors.push(`Row ${i + 2}: Store not found for storeId ${productData.storeId}`);
-            continue;
-          }
-          if (!storeDoc.storeTypeId) {
-            errors.push(
-              `Row ${i + 2}: storeTypeId is missing on selected store (${productData.storeId})`
-            );
-            continue;
-          }
-          productData.storeTypeId = storeDoc.storeTypeId;
-        }
+        for (const sid of storesForRow) {
+          const productData = {
+            ...baseProductData,
+            storeId: sid,
+          };
 
-        const newProduct = new Product(productData);
-        await newProduct.save();
-        if (productData.storeId) {
-          await Store.findByIdAndUpdate(productData.storeId, {
+          if (storeTypeFromColumn) {
+            productData.storeTypeId = storeTypeFromColumn;
+          }
+
+          if (!productData.storeTypeId && sid) {
+            const storeDoc = await Store.findById(sid).select("storeTypeId");
+            if (!storeDoc) {
+              errors.push(
+                `Row ${i + 2}: Store not found for storeId ${sid}`,
+              );
+              continue;
+            }
+            if (!storeDoc.storeTypeId) {
+              errors.push(
+                `Row ${i + 2}: storeTypeId is missing on store (${sid})`,
+              );
+              continue;
+            }
+            productData.storeTypeId = storeDoc.storeTypeId;
+          }
+
+          const newProduct = new Product(productData);
+          await newProduct.save();
+          await Store.findByIdAndUpdate(sid, {
             $set: { lastReleaseDiscountDate: new Date() },
           });
+          createdCount++;
         }
-        createdCount++;
       } catch (error) {
         errors.push(`Row ${i + 2}: ${error.message}`);
       }

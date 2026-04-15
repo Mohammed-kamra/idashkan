@@ -110,6 +110,7 @@ function AppContent() {
   const [lang, setLang] = useState(i18n.language || "en");
   const isMobile = useIsMobileLayout();
   const isReelsPage = location.pathname === "/reels";
+  const isDataEntryPage = location.pathname === "/admin";
   const isHomePage = location.pathname === "/";
   const { effectiveTheme, activeFontKey } = useActiveTheme();
   const [showTestBanner, setShowTestBanner] = useState(() => {
@@ -237,14 +238,20 @@ function AppContent() {
             key={refreshKey}
             sx={{
               flexGrow: 1, // Allows this Box to expand and push the footer down
-              py: isReelsPage ? 0 : 3,
+              py: isReelsPage || isDataEntryPage ? 0 : 3,
               pb: isMobile ? 10 : 3, // Add bottom padding for mobile to account for bottom navigation
               backgroundColor: (theme) => theme.palette.background.default,
             }}
           >
             <Container
-              maxWidth={isReelsPage ? false : "lg"}
-              disableGutters={isReelsPage || (isHomePage && isMobile)}
+              maxWidth={
+                isReelsPage || isDataEntryPage ? false : "lg"
+              }
+              disableGutters={
+                isReelsPage ||
+                (isHomePage && isMobile) ||
+                isDataEntryPage
+              }
               sx={
                 isHomePage && isMobile
                   ? {
@@ -253,7 +260,13 @@ function AppContent() {
                       maxWidth: "100%",
                       boxSizing: "border-box",
                     }
-                  : undefined
+                  : isDataEntryPage
+                    ? {
+                        width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                      }
+                    : undefined
               }
             >
               <Routes>

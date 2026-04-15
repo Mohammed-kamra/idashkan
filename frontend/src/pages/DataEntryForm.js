@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box,
+  Stack,
   Typography,
   TextField,
   Button,
@@ -94,6 +95,30 @@ import { formatPriceDigits } from "../utils/formatPriceNumber";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 
+/** Resolve Mongo id for product create from a store document (populate or raw id). */
+function getStoreTypeIdFromStore(store) {
+  if (!store) return "";
+  const st = store.storeTypeId;
+  if (st && typeof st === "object" && st._id) return String(st._id);
+  if (st) return String(st);
+  return "";
+}
+
+function makeProductGroupRow() {
+  return {
+    id: `pgr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    name: "",
+    categoryId: "",
+    categoryTypeId: "",
+    previousPrice: "",
+    newPrice: "",
+    isDiscount: false,
+    brandId: "",
+    companyId: "",
+    imageFile: null,
+  };
+}
+
 /** Indices for admin Data Lists tabs (grouped UI: managing → service → main system → settings) */
 const LIST_TAB = {
   STORES: 0,
@@ -174,9 +199,7 @@ function branchesToApiPayload(branchStoreIds, allStores) {
   return (branchStoreIds || [])
     .map((id) => {
       const s = (allStores || []).find((st) => String(st._id) === String(id));
-      return s
-        ? { name: s.name, storeId: s._id }
-        : null;
+      return s ? { name: s.name, storeId: s._id } : null;
     })
     .filter(Boolean);
 }
@@ -212,6 +235,9 @@ const DataEntryForm = () => {
   const [companies, setCompanies] = useState([]);
   const [categories, setCategories] = useState([]);
   const [categoryTypes, setCategoryTypes] = useState([]);
+  const [categoryTypesByCategoryId, setCategoryTypesByCategoryId] = useState(
+    {},
+  );
   const [products, setProducts] = useState([]);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [gifts, setGifts] = useState([]);
@@ -363,11 +389,21 @@ const DataEntryForm = () => {
     companyId: "",
     categoryId: "",
     categoryTypeId: "",
-    storeId: "",
-    storeTypeId: "",
+    storeIds: [],
     status: "published",
     expireDate: "",
   });
+
+  const [groupAddStoreIds, setGroupAddStoreIds] = useState([]);
+  /** Single expiry for all products in this group add (set once beside store type). */
+  const [groupAddExpireDate, setGroupAddExpireDate] = useState("");
+  /** Single status for all products in this group add. */
+  const [groupAddStatus, setGroupAddStatus] = useState("published");
+  const [productGroupRows, setProductGroupRows] = useState(() => [
+    makeProductGroupRow(),
+  ]);
+  const [groupAddLoading, setGroupAddLoading] = useState(false);
+  const [productGroupDialogOpen, setProductGroupDialogOpen] = useState(false);
 
   // Ad form state
   const [adForm, setAdForm] = useState({
@@ -491,6 +527,8 @@ const DataEntryForm = () => {
   });
   const [addDialog, setAddDialog] = useState({ open: false, type: "" });
   const [bulkDialog, setBulkDialog] = useState({ open: false, type: "" });
+  /** Stores selected for product bulk upload (each row is created per store; types come from store). */
+  const [bulkProductStoreIds, setBulkProductStoreIds] = useState([]);
 
   // Load store types for dynamic selects
   useEffect(() => {
@@ -712,7 +750,12 @@ const DataEntryForm = () => {
       setNotificationBody("");
       setNotificationType("general");
     }
-  }, [activeListTab, contactWhatsAppNumber, contactInfo, canUseNotificationsTab]);
+  }, [
+    activeListTab,
+    contactWhatsAppNumber,
+    contactInfo,
+    canUseNotificationsTab,
+  ]);
 
   const fetchStores = async () => {
     try {
@@ -1339,6 +1382,7 @@ const DataEntryForm = () => {
     try {
       const formData = new FormData();
       formData.append("excelFile", selectedExcelFile);
+      formData.append("storeIds", JSON.stringify(bulkProductStoreIds));
 
       const response = await fetch(`${API_URL}/api/products/bulk-upload`, {
         method: "POST",
@@ -1387,6 +1431,7 @@ const DataEntryForm = () => {
 
       fetchProducts(selectedStoreFilter); // Refresh products list
       setSelectedExcelFile(null); // Clear file input
+      setBulkProductStoreIds([]);
     } catch (err) {
       setMessage({
         type: "error",
@@ -1889,9 +1934,7 @@ const DataEntryForm = () => {
       ) {
         setMessage({
           type: "error",
-          text: t(
-            "Select delivery cities or enable delivery for all cities.",
-          ),
+          text: t("Select delivery cities or enable delivery for all cities."),
         });
         setLoading(false);
         return;
@@ -2002,9 +2045,7 @@ const DataEntryForm = () => {
       ) {
         setMessage({
           type: "error",
-          text: t(
-            "Select delivery cities or enable delivery for all cities.",
-          ),
+          text: t("Select delivery cities or enable delivery for all cities."),
         });
         setLoading(false);
         return;
@@ -2100,6 +2141,43 @@ const DataEntryForm = () => {
     setMessage({ type: "", text: "" });
 
     try {
+      if (!productForm.storeIds?.length) {
+        setMessage({
+          type: "error",
+          text: t("Select at least one store.", {
+            defaultValue: "Select at least one store.",
+          }),
+        });
+        setLoading(false);
+        return;
+      }
+      const storeTargets = [];
+      const missingTypeNames = [];
+      for (const sid of productForm.storeIds) {
+        const store = stores.find((s) => String(s._id) === String(sid));
+        const typeId = getStoreTypeIdFromStore(store);
+        if (!typeId) {
+          missingTypeNames.push(store?.name || String(sid));
+          continue;
+        }
+        storeTargets.push({ storeId: sid, storeTypeId: typeId });
+      }
+      if (missingTypeNames.length) {
+        setMessage({
+          type: "error",
+          text: t(
+            "These stores have no store type — edit each store first: {{names}}",
+            {
+              names: missingTypeNames.join(", "),
+              defaultValue:
+                "These stores have no store type — edit each store first: {{names}}",
+            },
+          ),
+        });
+        setLoading(false);
+        return;
+      }
+
       let imageUrl = "";
       if (selectedProductImage) {
         setUploadLoading(true);
@@ -2110,8 +2188,15 @@ const DataEntryForm = () => {
         setUploadLoading(false);
       }
 
-      const productData = {
-        ...productForm,
+      const basePayload = {
+        name: productForm.name,
+        nameEn: productForm.nameEn,
+        nameAr: productForm.nameAr,
+        nameKu: productForm.nameKu,
+        description: productForm.description,
+        descriptionEn: productForm.descriptionEn,
+        descriptionAr: productForm.descriptionAr,
+        descriptionKu: productForm.descriptionKu,
         ...(imageUrl ? { image: imageUrl } : {}),
         previousPrice: parseFloat(productForm.previousPrice) || null,
         newPrice: parseFloat(productForm.newPrice) || null,
@@ -2120,15 +2205,32 @@ const DataEntryForm = () => {
         weight: productForm.weight || null,
         expireDate: normalizeExpiryInputForApi(productForm.expireDate),
         brandId: productForm.brandId || null,
+        companyId: productForm.companyId || null,
         categoryId: productForm.categoryId,
         categoryTypeId: productForm.categoryTypeId,
-        storeId: productForm.storeId,
-        storeTypeId: productForm.storeTypeId,
         status: productForm.status || "published",
       };
 
-      await productAPI.create(productData);
-      setMessage({ type: "success", text: t("Product created successfully!") });
+      let created = 0;
+      for (const { storeId, storeTypeId } of storeTargets) {
+        await productAPI.create({
+          ...basePayload,
+          storeId,
+          storeTypeId,
+        });
+        created += 1;
+      }
+
+      setMessage({
+        type: "success",
+        text:
+          created > 1
+            ? t("Created {{count}} product(s).", {
+                count: created,
+                defaultValue: "Created {{count}} product(s).",
+              })
+            : t("Product created successfully!"),
+      });
       setProductForm({
         name: "",
         nameEn: "",
@@ -2144,12 +2246,11 @@ const DataEntryForm = () => {
         descriptionKu: "",
         barcode: "",
         weight: "",
-        storeId: "",
+        storeIds: [],
         brandId: "",
         companyId: "",
         categoryId: "",
         categoryTypeId: "",
-        storeTypeId: "",
         status: "published",
         expireDate: "",
       });
@@ -2167,6 +2268,152 @@ const DataEntryForm = () => {
     } finally {
       setLoading(false);
       setUploadLoading(false);
+    }
+  };
+
+  const handleProductGroupRowFieldChange = (rowId, field, value) => {
+    setProductGroupRows((rows) =>
+      rows.map((r) => {
+        if (r.id !== rowId) return r;
+        const next = { ...r, [field]: value };
+        if (field === "categoryId") {
+          next.categoryTypeId = "";
+          if (value) {
+            categoryAPI
+              .getTypes(value)
+              .then((res) => {
+                setCategoryTypesByCategoryId((prev) => ({
+                  ...prev,
+                  [value]: res.data || [],
+                }));
+              })
+              .catch(() => {
+                setCategoryTypesByCategoryId((prev) => ({
+                  ...prev,
+                  [value]: [],
+                }));
+              });
+          }
+        }
+        return next;
+      }),
+    );
+  };
+
+  const handleProductGroupSubmit = async () => {
+    setMessage({ type: "", text: "" });
+    if (!groupAddStoreIds.length) {
+      setMessage({
+        type: "error",
+        text: t("Select at least one store for group add.", {
+          defaultValue: "Select at least one store for group add.",
+        }),
+      });
+      return;
+    }
+    const storeTargets = [];
+    const missingTypeNames = [];
+    for (const sid of groupAddStoreIds) {
+      const store = stores.find((s) => String(s._id) === String(sid));
+      const typeId = getStoreTypeIdFromStore(store);
+      if (!typeId) {
+        missingTypeNames.push(store?.name || String(sid));
+        continue;
+      }
+      storeTargets.push({ storeId: sid, storeTypeId: typeId });
+    }
+    if (missingTypeNames.length) {
+      setMessage({
+        type: "error",
+        text: t(
+          "These stores have no store type — edit each store and assign a store type first: {{names}}",
+          {
+            names: missingTypeNames.join(", "),
+            defaultValue:
+              "These stores have no store type — edit each store and assign a store type first: {{names}}",
+          },
+        ),
+      });
+      return;
+    }
+    const toCreate = productGroupRows.filter(
+      (r) =>
+        String(r.name || "").trim() &&
+        r.categoryId &&
+        r.categoryTypeId &&
+        r.newPrice !== "" &&
+        r.newPrice != null,
+    );
+    if (toCreate.length === 0) {
+      setMessage({
+        type: "error",
+        text: t(
+          "Add at least one row with name, category, category type, and new price.",
+          {
+            defaultValue:
+              "Add at least one row with name, category, category type, and new price.",
+          },
+        ),
+      });
+      return;
+    }
+    setGroupAddLoading(true);
+    let created = 0;
+    try {
+      for (const row of toCreate) {
+        let imageUrl = "";
+        if (row.imageFile) {
+          imageUrl = await uploadProductImage(
+            row.imageFile,
+            groupAddExpireDate,
+          );
+        }
+        for (const { storeId, storeTypeId } of storeTargets) {
+          const productData = {
+            name: String(row.name).trim(),
+            previousPrice: parseFloat(row.previousPrice) || null,
+            newPrice: parseFloat(row.newPrice) || null,
+            isDiscount: !!row.isDiscount,
+            expireDate: normalizeExpiryInputForApi(groupAddExpireDate),
+            brandId: row.brandId || null,
+            companyId: row.companyId || null,
+            categoryId: row.categoryId,
+            categoryTypeId: row.categoryTypeId,
+            storeId,
+            storeTypeId,
+            status: groupAddStatus || "published",
+            ...(imageUrl ? { image: imageUrl } : {}),
+          };
+          await productAPI.create(productData);
+          created += 1;
+        }
+      }
+      setMessage({
+        type: "success",
+        text: t("Created {{count}} product(s).", {
+          count: created,
+          defaultValue: "Created {{count}} product(s).",
+        }),
+      });
+      setProductGroupRows([makeProductGroupRow()]);
+      setGroupAddStoreIds([]);
+      setGroupAddExpireDate("");
+      setGroupAddStatus("published");
+      setProductGroupDialogOpen(false);
+      fetchProducts(selectedStoreFilter);
+    } catch (err) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text:
+          err?.response?.data?.message ||
+          err?.message ||
+          t("Failed to create some products.", {
+            defaultValue: "Failed to create some products.",
+          }),
+      });
+    } finally {
+      setGroupAddLoading(false);
     }
   };
 
@@ -3156,7 +3403,16 @@ const DataEntryForm = () => {
     !allPageSelected;
 
   return (
-    <Box sx={{ py: 10, px: { xs: 0.5, sm: 1.5, md: 3 } }}>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: "100%",
+        minHeight: "100%",
+        boxSizing: "border-box",
+        py: { xs: 8, sm: 9, md: 10 },
+        px: { xs: 1, sm: 2, md: 3 },
+      }}
+    >
       <Snackbar
         open={!!message.text}
         autoHideDuration={9000}
@@ -3190,7 +3446,7 @@ const DataEntryForm = () => {
         }}
       >
         <Box sx={{ p: 4, color: "white", position: "relative" }}>
-          <Grid container spacing={3} alignItems="center">
+          <Grid spacing={3} alignItems="center">
             <Grid size={{ xs: 12, md: 8 }}>
               <Box display="flex" alignItems="center" mb={2}>
                 <Avatar
@@ -4006,7 +4262,7 @@ const DataEntryForm = () => {
                   "Contact links shown in profile page. Fill only what you need.",
                 )}
               </Typography>
-              <Grid container spacing={2} alignItems="center">
+              <Grid spacing={2} alignItems="center">
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -4157,217 +4413,228 @@ const DataEntryForm = () => {
           )}
 
           {/* Notifications Panel - Send to all users */}
-          {activeListTab === LIST_TAB.NOTIFICATIONS && canUseNotificationsTab && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {t("Send Notification to All Users")}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {t(
-                  "Compose a notification that will be sent to all users (both registered and anonymous).",
-                )}
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    fullWidth
-                    label={t("Title")}
-                    value={notificationTitle}
-                    onChange={(e) => setNotificationTitle(e.target.value)}
-                    placeholder={t("e.g. New deals available!")}
-                    required
-                    sx={{ mb: 2 }}
-                  />
-                  <MultilingualFieldGroup
-                    sectionLabel={t("Title (translations)")}
-                    value={{
-                      english: notificationTitleEn,
-                      arabic: notificationTitleAr,
-                      kurdish: notificationTitleKu,
-                    }}
-                    onValueChange={(v) => {
-                      setNotificationTitleEn(v.english);
-                      setNotificationTitleAr(v.arabic);
-                      setNotificationTitleKu(v.kurdish);
-                    }}
-                    sourceText={notificationTitle}
-                    aiType="general"
-                  />
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    label={t("Message")}
-                    value={notificationBody}
-                    onChange={(e) => setNotificationBody(e.target.value)}
-                    placeholder={t("Optional message body...")}
-                    sx={{ mb: 2 }}
-                  />
-                  <MultilingualFieldGroup
-                    sectionLabel={t("Message (translations)")}
-                    value={{
-                      english: notificationBodyEn,
-                      arabic: notificationBodyAr,
-                      kurdish: notificationBodyKu,
-                    }}
-                    onValueChange={(v) => {
-                      setNotificationBodyEn(v.english);
-                      setNotificationBodyAr(v.arabic);
-                      setNotificationBodyKu(v.kurdish);
-                    }}
-                    sourceText={notificationBody}
-                    aiType="general"
-                    multiline
-                    minRows={3}
-                  />
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>{t("Type")}</InputLabel>
-                    <Select
-                      value={notificationType}
-                      onChange={(e) => setNotificationType(e.target.value)}
-                      label={t("Type")}
-                    >
-                      <MenuItem value="general">{t("General")}</MenuItem>
-                      <MenuItem value="info">{t("Info")}</MenuItem>
-                      <MenuItem value="promo">{t("Promo")}</MenuItem>
-                      <MenuItem value="alert">{t("Alert")}</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>{t("Link")}</InputLabel>
-                    <Select
-                      value={notificationLinkType}
-                      onChange={(e) => {
-                        setNotificationLinkType(e.target.value);
-                        setNotificationLinkId("");
+          {activeListTab === LIST_TAB.NOTIFICATIONS &&
+            canUseNotificationsTab && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  {t("Send Notification to All Users")}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
+                  {t(
+                    "Compose a notification that will be sent to all users (both registered and anonymous).",
+                  )}
+                </Typography>
+                <Grid spacing={2}>
+                  <Grid size={{ xs: 12, md: 8 }}>
+                    <TextField
+                      fullWidth
+                      label={t("Title")}
+                      value={notificationTitle}
+                      onChange={(e) => setNotificationTitle(e.target.value)}
+                      placeholder={t("e.g. New deals available!")}
+                      required
+                      sx={{ mb: 2 }}
+                    />
+                    <MultilingualFieldGroup
+                      sectionLabel={t("Title (translations)")}
+                      value={{
+                        english: notificationTitleEn,
+                        arabic: notificationTitleAr,
+                        kurdish: notificationTitleKu,
                       }}
-                      label={t("Link")}
-                    >
-                      <MenuItem value="none">{t("No link")}</MenuItem>
-                      <MenuItem value="store">{t("Store")}</MenuItem>
-                      <MenuItem value="brand">{t("Brand")}</MenuItem>
-                    </Select>
-                  </FormControl>
-                  {notificationLinkType === "store" && (
+                      onValueChange={(v) => {
+                        setNotificationTitleEn(v.english);
+                        setNotificationTitleAr(v.arabic);
+                        setNotificationTitleKu(v.kurdish);
+                      }}
+                      sourceText={notificationTitle}
+                      aiType="general"
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={4}
+                      label={t("Message")}
+                      value={notificationBody}
+                      onChange={(e) => setNotificationBody(e.target.value)}
+                      placeholder={t("Optional message body...")}
+                      sx={{ mb: 2 }}
+                    />
+                    <MultilingualFieldGroup
+                      sectionLabel={t("Message (translations)")}
+                      value={{
+                        english: notificationBodyEn,
+                        arabic: notificationBodyAr,
+                        kurdish: notificationBodyKu,
+                      }}
+                      onValueChange={(v) => {
+                        setNotificationBodyEn(v.english);
+                        setNotificationBodyAr(v.arabic);
+                        setNotificationBodyKu(v.kurdish);
+                      }}
+                      sourceText={notificationBody}
+                      aiType="general"
+                      multiline
+                      minRows={3}
+                    />
                     <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>{t("Select Store")}</InputLabel>
+                      <InputLabel>{t("Type")}</InputLabel>
                       <Select
-                        value={notificationLinkId}
-                        onChange={(e) => setNotificationLinkId(e.target.value)}
-                        label={t("Select Store")}
+                        value={notificationType}
+                        onChange={(e) => setNotificationType(e.target.value)}
+                        label={t("Type")}
                       >
-                        <MenuItem value="">{t("Select Store")}</MenuItem>
-                        {stores.map((s) => (
-                          <MenuItem key={s._id} value={s._id}>
-                            {s.name}
-                          </MenuItem>
-                        ))}
+                        <MenuItem value="general">{t("General")}</MenuItem>
+                        <MenuItem value="info">{t("Info")}</MenuItem>
+                        <MenuItem value="promo">{t("Promo")}</MenuItem>
+                        <MenuItem value="alert">{t("Alert")}</MenuItem>
                       </Select>
                     </FormControl>
-                  )}
-                  {notificationLinkType === "brand" && (
                     <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>{t("Select Brand")}</InputLabel>
+                      <InputLabel>{t("Link")}</InputLabel>
                       <Select
-                        value={notificationLinkId}
-                        onChange={(e) => setNotificationLinkId(e.target.value)}
-                        label={t("Select Brand")}
-                      >
-                        <MenuItem value="">{t("Select Brand")}</MenuItem>
-                        {brands.map((b) => (
-                          <MenuItem key={b._id} value={b._id}>
-                            {b.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                  <Button
-                    variant="contained"
-                    startIcon={<NotificationsActiveIcon />}
-                    disabled={!notificationTitle.trim() || notificationSending}
-                    onClick={async () => {
-                      try {
-                        setNotificationSending(true);
-                        setMessage({ type: "", text: "" });
-                        let link = "";
-                        if (
-                          notificationLinkType === "store" &&
-                          notificationLinkId
-                        ) {
-                          link = `/stores/${notificationLinkId}`;
-                        } else if (
-                          notificationLinkType === "brand" &&
-                          notificationLinkId
-                        ) {
-                          link = `/brands/${notificationLinkId}`;
-                        }
-                        const res = await adminAPI.sendNotification({
-                          title: notificationTitle.trim(),
-                          body: notificationBody.trim(),
-                          titleEn: notificationTitleEn.trim(),
-                          titleAr: notificationTitleAr.trim(),
-                          titleKu: notificationTitleKu.trim(),
-                          bodyEn: notificationBodyEn.trim(),
-                          bodyAr: notificationBodyAr.trim(),
-                          bodyKu: notificationBodyKu.trim(),
-                          type: notificationType,
-                          ...(link && { link }),
-                        });
-                        if (res.data.success) {
-                          const msg =
-                            res.data.pushSent > 0
-                              ? t(
-                                  "Notification sent to {{count}} users ({{push}} to notification center)",
-                                  {
-                                    count: res.data.count,
-                                    push: res.data.pushSent,
-                                  },
-                                )
-                              : t("Notification sent to {{count}} users", {
-                                  count: res.data.count,
-                                });
-                          setMessage({
-                            type: "success",
-                            text: msg,
-                          });
-                          setNotificationTitle("");
-                          setNotificationTitleEn("");
-                          setNotificationTitleAr("");
-                          setNotificationTitleKu("");
-                          setNotificationBody("");
-                          setNotificationBodyEn("");
-                          setNotificationBodyAr("");
-                          setNotificationBodyKu("");
-                          setNotificationType("general");
-                          setNotificationLinkType("none");
+                        value={notificationLinkType}
+                        onChange={(e) => {
+                          setNotificationLinkType(e.target.value);
                           setNotificationLinkId("");
-                        } else {
+                        }}
+                        label={t("Link")}
+                      >
+                        <MenuItem value="none">{t("No link")}</MenuItem>
+                        <MenuItem value="store">{t("Store")}</MenuItem>
+                        <MenuItem value="brand">{t("Brand")}</MenuItem>
+                      </Select>
+                    </FormControl>
+                    {notificationLinkType === "store" && (
+                      <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel>{t("Select Store")}</InputLabel>
+                        <Select
+                          value={notificationLinkId}
+                          onChange={(e) =>
+                            setNotificationLinkId(e.target.value)
+                          }
+                          label={t("Select Store")}
+                        >
+                          <MenuItem value="">{t("Select Store")}</MenuItem>
+                          {stores.map((s) => (
+                            <MenuItem key={s._id} value={s._id}>
+                              {s.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                    {notificationLinkType === "brand" && (
+                      <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel>{t("Select Brand")}</InputLabel>
+                        <Select
+                          value={notificationLinkId}
+                          onChange={(e) =>
+                            setNotificationLinkId(e.target.value)
+                          }
+                          label={t("Select Brand")}
+                        >
+                          <MenuItem value="">{t("Select Brand")}</MenuItem>
+                          {brands.map((b) => (
+                            <MenuItem key={b._id} value={b._id}>
+                              {b.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                    <Button
+                      variant="contained"
+                      startIcon={<NotificationsActiveIcon />}
+                      disabled={
+                        !notificationTitle.trim() || notificationSending
+                      }
+                      onClick={async () => {
+                        try {
+                          setNotificationSending(true);
+                          setMessage({ type: "", text: "" });
+                          let link = "";
+                          if (
+                            notificationLinkType === "store" &&
+                            notificationLinkId
+                          ) {
+                            link = `/stores/${notificationLinkId}`;
+                          } else if (
+                            notificationLinkType === "brand" &&
+                            notificationLinkId
+                          ) {
+                            link = `/brands/${notificationLinkId}`;
+                          }
+                          const res = await adminAPI.sendNotification({
+                            title: notificationTitle.trim(),
+                            body: notificationBody.trim(),
+                            titleEn: notificationTitleEn.trim(),
+                            titleAr: notificationTitleAr.trim(),
+                            titleKu: notificationTitleKu.trim(),
+                            bodyEn: notificationBodyEn.trim(),
+                            bodyAr: notificationBodyAr.trim(),
+                            bodyKu: notificationBodyKu.trim(),
+                            type: notificationType,
+                            ...(link && { link }),
+                          });
+                          if (res.data.success) {
+                            const msg =
+                              res.data.pushSent > 0
+                                ? t(
+                                    "Notification sent to {{count}} users ({{push}} to notification center)",
+                                    {
+                                      count: res.data.count,
+                                      push: res.data.pushSent,
+                                    },
+                                  )
+                                : t("Notification sent to {{count}} users", {
+                                    count: res.data.count,
+                                  });
+                            setMessage({
+                              type: "success",
+                              text: msg,
+                            });
+                            setNotificationTitle("");
+                            setNotificationTitleEn("");
+                            setNotificationTitleAr("");
+                            setNotificationTitleKu("");
+                            setNotificationBody("");
+                            setNotificationBodyEn("");
+                            setNotificationBodyAr("");
+                            setNotificationBodyKu("");
+                            setNotificationType("general");
+                            setNotificationLinkType("none");
+                            setNotificationLinkId("");
+                          } else {
+                            setMessage({
+                              type: "error",
+                              text: res.data.message || t("Failed to send"),
+                            });
+                          }
+                        } catch (err) {
                           setMessage({
                             type: "error",
-                            text: res.data.message || t("Failed to send"),
+                            text:
+                              err.response?.data?.message ||
+                              t("Failed to send notification"),
                           });
+                        } finally {
+                          setNotificationSending(false);
                         }
-                      } catch (err) {
-                        setMessage({
-                          type: "error",
-                          text:
-                            err.response?.data?.message ||
-                            t("Failed to send notification"),
-                        });
-                      } finally {
-                        setNotificationSending(false);
-                      }
-                    }}
-                  >
-                    {notificationSending
-                      ? t("Sending...")
-                      : t("Send to All Users")}
-                  </Button>
+                      }}
+                    >
+                      {notificationSending
+                        ? t("Sending...")
+                        : t("Send to All Users")}
+                    </Button>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Box>
-          )}
+              </Box>
+            )}
 
           {/* Brand List Panel */}
           {activeListTab === LIST_TAB.BRANDS && (
@@ -4926,6 +5193,14 @@ const DataEntryForm = () => {
 
                   <Button
                     variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => setProductGroupDialogOpen(true)}
+                  >
+                    {t("Add by group", { defaultValue: "Add by group" })}
+                  </Button>
+
+                  <Button
+                    variant="outlined"
                     sx={{
                       justifyContent: "flex-start",
                     }}
@@ -5021,6 +5296,382 @@ const DataEntryForm = () => {
                   </Select>
                 </FormControl>
               </Box>
+
+              <Dialog
+                open={productGroupDialogOpen}
+                onClose={() => {
+                  if (!groupAddLoading) setProductGroupDialogOpen(false);
+                }}
+                fullWidth
+                maxWidth={false}
+                PaperProps={{
+                  sx: {
+                    width: "calc(100% - 32px)",
+                    maxWidth: 1680,
+                    m: 2,
+                  },
+                }}
+              >
+                <DialogTitle>
+                  {t("Add by group", { defaultValue: "Add by group" })}
+                </DialogTitle>
+                <DialogContent dividers>
+                  <Stack
+                    direction="row"
+                    flexWrap="wrap"
+                    gap={1}
+                    alignItems="center"
+                    sx={{ mb: 2 }}
+                  >
+                    <FormControl size="small" sx={{ minWidth: 240 }}>
+                      <InputLabel id="group-add-store-label">
+                        {t("Stores")}
+                      </InputLabel>
+                      <Select
+                        labelId="group-add-store-label"
+                        label={t("Stores")}
+                        multiple
+                        value={groupAddStoreIds}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGroupAddStoreIds(
+                            typeof v === "string" ? v.split(",") : v,
+                          );
+                        }}
+                        renderValue={(selected) =>
+                          selected.length === 0
+                            ? t("Select stores", {
+                                defaultValue: "Select stores",
+                              })
+                            : selected
+                                .map(
+                                  (id) =>
+                                    stores.find(
+                                      (s) => String(s._id) === String(id),
+                                    )?.name,
+                                )
+                                .filter(Boolean)
+                                .join(", ")
+                        }
+                      >
+                        {stores.map((store) => (
+                          <MenuItem key={store._id} value={store._id}>
+                            {store.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    {groupAddStoreIds.length > 0 ? (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          alignSelf: "center",
+                          color: "text.secondary",
+                          maxWidth: 520,
+                        }}
+                      >
+                        {t("Store types", { defaultValue: "Store types" })}:{" "}
+                        {groupAddStoreIds
+                          .map((sid) => {
+                            const st = stores.find(
+                              (s) => String(s._id) === String(sid),
+                            );
+                            const ty = st?.storeTypeId;
+                            const typeLabel =
+                              ty && typeof ty === "object" && ty.name
+                                ? `${ty.icon || "🏪"} ${t(ty.name)}`
+                                : t("—", { defaultValue: "—" });
+                            return st ? `${st.name}: ${typeLabel}` : "";
+                          })
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </Typography>
+                    ) : null}
+                    <TextField
+                      size="small"
+                      label={t("Expire date & time")}
+                      type="datetime-local"
+                      value={groupAddExpireDate}
+                      onChange={(e) => setGroupAddExpireDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ width: 220, flexShrink: 0 }}
+                    />
+                    <FormControl size="small" sx={{ minWidth: 130 }}>
+                      <InputLabel id="group-add-status-label">
+                        {t("Status")}
+                      </InputLabel>
+                      <Select
+                        labelId="group-add-status-label"
+                        label={t("Status")}
+                        value={groupAddStatus}
+                        onChange={(e) => setGroupAddStatus(e.target.value)}
+                      >
+                        <MenuItem value="published">{t("Published")}</MenuItem>
+                        <MenuItem value="pending">{t("Pending")}</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={() =>
+                        setProductGroupRows((rows) => [
+                          ...rows,
+                          makeProductGroupRow(),
+                        ])
+                      }
+                    >
+                      {t("Add row", { defaultValue: "Add row" })}
+                    </Button>
+                  </Stack>
+                  <Box
+                    sx={{
+                      overflowX: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      pb: 0.5,
+                    }}
+                  >
+                    {productGroupRows.map((row, idx) => {
+                      const typesForRow =
+                        categoryTypesByCategoryId[row.categoryId] || [];
+                      return (
+                        <Stack
+                          key={row.id}
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          sx={{
+                            mb: 1,
+                            minWidth: "max-content",
+                            flexWrap: "nowrap",
+                          }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              width: 36,
+                              flexShrink: 0,
+                              textAlign: "center",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {idx + 1}
+                          </Typography>
+                          <TextField
+                            size="small"
+                            label={t("Product Name")}
+                            value={row.name}
+                            onChange={(e) =>
+                              handleProductGroupRowFieldChange(
+                                row.id,
+                                "name",
+                                e.target.value,
+                              )
+                            }
+                            sx={{ width: 150, flexShrink: 0 }}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <Select
+                              label={t("Category")}
+                              value={row.categoryId}
+                              onChange={(e) =>
+                                handleProductGroupRowFieldChange(
+                                  row.id,
+                                  "categoryId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("Select Category")}</em>
+                              </MenuItem>
+                              {categories.map((c) => (
+                                <MenuItem key={c._id} value={c._id}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <FormControl
+                            size="small"
+                            sx={{ minWidth: 140 }}
+                            disabled={!row.categoryId}
+                          >
+                            <Select
+                              label={t("Category Type")}
+                              value={row.categoryTypeId ?? ""}
+                              onChange={(e) =>
+                                handleProductGroupRowFieldChange(
+                                  row.id,
+                                  "categoryTypeId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("Select Category Type")}</em>
+                              </MenuItem>
+                              {typesForRow.map((type) => (
+                                <MenuItem key={type._id} value={type._id}>
+                                  {type.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <TextField
+                            size="small"
+                            label={t("Previous Price")}
+                            type="number"
+                            value={row.previousPrice}
+                            onChange={(e) =>
+                              handleProductGroupRowFieldChange(
+                                row.id,
+                                "previousPrice",
+                                e.target.value,
+                              )
+                            }
+                            sx={{ width: 110, flexShrink: 0 }}
+                          />
+                          <TextField
+                            size="small"
+                            label={t("New Price")}
+                            type="number"
+                            value={row.newPrice}
+                            onChange={(e) =>
+                              handleProductGroupRowFieldChange(
+                                row.id,
+                                "newPrice",
+                                e.target.value,
+                              )
+                            }
+                            required
+                            sx={{ width: 110, flexShrink: 0 }}
+                          />
+                          <FormControlLabel
+                            sx={{ flexShrink: 0, mr: 0, ml: 0 }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={!!row.isDiscount}
+                                onChange={(e) =>
+                                  handleProductGroupRowFieldChange(
+                                    row.id,
+                                    "isDiscount",
+                                    e.target.checked,
+                                  )
+                                }
+                              />
+                            }
+                            label={t("Is Discount Product")}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <InputLabel>{t("Brand")}</InputLabel>
+                            <Select
+                              label={t("Brand")}
+                              value={row.brandId}
+                              onChange={(e) =>
+                                handleProductGroupRowFieldChange(
+                                  row.id,
+                                  "brandId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              {brands.map((b) => (
+                                <MenuItem key={b._id} value={b._id}>
+                                  {b.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <InputLabel>{t("Company")}</InputLabel>
+                            <Select
+                              label={t("Company")}
+                              value={row.companyId || ""}
+                              onChange={(e) =>
+                                handleProductGroupRowFieldChange(
+                                  row.id,
+                                  "companyId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              {companies.map((c) => (
+                                <MenuItem key={c._id} value={c._id}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Button
+                            variant="outlined"
+                            component="label"
+                            size="small"
+                            sx={{ flexShrink: 0 }}
+                          >
+                            {row.imageFile ? row.imageFile.name : t("Image")}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                handleProductGroupRowFieldChange(
+                                  row.id,
+                                  "imageFile",
+                                  f || null,
+                                );
+                              }}
+                            />
+                          </Button>
+                          {productGroupRows.length > 1 ? (
+                            <IconButton
+                              size="small"
+                              aria-label={t("Remove row")}
+                              onClick={() =>
+                                setProductGroupRows((rows) =>
+                                  rows.filter((r) => r.id !== row.id),
+                                )
+                              }
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          ) : null}
+                        </Stack>
+                      );
+                    })}
+                  </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                  <Button
+                    onClick={() => setProductGroupDialogOpen(false)}
+                    disabled={groupAddLoading}
+                  >
+                    {t("Close")}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    disabled={groupAddLoading}
+                    startIcon={
+                      groupAddLoading ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <SaveIcon />
+                      )
+                    }
+                    onClick={handleProductGroupSubmit}
+                  >
+                    {t("Create all products", {
+                      defaultValue: "Create all products",
+                    })}
+                  </Button>
+                </DialogActions>
+              </Dialog>
 
               <TableContainer component={Paper}>
                 <Table>
@@ -6403,7 +7054,7 @@ const DataEntryForm = () => {
           }
         }}
         fullWidth
-        maxWidth="md"
+        maxWidth="lg"
       >
         <DialogTitle>
           {addDialog.type === "brand" || addDialog.type === "company"
@@ -7202,7 +7853,7 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth required>
-                    <InputLabel>{t("Brand Type")}</InputLabel>
+                    {/* <InputLabel>{t("Brand Type")}</InputLabel> */}
                     <Select
                       name="brandTypeId"
                       value={brandForm.brandTypeId}
@@ -7586,20 +8237,40 @@ const DataEntryForm = () => {
                     />
                   </FormControl>
                 </Grid>
-                <Grid xs={12} sm={6}>
+                <Grid xs={12}>
                   <FormControl fullWidth required>
-                    <InputLabel shrink>{t("Store")}</InputLabel>
+                    <InputLabel id="dialog-add-product-store-label" shrink>
+                      {t("Stores")}
+                    </InputLabel>
                     <Select
-                      name="storeId"
-                      value={productForm.storeId}
-                      onChange={handleProductFormChange}
-                      label={t("Store")}
-                      displayEmpty
                       labelId="dialog-add-product-store-label"
+                      name="storeIds"
+                      multiple
+                      value={productForm.storeIds || []}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setProductForm((prev) => ({
+                          ...prev,
+                          storeIds: typeof v === "string" ? v.split(",") : v,
+                        }));
+                      }}
+                      label={t("Stores")}
+                      renderValue={(selected) =>
+                        selected.length === 0
+                          ? t("Select stores", {
+                              defaultValue: "Select stores",
+                            })
+                          : selected
+                              .map(
+                                (id) =>
+                                  stores.find(
+                                    (s) => String(s._id) === String(id),
+                                  )?.name,
+                              )
+                              .filter(Boolean)
+                              .join(", ")
+                      }
                     >
-                      <MenuItem value="">
-                        <em>{t("Select Store")}</em>
-                      </MenuItem>
                       {stores.map((store) => (
                         <MenuItem key={store._id} value={store._id}>
                           {store.name}
@@ -7608,27 +8279,30 @@ const DataEntryForm = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid xs={12} sm={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel shrink>{t("Store Type")}</InputLabel>
-                    <Select
-                      name="storeTypeId"
-                      value={productForm.storeTypeId}
-                      onChange={handleProductFormChange}
-                      label={t("Store Type")}
-                      displayEmpty
+                {(productForm.storeIds || []).length > 0 ? (
+                  <Grid xs={12}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
                     >
-                      <MenuItem value="">
-                        <em>{t("Select Store Type")}</em>
-                      </MenuItem>
-                      {storeTypes.map((st) => (
-                        <MenuItem key={st._id} value={st._id}>
-                          {st.icon || "🏪"} {t(st.name)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                      {t("Store types", { defaultValue: "Store types" })}:{" "}
+                      {(productForm.storeIds || [])
+                        .map((sid) => {
+                          const st = stores.find(
+                            (s) => String(s._id) === String(sid),
+                          );
+                          const ty = st?.storeTypeId;
+                          const typeLabel =
+                            ty && typeof ty === "object" && ty.name
+                              ? `${ty.icon || "🏪"} ${t(ty.name)}`
+                              : t("—", { defaultValue: "—" });
+                          return st ? `${st.name}: ${typeLabel}` : "";
+                        })
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Typography>
+                  </Grid>
+                ) : null}
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth required>
                     <InputLabel shrink>{t("Status")}</InputLabel>
@@ -7660,50 +8334,6 @@ const DataEntryForm = () => {
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
                           {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel shrink>{t("Company")}</InputLabel>
-                    <Select
-                      name="companyId"
-                      value={editForm.companyId || ""}
-                      onChange={handleEditFormChange}
-                      label={t("Company")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("None")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel shrink>{t("Company")}</InputLabel>
-                    <Select
-                      name="companyId"
-                      value={adForm.companyId || ""}
-                      onChange={(e) =>
-                        setAdForm({ ...adForm, companyId: e.target.value })
-                      }
-                      label={t("Company")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("None")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -9001,7 +9631,7 @@ const DataEntryForm = () => {
         open={bulkDialog.open}
         onClose={() => setBulkDialog({ open: false, type: "" })}
         fullWidth
-        maxWidth="md"
+        maxWidth="lg"
       >
         <DialogTitle>
           {bulkDialog.type === "brand"
@@ -9207,6 +9837,59 @@ const DataEntryForm = () => {
             <Box sx={{ p: 1 }}>
               <Grid container spacing={2}>
                 <Grid xs={12}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="bulk-product-stores-label">
+                      {t("Stores")}
+                    </InputLabel>
+                    <Select
+                      labelId="bulk-product-stores-label"
+                      label={t("Stores")}
+                      multiple
+                      value={bulkProductStoreIds}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setBulkProductStoreIds(
+                          typeof v === "string" ? v.split(",") : v,
+                        );
+                      }}
+                      renderValue={(selected) =>
+                        selected.length === 0
+                          ? t("Use Store ID from Excel column I only", {
+                              defaultValue:
+                                "Use Store ID from Excel column I only",
+                            })
+                          : selected
+                              .map(
+                                (id) =>
+                                  stores.find(
+                                    (s) => String(s._id) === String(id),
+                                  )?.name,
+                              )
+                              .filter(Boolean)
+                              .join(", ")
+                      }
+                    >
+                      {stores.map((store) => (
+                        <MenuItem key={store._id} value={store._id}>
+                          {store.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Typography
+                    variant="caption"
+                    sx={{ display: "block", mt: 0.5 }}
+                  >
+                    {t(
+                      "If you select stores here, each data row is created once per store; store type comes from each store. Leave empty to use column I only.",
+                      {
+                        defaultValue:
+                          "If you select stores here, each data row is created once per store; store type comes from each store. Leave empty to use column I only.",
+                      },
+                    )}
+                  </Typography>
+                </Grid>
+                <Grid xs={12}>
                   <input
                     accept=".xlsx,.xls"
                     style={{ display: "none" }}
@@ -9321,7 +10004,14 @@ const DataEntryForm = () => {
                     <br />• {t("Column F: New Price (optional)")}
                     <br />• {t("Column G: Is Discount (required)")}
                     <br />• {t("Column H: Brand ID (optional)")}
-                    <br />• {t("Column I: Store ID (required)")}
+                    <br />•{" "}
+                    {t(
+                      "Column I: Store ID (required if no stores selected above; optional if stores are selected in the dialog)",
+                      {
+                        defaultValue:
+                          "Column I: Store ID (required if no stores selected above; optional if stores are selected in the dialog)",
+                      },
+                    )}
                     <br />• {t("Column J: Description (optional)")}
                     <br />•{" "}
                     {t("Column K: Expire Date (optional, YYYY-MM-DD format)")}
@@ -9344,6 +10034,8 @@ const DataEntryForm = () => {
       <Dialog
         open={editDialog.open}
         onClose={() => setEditDialog({ open: false, type: "", data: null })}
+        fullWidth
+        maxWidth="lg"
       >
         <DialogTitle>
           {t(
@@ -10039,9 +10731,7 @@ const DataEntryForm = () => {
                   control={
                     <Checkbox
                       name="showingOnStoreBranchShowcase"
-                      checked={
-                        editForm.showingOnStoreBranchShowcase !== false
-                      }
+                      checked={editForm.showingOnStoreBranchShowcase !== false}
                       onChange={(e) =>
                         setEditForm({
                           ...editForm,
@@ -10171,7 +10861,7 @@ const DataEntryForm = () => {
             </Box>
           ) : editDialog.type === "category" ? (
             <Box component="form" sx={{ mt: 1 }}>
-              <Grid container spacing={2}>
+              <Grid spacing={2}>
                 <Grid xs={12} sm={6}>
                   <TextField
                     margin="normal"
@@ -10605,7 +11295,7 @@ const DataEntryForm = () => {
                 </label>
               </Box>
 
-              <Grid container spacing={2}>
+              <Grid spacing={2}>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>{t("Pages")}</InputLabel>
@@ -11217,80 +11907,59 @@ const DataEntryForm = () => {
           <Button
             variant="contained"
             color="error"
-            onClick={() =>
-              deleteDialog.type === "brand"
-                ? handleDeleteBrandConfirm()
-                : deleteDialog.type === "company"
-                  ? handleDeleteBrandConfirm()
-                  : deleteDialog.type === "gift"
-                    ? handleDeleteBrandConfirm()
-                    : deleteDialog.type === "job"
-                      ? handleDeleteBrandConfirm()
-                      : deleteDialog.type === "video"
-                        ? handleDeleteStoreConfirm()
-                        : deleteDialog.type === "category"
-                          ? handleDeleteCategoryConfirm()
-                          : deleteDialog.type === "storeType"
-                            ? handleDeleteStoreTypeConfirm()
-                            : deleteDialog.type === "brandType"
-                              ? (async () => {
-                                  setDeleteLoading(true);
-                                  try {
-                                    await brandTypeAPI.delete(
-                                      deleteDialog.data._id,
-                                    );
-                                    const res = await brandTypeAPI.getAll();
-                                    setBrandTypes(res.data || []);
-                                    setMessage({
-                                      type: "success",
-                                      text: t(
-                                        "Brand Type deleted successfully!",
-                                      ),
-                                    });
-                                  } catch (e) {
-                                    setMessage({
-                                      type: "error",
-                                      text: t("Failed to delete brand type."),
-                                    });
-                                  } finally {
-                                    setDeleteLoading(false);
-                                    setDeleteDialog({
-                                      open: false,
-                                      type: "",
-                                      data: null,
-                                    });
-                                  }
-                                })()
-                              : (async () => {
-                                    setDeleteLoading(true);
-                                    try {
-                                      await categoryAPI.delete(
-                                        deleteDialog.data._id,
-                                      );
-                                      setMessage({
-                                        type: "success",
-                                        text: t(
-                                          "Category deleted successfully!",
-                                        ),
-                                      });
-                                      fetchCategories();
-                                    } catch (e) {
-                                      setMessage({
-                                        type: "error",
-                                        text: t("Failed to delete category."),
-                                      });
-                                    } finally {
-                                      setDeleteLoading(false);
-                                      setDeleteDialog({
-                                        open: false,
-                                        type: "",
-                                        data: null,
-                                      });
-                                    }
-                                  })()
-                                ? handleDeleteStoreConfirm()
-                                : null
-            }
+            onClick={() => {
+              const dt = deleteDialog.type;
+              if (dt === "category") {
+                handleDeleteCategoryConfirm();
+                return;
+              }
+              if (dt === "storeType") {
+                handleDeleteStoreTypeConfirm();
+                return;
+              }
+              if (dt === "brandType") {
+                (async () => {
+                  setDeleteLoading(true);
+                  try {
+                    await brandTypeAPI.delete(deleteDialog.data._id);
+                    const res = await brandTypeAPI.getAll();
+                    setBrandTypes(res.data || []);
+                    setMessage({
+                      type: "success",
+                      text: t("Brand Type deleted successfully!"),
+                    });
+                  } catch (e) {
+                    setMessage({
+                      type: "error",
+                      text: t("Failed to delete brand type."),
+                    });
+                  } finally {
+                    setDeleteLoading(false);
+                    setDeleteDialog({ open: false, type: "", data: null });
+                  }
+                })();
+                return;
+              }
+              if (dt === "store") {
+                handleDeleteStoreConfirm();
+                return;
+              }
+              if (
+                [
+                  "brand",
+                  "company",
+                  "product",
+                  "gift",
+                  "ad",
+                  "video",
+                  "job",
+                ].includes(dt)
+              ) {
+                handleDeleteBrandConfirm();
+                return;
+              }
+              handleDeleteBrandConfirm();
+            }}
             disabled={deleteLoading}
           >
             {deleteLoading ? t("Deleting...") : t("Delete")}
