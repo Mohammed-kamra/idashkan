@@ -1,5 +1,18 @@
 const Settings = require("../models/Settings");
 
+/** Keep in sync with settingsController defaults so first Settings doc (theme) is not missing contact fields. */
+const DEFAULT_CONTACT = "+9647503683478";
+const EMPTY_CONTACT_INFO = {
+  whatsapp: "",
+  facebook: "",
+  instagram: "",
+  snapchat: "",
+  gmail: "",
+  tiktok: "",
+  viber: "",
+  telegram: "",
+};
+
 const ALLOWED_THEMES = [
   "default",
   "blackWhite",
@@ -119,6 +132,8 @@ const getTheme = async (req, res) => {
         activeTheme: "default",
         activeFontKey: "default",
         navConfig: DEFAULT_NAV_CONFIG,
+        contactWhatsAppNumber: DEFAULT_CONTACT,
+        contactInfo: { ...EMPTY_CONTACT_INFO, whatsapp: DEFAULT_CONTACT },
       });
       settings = settings.toObject();
     }
@@ -178,6 +193,8 @@ const updateTheme = async (req, res) => {
         activeTheme: theme,
         activeFontKey: fontKey || "default",
         navConfig: navConfig || DEFAULT_NAV_CONFIG,
+        contactWhatsAppNumber: DEFAULT_CONTACT,
+        contactInfo: { ...EMPTY_CONTACT_INFO, whatsapp: DEFAULT_CONTACT },
       });
     } else {
       settings.activeTheme = theme;

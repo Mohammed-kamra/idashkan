@@ -300,6 +300,12 @@ export const searchAPI = {
     api.get("/search", { params: city ? { q, city } : { q } }),
 };
 
+/** Public search tracking (optional auth via axios interceptor). */
+export const searchAnalyticsAPI = {
+  logSearch: (body) => api.post("/search-analytics/log-search", body),
+  recordClick: (id, body) => api.patch(`/search-analytics/${id}/click`, body),
+};
+
 // Admin API calls
 export const adminAPI = {
   getStats: () => api.get("/admin/stats"),
@@ -321,6 +327,52 @@ export const adminAPI = {
   createCity: (data) => api.post("/admin/cities", data),
   updateCity: (id, data) => api.put(`/admin/cities/${id}`, data),
   deleteCity: (id) => api.delete(`/admin/cities/${id}`),
+
+  getSearchAnalyticsOverview: (params = {}) =>
+    api.get("/admin/search-analytics/overview", { params }),
+  getSearchAnalyticsTrends: (params = {}) =>
+    api.get("/admin/search-analytics/trends", { params }),
+  getSearchAnalyticsTopKeywords: (params = {}) =>
+    api.get("/admin/search-analytics/top-keywords", { params }),
+  getSearchAnalyticsNoResults: (params = {}) =>
+    api.get("/admin/search-analytics/no-results", { params }),
+  getSearchAnalyticsTopFilters: (params = {}) =>
+    api.get("/admin/search-analytics/top-filters", { params }),
+  getSearchAnalyticsTopStores: (params = {}) =>
+    api.get("/admin/search-analytics/top-stores", { params }),
+  getSearchAnalyticsTopCategories: (params = {}) =>
+    api.get("/admin/search-analytics/top-categories", { params }),
+  getSearchAnalyticsPopularCities: (params = {}) =>
+    api.get("/admin/search-analytics/popular-cities", { params }),
+  getSearchAnalyticsConversion: (params = {}) =>
+    api.get("/admin/search-analytics/conversion", { params }),
+  getSearchAnalyticsRecent: (params = {}) =>
+    api.get("/admin/search-analytics/recent", { params }),
+  getSearchAnalyticsTrending: (params = {}) =>
+    api.get("/admin/search-analytics/trending", { params }),
+  getSearchAnalyticsTopClicked: (params = {}) =>
+    api.get("/admin/search-analytics/top-clicked", { params }),
+  exportSearchAnalyticsCsv: (params = {}) =>
+    api.get("/admin/search-analytics/export", {
+      params,
+      responseType: "blob",
+    }),
+};
+
+/** Owner analytics dashboard (requires role `owner` + linked entity). */
+export const ownerDashboardAPI = {
+  getSummary: (params = {}) => api.get("/owner-dashboard/summary", { params }),
+  getTopViewedProducts: (params = {}) =>
+    api.get("/owner-dashboard/top-viewed-products", { params }),
+  getTopLikedProducts: (params = {}) =>
+    api.get("/owner-dashboard/top-liked-products", { params }),
+  getComparisonChart: (params = {}) =>
+    api.get("/owner-dashboard/comparison-chart", { params }),
+};
+
+/** Public-ish tracking (optional auth); used for profile views & contact taps. */
+export const ownerAnalyticsAPI = {
+  track: (body) => api.post("/owner-analytics/track", body),
 };
 
 export default api;

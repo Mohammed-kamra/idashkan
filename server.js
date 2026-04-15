@@ -98,10 +98,13 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/theme", require("./routes/theme"));
 app.use("/api/search", require("./routes/search"));
+app.use("/api/search-analytics", require("./routes/searchAnalytics"));
 app.use("/api/videos", require("./routes/video"));
 app.use("/api/jobs", require("./routes/job"));
 app.use("/api/translations", require("./routes/translation"));
 app.use("/api/ai", require("./routes/ai"));
+app.use("/api/owner-dashboard", require("./routes/ownerDashboard"));
+app.use("/api/owner-analytics", require("./routes/ownerAnalytics"));
 
 const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

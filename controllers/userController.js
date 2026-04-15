@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const ProductViewEvent = require("../models/ProductViewEvent");
+const ProductLikeEvent = require("../models/ProductLikeEvent");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Video = require("../models/Video");
@@ -105,6 +107,14 @@ const toggleProductLike = async (req, res) => {
         { $inc: { likeCount: 1 } },
         { new: true },
       );
+      try {
+        await ProductLikeEvent.create({
+          productId,
+          userId: userId || null,
+        });
+      } catch (e) {
+        console.error("ProductLikeEvent create:", e?.message || e);
+      }
     }
 
     await user.save();
@@ -259,6 +269,18 @@ const recordProductView = async (req, res) => {
       { $inc: { viewCount: 1 } },
       { new: true },
     );
+
+    try {
+      await ProductViewEvent.create({
+        productId,
+        userId: userId || null,
+        sessionId: req.body?.sessionId
+          ? String(req.body.sessionId).slice(0, 128)
+          : null,
+      });
+    } catch (e) {
+      console.warn("ProductViewEvent:", e.message);
+    }
 
     // Update user's viewed products atomically (avoids VersionError when concurrent
     // view requests race on the same User document).

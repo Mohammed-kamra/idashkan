@@ -117,12 +117,36 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
-  /** Application role: all accounts default to normal user; admin assigns `support` for Data Entry access. */
+  /** Application role: `support` = Data Entry; `owner` = linked store/brand/company dashboard. */
   role: {
     type: String,
-    enum: ["user", "support"],
+    enum: ["user", "support", "owner"],
     default: "user",
   },
+  /** Legacy single link — kept in sync with first entry of `ownerEntities`. */
+  ownerEntityType: {
+    type: String,
+    default: null,
+    trim: true,
+  },
+  ownerEntityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  /** Owner may manage multiple stores / brands / companies. */
+  ownerEntities: [
+    {
+      entityType: {
+        type: String,
+        enum: ["store", "brand", "company"],
+        required: true,
+      },
+      entityId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+      },
+    },
+  ],
 
   // Timestamps
   createdAt: {
@@ -171,6 +195,10 @@ userSchema.methods.getFullName = function () {
 // Method to get public profile (without sensitive data)
 userSchema.methods.getPublicProfile = function () {
   try {
+    const { normalizeOwnerEntitiesList } = require("../utils/ownerEntities");
+    const ownerEntities = normalizeOwnerEntitiesList(this);
+    const first = ownerEntities[0];
+
     if (this.deviceId && !this.username) {
       // Anonymous user
       return {
@@ -195,6 +223,12 @@ userSchema.methods.getPublicProfile = function () {
       googleId: this.googleId || undefined,
       isActive: this.isActive,
       role: this.role || "user",
+      ownerEntities: ownerEntities.map((e) => ({
+        entityType: e.entityType,
+        entityId: e.entityId,
+      })),
+      ownerEntityType: (first?.entityType ?? this.ownerEntityType) || null,
+      ownerEntityId: (first?.entityId ?? this.ownerEntityId) || null,
       likedProducts: this.likedProducts,
       likedVideos: this.likedVideos,
       viewedProducts: this.viewedProducts,

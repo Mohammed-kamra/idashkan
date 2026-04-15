@@ -85,6 +85,10 @@ import ProductDetailDialog from "../components/ProductDetailDialog";
 import StoreBranchesShowcase from "../components/StoreBranches_Showcase";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import {
+  trackOwnerProfileView,
+  trackOwnerContactClick,
+} from "../utils/ownerAnalyticsTrack";
 
 /** Cart/localStorage snapshot: include name* so `locName` respects data language. */
 function cartProductSnapshot(p) {
@@ -208,6 +212,12 @@ const StoreProfile = () => {
       fetchStoreData();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (store?._id && id) {
+      trackOwnerProfileView("store", id);
+    }
+  }, [store?._id, id]);
 
   // Load/save cart per store (only for delivery stores)
   useEffect(() => {
@@ -428,6 +438,7 @@ const StoreProfile = () => {
     }
     const text = encodeURIComponent(buildWhatsAppOrderText());
     const url = wa.includes("?") ? `${wa}&text=${text}` : `${wa}?text=${text}`;
+    trackOwnerContactClick("store", id, "whatsapp");
     openWhatsAppLink(url);
   };
 
@@ -1630,6 +1641,7 @@ const StoreProfile = () => {
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  trackOwnerContactClick("store", id, "whatsapp");
                   openWhatsAppLink(href);
                 }}
                 size="small"
@@ -1652,6 +1664,9 @@ const StoreProfile = () => {
               target="_blank"
               rel="noopener noreferrer"
               size="small"
+              onClick={() =>
+                trackOwnerContactClick("store", id, item.key)
+              }
               sx={{
                 color: "white",
                 bgcolor: "rgba(255,255,255,0.15)",

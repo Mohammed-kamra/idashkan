@@ -417,32 +417,139 @@ const StoreList = () => {
     flexShrink: 0,
   });
 
+  const skeletonBase = isDark ? alpha("#fff", 0.08) : alpha("#0d111c", 0.07);
+  const skeletonHighlight = isDark ? alpha("#fff", 0.12) : alpha("#0d111c", 0.1);
+
   if (loading) {
     return (
       <Box
         sx={{
-          py: { xs: 3, md: 6 },
+          py: { xs: 2.5, md: 5 },
+          pb: { xs: 10, md: 6 },
           minHeight: "100vh",
           bgcolor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
         }}
       >
-        <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2 } }}>
-          <Skeleton
-            variant="rounded"
+        <Container
+          maxWidth="lg"
+          sx={{ px: { xs: 1.5, sm: 2 }, mt: { xs: 4, md: 5 } }}
+        >
+          {/* Banner — matches loaded banner frame */}
+          <Box sx={{ mb: 3 }}>
+            <Skeleton
+              variant="rounded"
+              animation="wave"
+              sx={{
+                width: "100%",
+                height: { xs: 150, md: 220 },
+                borderRadius: { xs: 3, md: 4 },
+                bgcolor: skeletonBase,
+                boxShadow: isDark
+                  ? "0 12px 40px rgba(0,0,0,0.45)"
+                  : "0 12px 40px rgba(0,0,0,0.08)",
+              }}
+            />
+          </Box>
+
+          {/* Page header — icon, title, chips, search */}
+          <Box
             sx={{
-              width: "100%",
-              height: { xs: 150, md: 220 },
-              mb: 3,
-              borderRadius: 3,
+              mb: 2.5,
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "stretch", sm: "flex-start" },
+              justifyContent: "space-between",
+              gap: 2,
             }}
-          />
-          <Skeleton variant="rounded" width="55%" height={32} sx={{ mb: 2 }} />
-          <Skeleton variant="rounded" width="100%" height={44} sx={{ mb: 3 }} />
+          >
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
+              <Skeleton
+                variant="rounded"
+                animation="wave"
+                width={48}
+                height={48}
+                sx={{
+                  borderRadius: 2.5,
+                  flexShrink: 0,
+                  bgcolor: skeletonHighlight,
+                }}
+              />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Skeleton
+                  variant="rounded"
+                  animation="wave"
+                  width={{ xs: "70%", sm: 180 }}
+                  height={28}
+                  sx={{ mb: 1, borderRadius: 1, bgcolor: skeletonBase }}
+                />
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                  <Skeleton
+                    variant="rounded"
+                    animation="wave"
+                    width={88}
+                    height={24}
+                    sx={{ borderRadius: 3, bgcolor: skeletonBase }}
+                  />
+                  <Skeleton
+                    variant="rounded"
+                    animation="wave"
+                    width={100}
+                    height={24}
+                    sx={{ borderRadius: 3, bgcolor: skeletonBase }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+            <Skeleton
+              variant="rounded"
+              animation="wave"
+              height={40}
+              sx={{
+                width: { xs: "100%", sm: 260 },
+                alignSelf: { sm: "center" },
+                borderRadius: 3,
+                flexShrink: 0,
+                bgcolor: isDark ? alpha("#fff", 0.06) : alpha("#fff", 0.9),
+                border: "1px solid",
+                borderColor: isDark
+                  ? alpha("#fff", 0.08)
+                  : alpha(theme.palette.divider, 0.9),
+              }}
+            />
+          </Box>
+
+          {/* Store type chips row */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.8,
+              overflow: "hidden",
+              mb: 3,
+              pb: 0.25,
+            }}
+          >
+            {[72, 96, 84, 108, 76, 92].map((w, idx) => (
+              <Skeleton
+                key={idx}
+                variant="rounded"
+                animation="wave"
+                width={w}
+                height={34}
+                sx={{
+                  flexShrink: 0,
+                  borderRadius: "17px",
+                  bgcolor: skeletonBase,
+                }}
+              />
+            ))}
+          </Box>
+
+          {/* Grid — mirrors StoreCard */}
           <Box
             sx={{
               display: "grid",
-              gap: 1.5,
               gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: { xs: 1.5, sm: 2 },
             }}
           >
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -454,18 +561,63 @@ const StoreList = () => {
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
+                  border: "1px solid",
+                  borderColor: isDark
+                    ? alpha("#fff", 0.08)
+                    : alpha(theme.palette.divider, 0.9),
+                  background: isDark
+                    ? alpha("#1a2235", 0.92)
+                    : theme.palette.background.paper,
                 }}
               >
-                <Skeleton
-                  variant="rectangular"
-                  sx={{ aspectRatio: "1", width: "100%" }}
-                />
-                <Box sx={{ px: 1, py: 1 }}>
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                    aspectRatio: "1",
+                    maxHeight: { xs: 140, sm: 160 },
+                    background: isDark
+                      ? `linear-gradient(145deg, ${alpha("#2d3a52", 0.35)} 0%, ${alpha("#1a2235", 0.5)} 100%)`
+                      : `linear-gradient(145deg, ${alpha(accent, 0.04)} 0%, ${alpha("#f8fafc", 0.9)} 100%)`,
+                  }}
+                >
                   <Skeleton
-                    variant="text"
-                    width="90%"
-                    height={20}
-                    sx={{ mx: "auto" }}
+                    variant="rounded"
+                    animation="wave"
+                    sx={{
+                      position: "absolute",
+                      inset: "18%",
+                      borderRadius: 2,
+                      bgcolor: skeletonHighlight,
+                    }}
+                  />
+                </Box>
+                <Box
+                  sx={{
+                    px: 1,
+                    py: 1.25,
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: 44,
+                    gap: 0.5,
+                  }}
+                >
+                  <Skeleton
+                    variant="rounded"
+                    animation="wave"
+                    width="88%"
+                    height={14}
+                    sx={{ borderRadius: 1, bgcolor: skeletonBase }}
+                  />
+                  <Skeleton
+                    variant="rounded"
+                    animation="wave"
+                    width="62%"
+                    height={14}
+                    sx={{ borderRadius: 1, bgcolor: skeletonBase }}
                   />
                 </Box>
               </Card>

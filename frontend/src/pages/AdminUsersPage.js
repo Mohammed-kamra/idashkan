@@ -24,11 +24,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
+  IconButton,
+  Stack,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useAuth } from "../context/AuthContext";
-import { adminAPI } from "../services/api";
+import { adminAPI, storeAPI, brandAPI, companyAPI } from "../services/api";
 import { useTranslation } from "react-i18next";
 import { isAdminEmail, normalizeUserRole } from "../utils/adminAccess";
+import { normalizeOwnerEntities } from "../utils/ownerEntities";
 
 const AdminUsersPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -45,6 +51,14 @@ const AdminUsersPage = () => {
   const [editingUser, setEditingUser] = useState(null);
   /** Bumps after create/update/delete so we refetch even when page stays 0. */
   const [refreshKey, setRefreshKey] = useState(0);
+
+  /** Lists for Owner role: store / brand / company pickers */
+  const [ownerEntityLists, setOwnerEntityLists] = useState({
+    stores: [],
+    brands: [],
+    companies: [],
+  });
+  const [loadingOwnerEntities, setLoadingOwnerEntities] = useState(false);
 
   const isAdmin = isAdminEmail(user);
 
@@ -91,6 +105,47 @@ const AdminUsersPage = () => {
     fetchUsers();
   }, [isAuthenticated, isAdmin, fetchUsers]);
 
+  useEffect(() => {
+    if (!editDialogOpen || !editingUser || editingUser.role !== "owner") {
+      setOwnerEntityLists({ stores: [], brands: [], companies: [] });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingOwnerEntities(true);
+      try {
+        const [rS, rB, rC] = await Promise.all([
+          storeAPI.getAllIncludingHidden(),
+          brandAPI.getAllIncludingHidden(),
+          companyAPI.getAllIncludingHidden(),
+        ]);
+        if (!cancelled) {
+          setOwnerEntityLists({
+            stores: Array.isArray(rS.data) ? rS.data : [],
+            brands: Array.isArray(rB.data) ? rB.data : [],
+            companies: Array.isArray(rC.data) ? rC.data : [],
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) {
+          setOwnerEntityLists({ stores: [], brands: [], companies: [] });
+        }
+      } finally {
+        if (!cancelled) setLoadingOwnerEntities(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editDialogOpen, editingUser?.role]);
+
+  const getOwnerOptionsForType = (typ) => {
+    if (typ === "store") return ownerEntityLists.stores;
+    if (typ === "brand") return ownerEntityLists.brands;
+    return ownerEntityLists.companies;
+  };
+
   if (!isAuthenticated) {
     return (
       <Container maxWidth="md" sx={{ mt: 4 }}>
@@ -132,14 +187,20 @@ const AdminUsersPage = () => {
       displayName: "",
       isActive: true,
       role: "user",
+      ownerEntities: [],
     });
     setEditDialogOpen(true);
   };
 
   const openEditDialog = (row) => {
+    const normalized = normalizeOwnerEntities(row);
     setEditingUser({
       ...row,
       role: normalizeUserRole(row),
+      ownerEntities:
+        normalized.length > 0
+          ? normalized
+          : [{ entityType: "store", entityId: "" }],
     });
     setEditDialogOpen(true);
   };
@@ -159,26 +220,76 @@ const AdminUsersPage = () => {
     setError("");
     try {
       let res;
+      const roleNorm =
+        editingUser.role === "support"
+          ? "support"
+          : editingUser.role === "owner"
+            ? "owner"
+            : "user";
+
       if (editingUser._id) {
         const updatePayload = {
           username: editingUser.username,
           email: editingUser.email,
           displayName: editingUser.displayName,
           isActive: editingUser.isActive,
-          role: editingUser.role === "support" ? "support" : "user",
+          role: roleNorm,
         };
         if (editingUser.password && editingUser.password.trim() !== "") {
           updatePayload.password = editingUser.password;
         }
+        if (roleNorm === "owner") {
+          const valid = (editingUser.ownerEntities || []).filter(
+            (e) =>
+              e.entityType &&
+              e.entityId &&
+              String(e.entityId).trim() !== "",
+          );
+          if (valid.length === 0) {
+            setError(
+              t("Owner must have at least one linked business.", {
+                defaultValue: "Owner must have at least one linked business.",
+              }),
+            );
+            setSaving(false);
+            return;
+          }
+          updatePayload.ownerEntities = valid.map((e) => ({
+            entityType: e.entityType,
+            entityId: String(e.entityId).trim(),
+          }));
+        }
         res = await adminAPI.updateUser(editingUser._id, updatePayload);
       } else {
-        res = await adminAPI.createUser({
+        const createPayload = {
           username: editingUser.username,
           email: editingUser.email,
           password: editingUser.password,
           displayName: editingUser.displayName,
-          role: editingUser.role === "support" ? "support" : "user",
-        });
+          role: roleNorm,
+        };
+        if (roleNorm === "owner") {
+          const valid = (editingUser.ownerEntities || []).filter(
+            (e) =>
+              e.entityType &&
+              e.entityId &&
+              String(e.entityId).trim() !== "",
+          );
+          if (valid.length === 0) {
+            setError(
+              t("Owner must have at least one linked business.", {
+                defaultValue: "Owner must have at least one linked business.",
+              }),
+            );
+            setSaving(false);
+            return;
+          }
+          createPayload.ownerEntities = valid.map((e) => ({
+            entityType: e.entityType,
+            entityId: String(e.entityId).trim(),
+          }));
+        }
+        res = await adminAPI.createUser(createPayload);
       }
 
       if (res.data?.success) {
@@ -301,6 +412,12 @@ const AdminUsersPage = () => {
                           color="secondary"
                           label={t("Support (Data Entry)")}
                         />
+                      ) : role === "owner" ? (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={t("Owner", { defaultValue: "Owner" })}
+                        />
                       ) : (
                         <Chip size="small" label={t("Normal user")} />
                       )}
@@ -416,17 +533,181 @@ const AdminUsersPage = () => {
                 <Select
                   labelId="user-role-label"
                   label={t("Role")}
-                  value={editingUser.role === "support" ? "support" : "user"}
-                  onChange={(e) =>
-                    handleEditFieldChange("role", e.target.value)
+                  value={
+                    editingUser.role === "support"
+                      ? "support"
+                      : editingUser.role === "owner"
+                        ? "owner"
+                        : "user"
                   }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "owner") {
+                      setEditingUser((prev) => ({
+                        ...prev,
+                        role: v,
+                        ownerEntities:
+                          Array.isArray(prev.ownerEntities) &&
+                          prev.ownerEntities.length > 0
+                            ? prev.ownerEntities
+                            : [{ entityType: "store", entityId: "" }],
+                      }));
+                    } else {
+                      setEditingUser((prev) => ({
+                        ...prev,
+                        role: v,
+                        ownerEntities: [],
+                      }));
+                    }
+                  }}
                 >
                   <MenuItem value="user">{t("Normal user")}</MenuItem>
                   <MenuItem value="support">
                     {t("Support (Data Entry)")}
                   </MenuItem>
+                  <MenuItem value="owner">
+                    {t("Owner", { defaultValue: "Owner" })}
+                  </MenuItem>
                 </Select>
               </FormControl>
+              {editingUser.role === "owner" && (
+                <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1, mb: 0.5 }}
+                  >
+                    {t("Linked businesses (one or more)", {
+                      defaultValue: "Linked businesses (one or more)",
+                    })}
+                  </Typography>
+                  {loadingOwnerEntities ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        py: 2,
+                      }}
+                    >
+                      <CircularProgress size={28} />
+                    </Box>
+                  ) : (
+                    <>
+                      {(editingUser.ownerEntities || []).map((row, idx) => {
+                        const options = getOwnerOptionsForType(
+                          row.entityType || "store",
+                        );
+                        const selected =
+                          options.find(
+                            (o) => String(o._id) === String(row.entityId),
+                          ) || null;
+                        return (
+                          <Stack
+                            key={`owner-row-${idx}`}
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            alignItems={{ xs: "stretch", sm: "center" }}
+                            sx={{ mb: 1.5 }}
+                          >
+                            <FormControl size="small" sx={{ minWidth: 120 }}>
+                              <InputLabel id={`admin-owner-typ-${idx}`}>
+                                {t("Type", { defaultValue: "Type" })}
+                              </InputLabel>
+                              <Select
+                                labelId={`admin-owner-typ-${idx}`}
+                                label={t("Type", { defaultValue: "Type" })}
+                                value={row.entityType || "store"}
+                                onChange={(e) => {
+                                  const next = [
+                                    ...(editingUser.ownerEntities || []),
+                                  ];
+                                  next[idx] = {
+                                    entityType: e.target.value,
+                                    entityId: "",
+                                  };
+                                  handleEditFieldChange("ownerEntities", next);
+                                }}
+                              >
+                                <MenuItem value="store">
+                                  {t("Store", { defaultValue: "Store" })}
+                                </MenuItem>
+                                <MenuItem value="brand">
+                                  {t("Brand", { defaultValue: "Brand" })}
+                                </MenuItem>
+                                <MenuItem value="company">
+                                  {t("Company", { defaultValue: "Company" })}
+                                </MenuItem>
+                              </Select>
+                            </FormControl>
+                            <Autocomplete
+                              sx={{ flex: 1, minWidth: 0 }}
+                              options={options}
+                              value={selected}
+                              onChange={(_, option) => {
+                                const next = [
+                                  ...(editingUser.ownerEntities || []),
+                                ];
+                                next[idx] = {
+                                  ...next[idx],
+                                  entityId: option?._id
+                                    ? String(option._id)
+                                    : "",
+                                };
+                                handleEditFieldChange("ownerEntities", next);
+                              }}
+                              getOptionLabel={(opt) =>
+                                opt?.nameEn || opt?.name || opt?.nameKu || ""
+                              }
+                              isOptionEqualToValue={(a, b) =>
+                                !!a &&
+                                !!b &&
+                                String(a._id) === String(b._id)
+                              }
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  margin="dense"
+                                  label={t("Store / brand / company", {
+                                    defaultValue: "Store / brand / company",
+                                  })}
+                                />
+                              )}
+                            />
+                            <IconButton
+                              aria-label={t("Remove", {
+                                defaultValue: "Remove",
+                              })}
+                              color="error"
+                              size="small"
+                              onClick={() => {
+                                const next = (
+                                  editingUser.ownerEntities || []
+                                ).filter((_, i) => i !== idx);
+                                handleEditFieldChange("ownerEntities", next);
+                              }}
+                            >
+                              <DeleteOutlineIcon />
+                            </IconButton>
+                          </Stack>
+                        );
+                      })}
+                      <Button
+                        startIcon={<AddIcon />}
+                        size="small"
+                        onClick={() =>
+                          handleEditFieldChange("ownerEntities", [
+                            ...(editingUser.ownerEntities || []),
+                            { entityType: "store", entityId: "" },
+                          ])
+                        }
+                        sx={{ mb: 1 }}
+                      >
+                        {t("Add business", { defaultValue: "Add business" })}
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
             </Box>
           )}
         </DialogContent>

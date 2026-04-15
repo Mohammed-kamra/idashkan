@@ -1,7 +1,9 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Brand = require("../models/Brand");
+const Company = require("../models/Company");
 const Gift = require("../models/Gift");
 const {
   getTranslateApiKey,
@@ -9,6 +11,10 @@ const {
   formatGoogleFailure,
 } = require("../utils/googleTranslate");
 const { storeList, brandList } = require("../utils/refPopulate");
+const {
+  validateAndNormalizeOwnerEntitiesInput,
+  normalizeOwnerEntitiesList,
+} = require("../utils/ownerEntities");
 
 // Simple admin check helper (by email)
 const isAdminUser = (user) => {
@@ -16,6 +22,23 @@ const isAdminUser = (user) => {
   const adminEmails = ["mshexani45@gmail.com", "admin@gmail.com"];
   return adminEmails.includes(user.email);
 };
+
+async function adminOwnerEntityExists(entityType, entityId) {
+  if (!entityId || !mongoose.Types.ObjectId.isValid(String(entityId))) {
+    return false;
+  }
+  const id = String(entityId);
+  if (entityType === "store") {
+    return !!(await Store.findById(id).select("_id").lean());
+  }
+  if (entityType === "brand") {
+    return !!(await Brand.findById(id).select("_id").lean());
+  }
+  if (entityType === "company") {
+    return !!(await Company.findById(id).select("_id").lean());
+  }
+  return false;
+}
 
 // @desc    Get high-level admin stats
 // @route   GET /api/admin/stats
@@ -89,7 +112,9 @@ const getUsers = async (req, res) => {
     const safeSkip = (safePage - 1) * limit;
 
     const users = await User.find({})
-      .select("username email displayName deviceId isActive createdAt role")
+      .select(
+        "username email displayName deviceId isActive createdAt role ownerEntityType ownerEntityId ownerEntities",
+      )
       .sort({ createdAt: -1 })
       .skip(safeSkip)
       .limit(limit)
@@ -119,9 +144,18 @@ const createUser = async (req, res) => {
       });
     }
 
-    const { username, email, password, role: roleIn } = req.body;
-    const role =
-      roleIn === "support" ? "support" : "user";
+    const {
+      username,
+      email,
+      password,
+      role: roleIn,
+      ownerEntityType,
+      ownerEntityId,
+      ownerEntities: bodyOwnerEntities,
+    } = req.body;
+    let role = "user";
+    if (roleIn === "support") role = "support";
+    else if (roleIn === "owner") role = "owner";
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -155,6 +189,38 @@ const createUser = async (req, res) => {
       role,
     });
 
+    if (role === "owner") {
+      if (Array.isArray(bodyOwnerEntities) && bodyOwnerEntities.length) {
+        const v = await validateAndNormalizeOwnerEntitiesInput(bodyOwnerEntities);
+        if (!v.ok) {
+          return res.status(400).json({ success: false, message: v.message });
+        }
+        user.ownerEntities = v.list;
+        user.ownerEntityType = v.list[0].entityType;
+        user.ownerEntityId = v.list[0].entityId;
+      } else if (
+        ownerEntityType &&
+        ownerEntityId &&
+        ["store", "brand", "company"].includes(ownerEntityType)
+      ) {
+        if (!(await adminOwnerEntityExists(ownerEntityType, ownerEntityId))) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid owner entity id",
+          });
+        }
+        user.ownerEntityType = ownerEntityType;
+        user.ownerEntityId = ownerEntityId;
+        user.ownerEntities = [{ entityType: ownerEntityType, entityId: ownerEntityId }];
+      } else {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Owner role requires ownerEntities (array) or ownerEntityType + ownerEntityId",
+        });
+      }
+    }
+
     await user.save();
 
     const safeUser = {
@@ -165,6 +231,12 @@ const createUser = async (req, res) => {
       deviceId: user.deviceId,
       isActive: user.isActive,
       role: user.role || "user",
+      ownerEntityType: user.ownerEntityType || null,
+      ownerEntityId: user.ownerEntityId || null,
+      ownerEntities: (user.ownerEntities || []).map((e) => ({
+        entityType: e.entityType,
+        entityId: e.entityId,
+      })),
       createdAt: user.createdAt,
     };
 
@@ -187,8 +259,17 @@ const updateUser = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { username, email, displayName, isActive, password, role: roleIn } =
-      req.body;
+    const {
+      username,
+      email,
+      displayName,
+      isActive,
+      password,
+      role: roleIn,
+      ownerEntityType,
+      ownerEntityId,
+      ownerEntities: bodyOwnerEntities,
+    } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -204,7 +285,80 @@ const updateUser = async (req, res) => {
     if (password !== undefined && password !== "") user.password = password;
     if (isActive !== undefined) user.isActive = !!isActive;
     if (roleIn !== undefined) {
-      user.role = roleIn === "support" ? "support" : "user";
+      if (roleIn === "support") user.role = "support";
+      else if (roleIn === "owner") user.role = "owner";
+      else user.role = "user";
+    }
+    if (bodyOwnerEntities !== undefined) {
+      if (!Array.isArray(bodyOwnerEntities)) {
+        return res.status(400).json({
+          success: false,
+          message: "ownerEntities must be an array",
+        });
+      }
+      if (user.role === "owner") {
+        const v = await validateAndNormalizeOwnerEntitiesInput(bodyOwnerEntities);
+        if (!v.ok) {
+          return res.status(400).json({ success: false, message: v.message });
+        }
+        user.ownerEntities = v.list;
+        user.ownerEntityType = v.list[0].entityType;
+        user.ownerEntityId = v.list[0].entityId;
+      }
+    } else {
+      if (ownerEntityType !== undefined) {
+        if (ownerEntityType && !["store", "brand", "company"].includes(ownerEntityType)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid ownerEntityType",
+          });
+        }
+        user.ownerEntityType = ownerEntityType || null;
+      }
+      if (ownerEntityId !== undefined) {
+        user.ownerEntityId = ownerEntityId || null;
+      }
+      if (
+        user.role === "owner" &&
+        bodyOwnerEntities === undefined &&
+        (ownerEntityType !== undefined || ownerEntityId !== undefined)
+      ) {
+        const t = user.ownerEntityType;
+        const eid = user.ownerEntityId;
+        if (t && eid && (await adminOwnerEntityExists(t, eid))) {
+          user.ownerEntities = [{ entityType: t, entityId: eid }];
+        }
+      }
+    }
+    if (user.role === "owner") {
+      const nList = normalizeOwnerEntitiesList(user);
+      if (!nList.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Owner role requires valid linked businesses",
+        });
+      }
+      if (!user.ownerEntities?.length) {
+        user.ownerEntities = nList.map((e) => ({
+          entityType: e.entityType,
+          entityId: new mongoose.Types.ObjectId(String(e.entityId)),
+        }));
+        user.ownerEntityType = nList[0].entityType;
+        user.ownerEntityId = new mongoose.Types.ObjectId(String(nList[0].entityId));
+      } else {
+        const t = user.ownerEntityType;
+        const eid = user.ownerEntityId;
+        if (!t || !eid || !(await adminOwnerEntityExists(t, eid))) {
+          return res.status(400).json({
+            success: false,
+            message: "Owner role requires valid linked businesses",
+          });
+        }
+      }
+    } else {
+      user.ownerEntityType = null;
+      user.ownerEntityId = null;
+      user.ownerEntities = [];
     }
 
     await user.save();
@@ -217,6 +371,12 @@ const updateUser = async (req, res) => {
       deviceId: user.deviceId,
       isActive: user.isActive,
       role: user.role || "user",
+      ownerEntityType: user.ownerEntityType || null,
+      ownerEntityId: user.ownerEntityId || null,
+      ownerEntities: (user.ownerEntities || []).map((e) => ({
+        entityType: e.entityType,
+        entityId: e.entityId,
+      })),
       createdAt: user.createdAt,
     };
 

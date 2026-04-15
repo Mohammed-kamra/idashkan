@@ -45,6 +45,8 @@ const brandSchema = new mongoose.Schema({
   isHasDelivery: { type: Boolean, default: false },
   deliveryAllCities: { type: Boolean, default: false },
   deliveryCities: [{ type: String, trim: true }],
+  /** Denormalized follower count (store parity; increment when brand-follow exists). */
+  followerCount: { type: Number, default: 0, min: 0 },
 });
 
 module.exports = mongoose.model("Brand", brandSchema);

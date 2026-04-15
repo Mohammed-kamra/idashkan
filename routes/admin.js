@@ -22,6 +22,8 @@ const {
   deleteCity,
 } = require("../controllers/cityController");
 const { protect } = require("../middleware/auth");
+const requireDataEntry = require("../middleware/requireDataEntry");
+const searchAnalyticsController = require("../controllers/searchAnalyticsController");
 
 // GET /api/admin/stats
 router.get("/stats", getStats);
@@ -66,5 +68,85 @@ router.post(
 // UI translations (database overrides; list via GET /api/translations)
 router.put("/translations", protect, upsertTranslation);
 router.delete("/translations/:id", protect, deleteTranslation);
+
+// Search analytics (admin / data entry)
+router.get(
+  "/search-analytics/overview",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getOverview,
+);
+router.get(
+  "/search-analytics/trends",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTrends,
+);
+router.get(
+  "/search-analytics/top-keywords",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTopKeywords,
+);
+router.get(
+  "/search-analytics/no-results",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getNoResults,
+);
+router.get(
+  "/search-analytics/top-filters",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTopFilters,
+);
+router.get(
+  "/search-analytics/top-stores",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTopStores,
+);
+router.get(
+  "/search-analytics/top-categories",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTopCategories,
+);
+router.get(
+  "/search-analytics/popular-cities",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getPopularCities,
+);
+router.get(
+  "/search-analytics/conversion",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getConversion,
+);
+router.get(
+  "/search-analytics/recent",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getRecent,
+);
+router.get(
+  "/search-analytics/trending",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTrending,
+);
+router.get(
+  "/search-analytics/top-clicked",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.getTopClicked,
+);
+router.get(
+  "/search-analytics/export",
+  protect,
+  requireDataEntry,
+  searchAnalyticsController.exportCsv,
+);
 
 module.exports = router;

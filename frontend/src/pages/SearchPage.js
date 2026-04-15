@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -44,6 +44,10 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
 import useOnlineStatus from "../hooks/useOnlineStatus";
+import {
+  logSearchEvent,
+  recordSearchClick,
+} from "../utils/searchAnalyticsTrack";
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -86,6 +90,7 @@ const SearchPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const isOnline = useOnlineStatus();
+  const searchPageLogIdRef = useRef(null);
 
   const userId = user?.id || user?._id || null;
   const deviceId = userId ? null : getDeviceId();
@@ -101,6 +106,7 @@ const SearchPage = () => {
     async (q) => {
       const trimmed = (q || "").trim();
       if (trimmed.length < 2) {
+        searchPageLogIdRef.current = null;
         setResults({
           products: [],
           stores: [],
@@ -113,6 +119,7 @@ const SearchPage = () => {
         return;
       }
       if (isCartSearchIntent(trimmed)) {
+        searchPageLogIdRef.current = null;
         setResults({
           products: [],
           stores: [],
@@ -130,6 +137,7 @@ const SearchPage = () => {
       setSearched(true);
       try {
         if (!isOnline) {
+          searchPageLogIdRef.current = null;
           setResults({
             products: [],
             stores: [],
@@ -154,10 +162,33 @@ const SearchPage = () => {
           categories: data.categories || [],
           categoryTypes: data.categoryTypes || [],
         });
+        const totalResults =
+          visibleProducts.length +
+          (data.stores || []).length +
+          (data.brands || []).length +
+          (data.companies || []).length +
+          (data.categories || []).length +
+          (data.categoryTypes || []).length;
+        void logSearchEvent({
+          searchText: trimmed,
+          resultCount: totalResults,
+          source: "searchpage",
+          filters: {
+            category: null,
+            city: selectedCity || null,
+            store: null,
+            sortBy: "default",
+            priceMin: null,
+            priceMax: null,
+          },
+        }).then((id) => {
+          searchPageLogIdRef.current = id;
+        });
         addToSearchHistory(trimmed, userId, deviceId);
         refreshRecentSearches();
       } catch (err) {
         console.error("Search error:", err);
+        searchPageLogIdRef.current = null;
         setResults({
           products: [],
           stores: [],
@@ -222,26 +253,56 @@ const SearchPage = () => {
   };
 
   const handleProductClick = (product) => {
+    if (searchPageLogIdRef.current && product?._id) {
+      recordSearchClick(
+        searchPageLogIdRef.current,
+        String(product._id),
+        "product",
+      );
+    }
     setSelectedProduct(product);
     setProductDialogOpen(true);
   };
   const handleStoreClick = (id) => {
+    if (searchPageLogIdRef.current && id) {
+      recordSearchClick(searchPageLogIdRef.current, String(id), "store");
+    }
     navigate(`/stores/${id}`);
   };
   const handleBrandClick = (id) => {
+    if (searchPageLogIdRef.current && id) {
+      recordSearchClick(searchPageLogIdRef.current, String(id), "brand");
+    }
     navigate(`/brands/${id}`);
   };
   const handleCompanyClick = (id) => {
+    if (searchPageLogIdRef.current && id) {
+      recordSearchClick(searchPageLogIdRef.current, String(id), "company");
+    }
     navigate(`/companies/${id}`);
   };
 
   const handleCategoryClick = (cat) => {
+    if (searchPageLogIdRef.current && cat?._id) {
+      recordSearchClick(
+        searchPageLogIdRef.current,
+        String(cat._id),
+        "category",
+      );
+    }
     navigate("/categories", {
       state: { category: { _id: cat._id, name: cat.name } },
     });
   };
 
   const handleCategoryTypeClick = (hit) => {
+    if (searchPageLogIdRef.current && hit?.category?._id && hit?.type?._id) {
+      recordSearchClick(
+        searchPageLogIdRef.current,
+        `${hit.category._id}:${hit.type._id}`,
+        "categoryType",
+      );
+    }
     navigate("/categories", {
       state: {
         category: hit.category,

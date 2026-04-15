@@ -67,8 +67,8 @@ const search = async (req, res) => {
     const regex = new RegExp(escapeRegex(q), "i");
     const limit = 20;
 
+    /** Include stores with show:false so SearchPage can find them; store list still hides them. */
     const storeQuery = {
-      show: { $ne: false },
       statusAll: { $ne: "off" },
       ...nameLangOr(regex),
     };
@@ -77,7 +77,6 @@ const search = async (req, res) => {
     const storeIdsInCityPromise = city
       ? Store.find({
           storecity: city,
-          show: { $ne: false },
           statusAll: { $ne: "off" },
         })
           .select("_id")
@@ -161,7 +160,7 @@ const search = async (req, res) => {
     const [
       stores,
       storeIdsInCityDocs,
-      visibleStoreIdsDocs,
+      eligibleStoreIdsDocs,
       productsRaw,
       brandsAll,
       companiesAll,
@@ -172,7 +171,6 @@ const search = async (req, res) => {
         .lean(),
       storeIdsInCityPromise,
       Store.find({
-        show: { $ne: false },
         statusAll: { $ne: "off" },
       })
         .select("_id")
@@ -202,7 +200,8 @@ const search = async (req, res) => {
     ]);
 
     const storeIdsInCity = (storeIdsInCityDocs || []).map((s) => s._id);
-    const visibleStoreIds = (visibleStoreIdsDocs || []).map((s) =>
+    /** Stores that are not statusAll off (includes show:false — same as search store results). */
+    const eligibleStoreIds = (eligibleStoreIdsDocs || []).map((s) =>
       String(s._id),
     );
 
@@ -226,7 +225,7 @@ const search = async (req, res) => {
     } else {
       products = (productsRaw || []).filter((p) => {
         const storeId = p.storeId && (p.storeId._id || p.storeId);
-        const storeOk = !storeId || visibleStoreIds.includes(String(storeId));
+        const storeOk = !storeId || eligibleStoreIds.includes(String(storeId));
         return storeOk;
       });
       brands = brandsAll;

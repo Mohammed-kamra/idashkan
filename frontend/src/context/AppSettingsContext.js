@@ -16,32 +16,38 @@ const EMPTY_CONTACT_INFO = {
   telegram: "",
 };
 
+export function normalizeContactField(v) {
+  if (v == null) return "";
+  return String(v).trim();
+}
+
+/** Merge API / settings payload into a stable shape (strings only; avoids losing links when values are numbers). */
+export function mergeContactInfoFromApi(info, contactWhatsAppNumber) {
+  const merged = { ...EMPTY_CONTACT_INFO, ...(info && typeof info === "object" ? info : {}) };
+  for (const key of Object.keys(EMPTY_CONTACT_INFO)) {
+    merged[key] = normalizeContactField(merged[key]);
+  }
+  merged.whatsapp =
+    normalizeContactField(info?.whatsapp) ||
+    normalizeContactField(contactWhatsAppNumber) ||
+    DEFAULT_WHATSAPP;
+  return merged;
+}
+
 export const AppSettingsProvider = ({ children }) => {
   const [contactWhatsAppNumber, setContactWhatsAppNumber] =
     useState(DEFAULT_WHATSAPP);
-  const [contactInfo, setContactInfo] = useState({
-    ...EMPTY_CONTACT_INFO,
-    whatsapp: DEFAULT_WHATSAPP,
-  });
+  const [contactInfo, setContactInfo] = useState(() =>
+    mergeContactInfoFromApi(null, DEFAULT_WHATSAPP),
+  );
 
   const fetchSettings = async () => {
     try {
       const res = await settingsAPI.get();
       const num = res?.data?.contactWhatsAppNumber;
-      if (num) setContactWhatsAppNumber(num);
+      if (num) setContactWhatsAppNumber(normalizeContactField(num) || DEFAULT_WHATSAPP);
       const info = res?.data?.contactInfo;
-      if (info && typeof info === "object") {
-        setContactInfo({
-          ...EMPTY_CONTACT_INFO,
-          ...info,
-          whatsapp: info.whatsapp || num || DEFAULT_WHATSAPP,
-        });
-      } else {
-        setContactInfo((prev) => ({
-          ...prev,
-          whatsapp: num || DEFAULT_WHATSAPP,
-        }));
-      }
+      setContactInfo(mergeContactInfoFromApi(info, num));
     } catch (err) {
       console.error("Failed to fetch settings:", err);
     }

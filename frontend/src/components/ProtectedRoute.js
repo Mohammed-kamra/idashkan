@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { canAccessOwnerDashboard } from "../utils/adminAccess";
 
 /**
  * @param {string[] | null} allowedEmails - If set, user email must be in list OR (if allowSupportRole) role === support.
@@ -42,6 +43,21 @@ export const ProtectedAdminOnlyRoute = ({ children, allowedEmails }) => {
 
   if (allowedEmails?.length && !allowedEmails.includes(user.email)) {
     return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+/** Logged-in owner with at least one linked store / brand / company. */
+export const ProtectedOwnerRoute = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  if (!canAccessOwnerDashboard(user)) {
+    return <Navigate to="/profile" replace />;
   }
 
   return children;

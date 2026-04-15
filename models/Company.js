@@ -44,6 +44,7 @@ const companySchema = new mongoose.Schema({
   isHasDelivery: { type: Boolean, default: false },
   deliveryAllCities: { type: Boolean, default: false },
   deliveryCities: [{ type: String, trim: true }],
+  followerCount: { type: Number, default: 0, min: 0 },
 });
 
 module.exports = mongoose.model("Company", companySchema);

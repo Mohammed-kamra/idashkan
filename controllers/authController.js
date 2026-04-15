@@ -1,9 +1,33 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
+const Store = require("../models/Store");
+const Brand = require("../models/Brand");
+const Company = require("../models/Company");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const { deleteUserAndAssociatedData } = require("./deleteUserAndAssociatedData");
+const {
+  validateAndNormalizeOwnerEntitiesInput,
+} = require("../utils/ownerEntities");
 
 const GRACE_DAYS = 30;
+
+async function ownerEntityExists(entityType, entityId) {
+  if (!entityId || !mongoose.Types.ObjectId.isValid(String(entityId))) {
+    return false;
+  }
+  const id = String(entityId);
+  if (entityType === "store") {
+    return !!(await Store.findById(id).select("_id").lean());
+  }
+  if (entityType === "brand") {
+    return !!(await Brand.findById(id).select("_id").lean());
+  }
+  if (entityType === "company") {
+    return !!(await Company.findById(id).select("_id").lean());
+  }
+  return false;
+}
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -245,7 +269,8 @@ const getProfile = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
-    const { displayName, avatar } = req.body;
+    const { displayName, avatar, ownerEntityType, ownerEntityId, ownerEntities } =
+      req.body;
 
     const user = await User.findById(req.userId);
     if (!user) {
@@ -258,6 +283,42 @@ const updateProfile = async (req, res) => {
     // Update fields
     if (displayName !== undefined) user.displayName = displayName && displayName.trim() ? displayName.trim() : null;
     if (avatar !== undefined) user.avatar = avatar;
+
+    if (user.role === "owner") {
+      if (ownerEntities !== undefined) {
+        const v = await validateAndNormalizeOwnerEntitiesInput(ownerEntities);
+        if (!v.ok) {
+          return res.status(400).json({
+            success: false,
+            message: v.message,
+          });
+        }
+        user.ownerEntities = v.list;
+        user.ownerEntityType = v.list[0].entityType;
+        user.ownerEntityId = v.list[0].entityId;
+      } else if (ownerEntityType !== undefined || ownerEntityId !== undefined) {
+        const t =
+          ownerEntityType !== undefined
+            ? ownerEntityType
+            : user.ownerEntityType;
+        const id = ownerEntityId !== undefined ? ownerEntityId : user.ownerEntityId;
+        if (!t || !["store", "brand", "company"].includes(t)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid owner entity type",
+          });
+        }
+        if (!id || !(await ownerEntityExists(t, id))) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid owner entity",
+          });
+        }
+        user.ownerEntityType = t;
+        user.ownerEntityId = id;
+        user.ownerEntities = [{ entityType: t, entityId: id }];
+      }
+    }
 
     await user.save();
 

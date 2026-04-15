@@ -41,6 +41,7 @@ import FavouritesPage from "./pages/FavouritesPage";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminCitiesPage from "./pages/AdminCitiesPage";
+import AdminSearchAnalyticsPage from "./pages/AdminSearchAnalyticsPage";
 import CustomizationPage from "./pages/CustomizationPage";
 import TranslationPage from "./pages/TranslationPage";
 import NavigationBar from "./NavigationBar";
@@ -54,10 +55,12 @@ import { NotificationProvider } from "./context/NotificationContext";
 import LoginPage from "./pages/LoginPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProfilePage from "./pages/ProfilePage";
+import OwnerDashboardPage from "./pages/OwnerDashboardPage";
 import FindJob from "./pages/FindJob";
 import ShoppingPage from "./pages/ShoppingPage";
 import ProtectedRoute, {
   ProtectedAdminOnlyRoute,
+  ProtectedOwnerRoute,
 } from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -345,10 +348,32 @@ function AppContent() {
                     </ProtectedAdminOnlyRoute>
                   }
                 />
+                <Route
+                  path="/admin/search-analytics"
+                  element={
+                    <ProtectedRoute
+                      allowedEmails={[
+                        "mshexani45@gmail.com",
+                        "admin@gmail.com",
+                      ]}
+                      allowSupportRole
+                    >
+                      <AdminSearchAnalyticsPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route
+                  path="/owner-dashboard"
+                  element={
+                    <ProtectedOwnerRoute>
+                      <OwnerDashboardPage />
+                    </ProtectedOwnerRoute>
+                  }
+                />
                 <Route path="/findjob" element={<FindJob />} />
                 <Route path="/shopping" element={<ShoppingPage />} />
                 <Route path="/products/:id" element={<ProductDetail />} />

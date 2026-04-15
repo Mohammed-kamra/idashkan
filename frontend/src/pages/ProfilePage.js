@@ -1,4 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -6,6 +12,7 @@ import {
   Typography,
   Avatar,
   List,
+  ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
@@ -16,11 +23,17 @@ import {
   DialogActions,
   TextField,
   FormControl,
+  InputLabel,
   Select,
   MenuItem,
   ToggleButton,
   ToggleButtonGroup,
   useTheme,
+  Autocomplete,
+  Alert,
+  CircularProgress,
+  IconButton,
+  Stack,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
@@ -46,6 +59,9 @@ import {
   LightModeOutlined,
   DarkModeOutlined,
   BrightnessAutoRounded,
+  Storefront as StorefrontIcon,
+  Add as AddIcon,
+  DeleteOutline as DeleteOutlineIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -65,7 +81,13 @@ import {
   DATA_LANG_NORMAL,
 } from "../context/DataLanguageContext";
 import { useDarkMode } from "../context/DarkModeContext";
-import { isAdminEmail, canAccessDataEntry } from "../utils/adminAccess";
+import {
+  isAdminEmail,
+  canAccessDataEntry,
+  canAccessOwnerDashboard,
+} from "../utils/adminAccess";
+import { normalizeOwnerEntities } from "../utils/ownerEntities";
+import { storeAPI, brandAPI, companyAPI } from "../services/api";
 
 const ProfilePage = () => {
   const theme = useTheme();
@@ -87,6 +109,107 @@ const ProfilePage = () => {
   const changeNameButtonRef = useRef(null);
   const deactivateButtonRef = useRef(null);
   const deactivateCancelButtonRef = useRef(null);
+
+  const [draftOwnerEntities, setDraftOwnerEntities] = useState(() =>
+    normalizeOwnerEntities(user),
+  );
+  const [entityLists, setEntityLists] = useState({
+    stores: [],
+    brands: [],
+    companies: [],
+  });
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  const [ownerSaveError, setOwnerSaveError] = useState("");
+  const [savingOwnerEntity, setSavingOwnerEntity] = useState(false);
+
+  const ownerEntitiesServerSig = useMemo(
+    () =>
+      user?.role === "owner"
+        ? JSON.stringify(normalizeOwnerEntities(user))
+        : "",
+    [
+      user?.role,
+      user?.ownerEntities,
+      user?.ownerEntityType,
+      user?.ownerEntityId,
+    ],
+  );
+
+  useEffect(() => {
+    if (user?.role !== "owner") return;
+    setDraftOwnerEntities(normalizeOwnerEntities(user));
+  }, [ownerEntitiesServerSig, user?.role]);
+
+  const loadEntityLists = useCallback(async () => {
+    if (user?.role !== "owner") return;
+    setLoadingEntities(true);
+    setOwnerSaveError("");
+    try {
+      const [storesRes, brandsRes, companiesRes] = await Promise.all([
+        storeAPI.getVisible(),
+        brandAPI.getAll(),
+        companyAPI.getAll(),
+      ]);
+      setEntityLists({
+        stores: Array.isArray(storesRes.data) ? storesRes.data : [],
+        brands: Array.isArray(brandsRes.data) ? brandsRes.data : [],
+        companies: Array.isArray(companiesRes.data) ? companiesRes.data : [],
+      });
+    } catch (e) {
+      console.error(e);
+      setEntityLists({ stores: [], brands: [], companies: [] });
+      setOwnerSaveError(
+        e?.response?.data?.message ||
+          e?.message ||
+          t("Could not load list", { defaultValue: "Could not load list" }),
+      );
+    } finally {
+      setLoadingEntities(false);
+    }
+  }, [user?.role, t]);
+
+  useEffect(() => {
+    loadEntityLists();
+  }, [loadEntityLists]);
+
+  const getOptionsForOwnerType = (typ) => {
+    if (typ === "store") return entityLists.stores;
+    if (typ === "brand") return entityLists.brands;
+    return entityLists.companies;
+  };
+
+  const handleSaveOwnerEntities = async () => {
+    const valid = draftOwnerEntities.filter(
+      (e) => e.entityType && e.entityId && String(e.entityId).trim() !== "",
+    );
+    if (valid.length === 0) {
+      setOwnerSaveError(
+        t("Select at least one store, brand, or company.", {
+          defaultValue: "Select at least one store, brand, or company.",
+        }),
+      );
+      return;
+    }
+    setSavingOwnerEntity(true);
+    setOwnerSaveError("");
+    try {
+      await updateProfile({
+        ownerEntities: valid.map((e) => ({
+          entityType: e.entityType,
+          entityId: String(e.entityId).trim(),
+        })),
+      });
+    } catch (e) {
+      console.error(e);
+      setOwnerSaveError(
+        e?.response?.data?.message ||
+          e?.message ||
+          t("Could not save", { defaultValue: "Could not save" }),
+      );
+    } finally {
+      setSavingOwnerEntity(false);
+    }
+  };
 
   const displayName =
     user?.displayName ||
@@ -128,19 +251,25 @@ const ProfilePage = () => {
     return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   };
 
+  const contactStr = (v) => {
+    if (v == null) return undefined;
+    const s = String(v).trim();
+    return s === "" ? undefined : s;
+  };
+
   const contactItems = [
-    { key: "whatsapp", value: contactInfo?.whatsapp, icon: <WhatsAppIcon /> },
-    { key: "facebook", value: contactInfo?.facebook, icon: <FacebookIcon /> },
+    { key: "whatsapp", value: contactStr(contactInfo?.whatsapp), icon: <WhatsAppIcon /> },
+    { key: "facebook", value: contactStr(contactInfo?.facebook), icon: <FacebookIcon /> },
     {
       key: "instagram",
-      value: contactInfo?.instagram,
+      value: contactStr(contactInfo?.instagram),
       icon: <InstagramIcon />,
     },
-    { key: "snapchat", value: contactInfo?.snapchat, icon: <SnapchatIcon /> },
-    { key: "gmail", value: contactInfo?.gmail, icon: <GmailIcon /> },
-    { key: "tiktok", value: contactInfo?.tiktok, icon: <TikTokIcon /> },
-    { key: "viber", value: contactInfo?.viber, icon: <ViberIcon /> },
-    { key: "telegram", value: contactInfo?.telegram, icon: <TelegramIcon /> },
+    { key: "snapchat", value: contactStr(contactInfo?.snapchat), icon: <SnapchatIcon /> },
+    { key: "gmail", value: contactStr(contactInfo?.gmail), icon: <GmailIcon /> },
+    { key: "tiktok", value: contactStr(contactInfo?.tiktok), icon: <TikTokIcon /> },
+    { key: "viber", value: contactStr(contactInfo?.viber), icon: <ViberIcon /> },
+    { key: "telegram", value: contactStr(contactInfo?.telegram), icon: <TelegramIcon /> },
   ].filter((item) => Boolean(item.value));
 
   return (
@@ -229,6 +358,178 @@ const ProfilePage = () => {
             </ListItemIcon>
             <ListItemText primary={t("Change Your Account Name")} />
           </ListItemButton>
+
+          {user && canAccessOwnerDashboard(user) && (
+            <>
+              <Divider />
+              <ListItemButton component={Link} to="/owner-dashboard">
+                <ListItemIcon>
+                  <StorefrontIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={t("Owner dashboard", {
+                    defaultValue: "Owner dashboard",
+                  })}
+                />
+              </ListItemButton>
+            </>
+          )}
+
+          {/* {user?.role === "owner" && (
+            <>
+              <Divider />
+              <Box sx={{ px: 2, py: 2 }}>
+                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                  {t("Linked businesses", {
+                    defaultValue: "Linked businesses",
+                  })}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mb: 1.5 }}
+                >
+                  {t(
+                    "Link one or more stores, brands, or companies you manage. The owner dashboard uses the selected business when you have more than one.",
+                    {
+                      defaultValue:
+                        "Link one or more stores, brands, or companies you manage. The owner dashboard uses the selected business when you have more than one.",
+                    },
+                  )}
+                </Typography>
+                {ownerSaveError ? (
+                  <Alert severity="error" sx={{ mb: 1.5 }}>
+                    {ownerSaveError}
+                  </Alert>
+                ) : null}
+                {loadingEntities ? (
+                  <Box display="flex" justifyContent="center" py={2}>
+                    <CircularProgress size={28} />
+                  </Box>
+                ) : (
+                  <>
+                    {draftOwnerEntities.map((row, idx) => {
+                      const options = getOptionsForOwnerType(row.entityType);
+                      const selected =
+                        options.find(
+                          (o) => String(o._id) === String(row.entityId),
+                        ) || null;
+                      return (
+                        <Stack
+                          key={`${idx}-${row.entityType}`}
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          sx={{ mb: 1.5 }}
+                        >
+                          <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <InputLabel id={`owner-typ-${idx}`}>
+                              {t("Type", { defaultValue: "Type" })}
+                            </InputLabel>
+                            <Select
+                              labelId={`owner-typ-${idx}`}
+                              label={t("Type", { defaultValue: "Type" })}
+                              value={row.entityType || "store"}
+                              onChange={(e) => {
+                                const next = [...draftOwnerEntities];
+                                next[idx] = {
+                                  entityType: e.target.value,
+                                  entityId: "",
+                                };
+                                setDraftOwnerEntities(next);
+                              }}
+                            >
+                              <MenuItem value="store">
+                                {t("Store", { defaultValue: "Store" })}
+                              </MenuItem>
+                              <MenuItem value="brand">
+                                {t("Brand", { defaultValue: "Brand" })}
+                              </MenuItem>
+                              <MenuItem value="company">
+                                {t("Company", { defaultValue: "Company" })}
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                          <Autocomplete
+                            sx={{ flex: 1, minWidth: 0 }}
+                            options={options}
+                            value={selected}
+                            onChange={(_, option) => {
+                              const next = [...draftOwnerEntities];
+                              next[idx] = {
+                                ...next[idx],
+                                entityId: option?._id
+                                  ? String(option._id)
+                                  : "",
+                              };
+                              setDraftOwnerEntities(next);
+                            }}
+                            getOptionLabel={(opt) =>
+                              opt?.nameEn || opt?.name || opt?.nameKu || ""
+                            }
+                            isOptionEqualToValue={(a, b) =>
+                              !!a &&
+                              !!b &&
+                              String(a._id) === String(b._id)
+                            }
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                size="small"
+                                label={t("Business", {
+                                  defaultValue: "Business",
+                                })}
+                              />
+                            )}
+                          />
+                          <IconButton
+                            aria-label={t("Remove", {
+                              defaultValue: "Remove",
+                            })}
+                            onClick={() =>
+                              setDraftOwnerEntities((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
+                            }
+                            color="error"
+                            size="small"
+                          >
+                            <DeleteOutlineIcon />
+                          </IconButton>
+                        </Stack>
+                      );
+                    })}
+                    <Button
+                      startIcon={<AddIcon />}
+                      size="small"
+                      onClick={() =>
+                        setDraftOwnerEntities((prev) => [
+                          ...prev,
+                          { entityType: "store", entityId: "" },
+                        ])
+                      }
+                      sx={{ mb: 1 }}
+                    >
+                      {t("Add business", { defaultValue: "Add business" })}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={savingOwnerEntity}
+                      onClick={handleSaveOwnerEntities}
+                    >
+                      {savingOwnerEntity
+                        ? t("Saving...", { defaultValue: "Saving..." })
+                        : t("Save linked businesses", {
+                            defaultValue: "Save linked businesses",
+                          })}
+                    </Button>
+                  </>
+                )}
+              </Box>
+            </>
+          )} */}
 
           {/* <ListItemButton component={Link} to="/favourites">
             <ListItemIcon>
@@ -609,11 +910,9 @@ const ProfilePage = () => {
             </Box>
           </Box>
           <Divider />
-          <ListItemButton>
-            <ListItemIcon>
-              <ListItemText primary={t("Contact Us")} />
-            </ListItemIcon>
-          </ListItemButton>
+          <ListItem sx={{ py: 1 }}>
+            <ListItemText primary={t("Contact Us")} />
+          </ListItem>
           {contactItems.length > 0 && (
             <Box
               sx={{

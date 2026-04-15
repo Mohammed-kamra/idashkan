@@ -92,6 +92,10 @@ import {
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import {
+  trackOwnerProfileView,
+  trackOwnerContactClick,
+} from "../utils/ownerAnalyticsTrack";
 /** test */
 /** When scrolled near this row, load the next chunk for that product-type section (same idea as MainPage store sentinel). */
 const ProductTypeLoadSentinel = ({ typeKey, hasMore, onLoadMore }) => {
@@ -252,6 +256,12 @@ const BrandProfile = () => {
       fetchBrandData();
     }
   }, [id, isCompanyMode]);
+
+  useEffect(() => {
+    if (brand?._id) {
+      trackOwnerProfileView(isCompanyMode ? "company" : "brand", brand._id);
+    }
+  }, [brand?._id, isCompanyMode]);
 
   usePullToRefresh(fetchBrandData);
 
@@ -1333,6 +1343,7 @@ const BrandProfile = () => {
   };
 
   const renderContactRow = () => {
+    const ownerEntityType = isCompanyMode ? "company" : "brand";
     const socialItems = socialLinks.filter((item) => Boolean(item.value));
     if (socialItems.length === 0) return null;
     return (
@@ -1355,6 +1366,7 @@ const BrandProfile = () => {
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  trackOwnerContactClick(ownerEntityType, id, "whatsapp");
                   openWhatsAppLink(href);
                 }}
                 size="small"
@@ -1377,6 +1389,9 @@ const BrandProfile = () => {
               target="_blank"
               rel="noopener noreferrer"
               size="small"
+              onClick={() =>
+                trackOwnerContactClick(ownerEntityType, id, item.key)
+              }
               sx={{
                 color: "white",
                 bgcolor: "rgba(255,255,255,0.15)",

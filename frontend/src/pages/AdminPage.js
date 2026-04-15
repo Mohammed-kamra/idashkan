@@ -510,14 +510,23 @@ const AdminPage = () => {
             {t("Welcome back, Admin")} - {user?.displayName || user?.username}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={handleDeleteExpiredProducts}
-          disabled={tabLoading}
-        >
-          {t("Remove products expired 1 month ago")}
-        </Button>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate("/admin/search-analytics")}
+          >
+            Search analytics
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDeleteExpiredProducts}
+            disabled={tabLoading}
+          >
+            {t("Remove products expired 1 month ago")}
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>

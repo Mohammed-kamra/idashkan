@@ -82,6 +82,10 @@ import {
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import { storeMatchesSelectedCity } from "../utils/cityMatch";
+import {
+  logSearchEvent,
+  recordSearchClick,
+} from "../utils/searchAnalyticsTrack";
 
 const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
 const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
@@ -195,6 +199,7 @@ const MainPage = () => {
   const randomShowcaseStoresRef = useRef({});
   const loadMoreSentinelRef = useRef(null);
   const loadMoreStoresRef = useRef(() => {});
+  const mainPageSearchLogIdRef = useRef(null);
 
   // User tracking hook (user = device user for guests)
   const {
@@ -389,6 +394,13 @@ const MainPage = () => {
     (product) => {
       setSelectedProduct(product);
       setProductDialogOpen(true);
+      if (mainPageSearchLogIdRef.current && product?._id) {
+        recordSearchClick(
+          mainPageSearchLogIdRef.current,
+          String(product._id),
+          "product",
+        );
+      }
       if (isAuthenticated) {
         recordView(product._id);
       }
@@ -1112,6 +1124,95 @@ const MainPage = () => {
     priceRange,
     showOnlyDiscount,
     locName,
+  ]);
+
+  const mainPageSearchAnalyticsKey = useMemo(
+    () =>
+      JSON.stringify({
+        q: search.trim().toLowerCase(),
+        city: selectedCity,
+        cat: selectedCategory ? getID(selectedCategory._id) : null,
+        ctype: selectedCategoryType ? getID(selectedCategoryType._id) : null,
+        st: selectedStoreTypeId,
+        pr: priceRange,
+        sd: sortByNewestDiscount,
+        sn: sortByNearMe,
+      }),
+    [
+      search,
+      selectedCity,
+      selectedCategory,
+      selectedCategoryType,
+      selectedStoreTypeId,
+      priceRange,
+      sortByNewestDiscount,
+      sortByNearMe,
+      getID,
+    ],
+  );
+
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      mainPageSearchLogIdRef.current = null;
+      return;
+    }
+    if (loading) return;
+    const timer = window.setTimeout(() => {
+      if (loading) return;
+      const storeTypeObj = visibleStoreTypes.find(
+        (st) => String(getID(st._id)) === String(selectedStoreTypeId),
+      );
+      const storeLabel =
+        selectedStoreTypeId !== "all" && storeTypeObj
+          ? locName(storeTypeObj)
+          : null;
+      let categoryLabel = null;
+      if (selectedCategoryType && selectedCategory) {
+        categoryLabel = `${locName(selectedCategory)} › ${locName(selectedCategoryType)}`;
+      } else if (selectedCategory) {
+        categoryLabel = locName(selectedCategory);
+      } else if (selectedCategoryType) {
+        categoryLabel = locName(selectedCategoryType);
+      }
+      const sortBy = sortByNearMe
+        ? "near_me"
+        : sortByNewestDiscount
+          ? "newest_discount"
+          : "default";
+      void (async () => {
+        const id = await logSearchEvent({
+          searchText: q,
+          resultCount: filteredProducts.length,
+          source: "mainpage",
+          filters: {
+            category: categoryLabel,
+            city: selectedCity || null,
+            store: storeLabel,
+            sortBy,
+            priceMin: priceRange[0],
+            priceMax: priceRange[1],
+          },
+        });
+        mainPageSearchLogIdRef.current = id;
+      })();
+    }, 550);
+    return () => window.clearTimeout(timer);
+  }, [
+    mainPageSearchAnalyticsKey,
+    filteredProducts.length,
+    loading,
+    search,
+    selectedCity,
+    selectedCategory,
+    selectedCategoryType,
+    selectedStoreTypeId,
+    visibleStoreTypes,
+    sortByNearMe,
+    sortByNewestDiscount,
+    priceRange,
+    locName,
+    getID,
   ]);
 
   const productsByStoreId = useMemo(() => {
@@ -1851,7 +1952,7 @@ const MainPage = () => {
       <Box
         sx={{
           position: "fixed",
-          top: 65,
+          top: 75,
           left: 0,
           right: 0,
           zIndex: 1090,
@@ -1891,7 +1992,7 @@ const MainPage = () => {
           }}
           sx={{
             minHeight: 44,
-            pt: 0.5,
+
             px: 0.5,
             "& .MuiTabs-indicator": {
               display: "flex",
