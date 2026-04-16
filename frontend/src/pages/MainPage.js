@@ -86,9 +86,11 @@ import {
   logSearchEvent,
   recordSearchClick,
 } from "../utils/searchAnalyticsTrack";
-
-const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
-const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
+import {
+  MAIN_PAGE_SCROLL_KEY,
+  MAIN_PAGE_SCROLL_STATE_KEY,
+  resetMainPageScrollPositionInSession,
+} from "../utils/mainPageScrollSession";
 
 /** Restore For You / Following tab from session before first paint (must not run in scroll restore effect — that aborted async scroll). */
 function getInitialMainPageTabFromSession() {
@@ -121,6 +123,32 @@ function applyWindowScrollY(y) {
     // ignore
   }
 }
+
+/**
+ * True when this document was loaded via a full refresh (F5).
+ * Note: this stays "reload" for the entire SPA lifetime after one refresh, so
+ * MainPage must only act on it once per document load — not on every remount when
+ * returning to Home via client-side routing.
+ */
+function isBrowserReloadNavigation() {
+  if (typeof performance === "undefined") return false;
+  try {
+    const nav = performance.getEntriesByType?.("navigation")?.[0];
+    if (nav && nav.type === "reload") return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    // Legacy; still used in some embedded WebViews
+    if (performance.navigation?.type === 1) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/** After first consumption, ignore "reload" for scroll policy so Home → away → Home restores scroll. */
+let mainPageReloadScrollResetConsumed = false;
 
 const MainPage = () => {
   const theme = useTheme();
@@ -200,6 +228,8 @@ const MainPage = () => {
   const loadMoreSentinelRef = useRef(null);
   const loadMoreStoresRef = useRef(() => {});
   const mainPageSearchLogIdRef = useRef(null);
+  /** Scroll target: banner hero (below fixed For You / Following tabs) — not the search row. */
+  const mainPageFeedTopRef = useRef(null);
 
   // User tracking hook (user = device user for guests)
   const {
@@ -621,12 +651,19 @@ const MainPage = () => {
     if (!isMobile) setShowMainTabs(true);
   }, [isMobile]);
 
+  /** Align to tabs + banner region; avoids landing on the search/filter row when window scroll is 0 but layout uses a tall header. */
+  const scrollToMainFeedTop = useCallback((behavior = "smooth") => {
+    const el = mainPageFeedTopRef.current;
+    if (el) {
+      el.scrollIntoView({ block: "start", behavior });
+      return;
+    }
+    applyWindowScrollY(0);
+  }, []);
+
   // Scroll to top function
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToMainFeedTop("smooth");
   };
 
   // Update like states when user data changes (works for both logged-in and guest users)
@@ -1557,7 +1594,7 @@ const MainPage = () => {
 
     const id = window.setTimeout(() => {
       setMainPageTab(0);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToMainFeedTop("smooth");
     }, 3000);
 
     return () => window.clearTimeout(id);
@@ -1565,6 +1602,7 @@ const MainPage = () => {
     mainPageTab,
     followLoadingTab,
     filteredFollowedStoresWithProducts.length,
+    scrollToMainFeedTop,
   ]);
 
   // Effect for pagination ? on mobile, preload two chunks (16 stores) so rows after the
@@ -1645,7 +1683,26 @@ const MainPage = () => {
 
   // Runs after store pagination has applied (above) so displayedStores/hasMoreStores match list depth.
   useLayoutEffect(() => {
-    if ((loading && stores.length === 0) || mainPageScrollRestoredRef.current) {
+    if (mainPageScrollRestoredRef.current) {
+      return;
+    }
+
+    // Full refresh: skip session restore only on the first MainPage mount after a
+    // document reload. `navigation.type` stays "reload" for the whole SPA session,
+    // so we must not run this on every subsequent Home visit.
+    if (
+      !mainPageReloadScrollResetConsumed &&
+      isBrowserReloadNavigation()
+    ) {
+      mainPageReloadScrollResetConsumed = true;
+      resetMainPageScrollPositionInSession();
+      applyWindowScrollY(0);
+      requestAnimationFrame(() => applyWindowScrollY(0));
+      mainPageScrollRestoredRef.current = true;
+      return;
+    }
+
+    if (loading && stores.length === 0) {
       return;
     }
 
@@ -1945,7 +2002,7 @@ const MainPage = () => {
     <Box
       sx={{
         pt: { xs: "100px", sm: "113px", md: "113px" },
-        pb: { xs: 10, sm: 4 },
+        pb: { xs: 2, sm: 4 },
       }}
     >
       {/* --- */}
@@ -1988,7 +2045,7 @@ const MainPage = () => {
           onChange={(_, v) => {
             setMainPageTab(v);
             if (v === 1) setFollowLoadingTab(true);
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            scrollToMainFeedTop("smooth");
           }}
           sx={{
             minHeight: 44,
@@ -2029,14 +2086,21 @@ const MainPage = () => {
         </Tabs>
       </Box>
       {/* --- */}
-      <BannerCarousel
-        banners={bannerAdsWithImages}
-        onBannerClick={(ad) => {
-          if (ad.brandId) navigate(`/brands/${ad.brandId}`);
-          else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
-          else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
+      <Box
+        ref={mainPageFeedTopRef}
+        sx={{
+          scrollMarginTop: { xs: "100px", sm: "113px", md: "113px" },
         }}
-      />
+      >
+        <BannerCarousel
+          banners={bannerAdsWithImages}
+          onBannerClick={(ad) => {
+            if (ad.brandId) navigate(`/brands/${ad.brandId}`);
+            else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
+            else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
+          }}
+        />
+      </Box>
       {/* --- */}
       <Box sx={{ mb: 0 }}>
         <FilterChips

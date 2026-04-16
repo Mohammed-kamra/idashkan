@@ -90,7 +90,7 @@ export const CityFilterProvider = ({ children }) => {
   const cities = useMemo(() => {
     const raw =
       cityRecords.length > 0
-        ? cityRecords
+        ? cityRecords.filter((c) => c.isActive !== false)
         : FALLBACK_CITIES.map((c) => ({ name: c.name, flag: c.flag }));
     return raw.map((c) => {
       const value = c.name;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { themeAPI } from "../services/api";
+import { normalizeProfileShortcutIds } from "../utils/profileShortcutCatalog";
 
 const ActiveThemeContext = createContext(null);
 
@@ -49,6 +50,9 @@ export const ActiveThemeProvider = ({ children }) => {
   const [navConfig, setNavConfig] = useState(
     cached?.navConfig && typeof cached.navConfig === "object" ? cached.navConfig : DEFAULT_NAV_CONFIG,
   );
+  const [profileShortcuts, setProfileShortcuts] = useState(() =>
+    normalizeProfileShortcutIds(cached?.profileShortcuts),
+  );
   const [userThemeOverride, setUserThemeOverride] = useState("");
   const [loadingTheme, setLoadingTheme] = useState(true);
   const lastFetchAtRef = useRef(0);
@@ -84,9 +88,13 @@ export const ActiveThemeProvider = ({ children }) => {
       const next = res?.data?.activeTheme || DEFAULT_THEME;
       const nextFontKey = res?.data?.activeFontKey || DEFAULT_FONT_KEY;
       const nextNavConfig = res?.data?.navConfig || DEFAULT_NAV_CONFIG;
+      const nextProfileShortcuts = normalizeProfileShortcutIds(
+        res?.data?.profileShortcuts,
+      );
       setActiveTheme(next);
       setActiveFontKey(nextFontKey);
       setNavConfig(nextNavConfig);
+      setProfileShortcuts(nextProfileShortcuts);
       try {
         localStorage.setItem(
           THEME_CACHE_KEY,
@@ -94,6 +102,7 @@ export const ActiveThemeProvider = ({ children }) => {
             activeTheme: next,
             activeFontKey: nextFontKey,
             navConfig: nextNavConfig,
+            profileShortcuts: nextProfileShortcuts,
             cachedAt: Date.now(),
           }),
         );
@@ -145,6 +154,7 @@ export const ActiveThemeProvider = ({ children }) => {
       activeTheme,
       activeFontKey,
       navConfig,
+      profileShortcuts,
       userThemeOverride,
       effectiveTheme: getEffectiveTheme(activeTheme, userThemeOverride),
       setUserThemeOverride: (t) => {
@@ -174,6 +184,7 @@ export const ActiveThemeProvider = ({ children }) => {
       activeTheme,
       activeFontKey,
       navConfig,
+      profileShortcuts,
       applyToHtml,
       fetchTheme,
       getEffectiveTheme,

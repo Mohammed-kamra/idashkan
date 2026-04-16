@@ -171,7 +171,7 @@ const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }
           </Box>
         ) : null}
 
-        {displayAddress ? (
+        {/* {displayAddress ? (
           <Typography
             variant="caption"
             component="div"
@@ -190,7 +190,7 @@ const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }
           >
             {displayAddress}
           </Typography>
-        ) : null}
+        ) : null} */}
       </Card>
     </Fade>
   );

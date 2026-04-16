@@ -29,6 +29,11 @@ const settingsSchema = new mongoose.Schema(
         bottomright2: { type: String, default: "profile", trim: true },
       },
     },
+    /** Ordered app page ids shown as shortcuts on Profile (admin via theme API). */
+    profileShortcuts: {
+      type: [String],
+      default: undefined,
+    },
     contactWhatsAppNumber: {
       type: String,
       default: "+9647503683478",

@@ -157,8 +157,13 @@ export const adAPI = {
 // Theme API calls
 export const themeAPI = {
   get: () => api.get("/theme"),
-  update: ({ activeTheme, activeFontKey, navConfig } = {}) =>
-    api.put("/theme", { activeTheme, activeFontKey, navConfig }),
+  update: ({ activeTheme, activeFontKey, navConfig, profileShortcuts } = {}) =>
+    api.put("/theme", {
+      activeTheme,
+      activeFontKey,
+      navConfig,
+      profileShortcuts,
+    }),
 };
 
 // Video/Reels API calls

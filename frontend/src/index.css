@@ -1,3 +1,6 @@
+/* Utilities only — MUI owns global baseline (preflight disabled in tailwind.config.js). */
+@tailwind utilities;
+
 body {
   margin: 0;
   font-family: "NRT", "Noto Sans Kurdish", "Scheherazade New", "Arial",

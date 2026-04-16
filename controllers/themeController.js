@@ -73,6 +73,7 @@ const ALLOWED_NAV_ACTIONS = [
   "shopping",
   "profile",
   "brands",
+  "companies",
   "jobs",
   "city",
   "language",
@@ -82,6 +83,45 @@ const ALLOWED_NAV_ACTIONS = [
 const sanitizeSlot = (value) => {
   const v = String(value || "").trim();
   return ALLOWED_NAV_ACTIONS.includes(v) ? v : "";
+};
+
+const DEFAULT_PROFILE_SHORTCUTS = [
+  "brands",
+  "companies",
+  "findjob",
+  "categories",
+  "stores",
+  "gifts",
+  "search",
+  "reels",
+];
+
+const ALLOWED_PROFILE_SHORTCUT_IDS = new Set([
+  "home",
+  "search",
+  "categories",
+  "reels",
+  "favourites",
+  "stores",
+  "gifts",
+  "shopping",
+  "brands",
+  "companies",
+  "findjob",
+]);
+
+const sanitizeProfileShortcuts = (input) => {
+  if (!Array.isArray(input)) return [...DEFAULT_PROFILE_SHORTCUTS];
+  const seen = new Set();
+  const out = [];
+  for (const raw of input) {
+    const id = String(raw || "").trim();
+    if (!ALLOWED_PROFILE_SHORTCUT_IDS.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= 12) break;
+  }
+  return out.length > 0 ? out : [...DEFAULT_PROFILE_SHORTCUTS];
 };
 
 const sanitizeNavConfig = (input) => {
@@ -132,6 +172,7 @@ const getTheme = async (req, res) => {
         activeTheme: "default",
         activeFontKey: "default",
         navConfig: DEFAULT_NAV_CONFIG,
+        profileShortcuts: [...DEFAULT_PROFILE_SHORTCUTS],
         contactWhatsAppNumber: DEFAULT_CONTACT,
         contactInfo: { ...EMPTY_CONTACT_INFO, whatsapp: DEFAULT_CONTACT },
       });
@@ -140,13 +181,17 @@ const getTheme = async (req, res) => {
     const activeTheme = settings.activeTheme || "default";
     const activeFontKey = settings.activeFontKey || "default";
     const navConfig = settings.navConfig || DEFAULT_NAV_CONFIG;
-    res.json({ activeTheme, activeFontKey, navConfig });
+    const profileShortcuts = sanitizeProfileShortcuts(
+      settings.profileShortcuts,
+    );
+    res.json({ activeTheme, activeFontKey, navConfig, profileShortcuts });
   } catch (err) {
     console.error("Get theme error:", err.message);
     res.json({
       activeTheme: "default",
       activeFontKey: "default",
       navConfig: DEFAULT_NAV_CONFIG,
+      profileShortcuts: [...DEFAULT_PROFILE_SHORTCUTS],
     });
   }
 };
@@ -187,12 +232,22 @@ const updateTheme = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid navConfig" });
     }
 
+    const profileShortcutsRaw = req.body?.profileShortcuts;
+    const profileShortcuts =
+      profileShortcutsRaw === undefined
+        ? undefined
+        : sanitizeProfileShortcuts(profileShortcutsRaw);
+
     let settings = await Settings.findOne();
     if (!settings) {
       settings = await Settings.create({
         activeTheme: theme,
         activeFontKey: fontKey || "default",
         navConfig: navConfig || DEFAULT_NAV_CONFIG,
+        profileShortcuts:
+          profileShortcuts !== undefined
+            ? profileShortcuts
+            : [...DEFAULT_PROFILE_SHORTCUTS],
         contactWhatsAppNumber: DEFAULT_CONTACT,
         contactInfo: { ...EMPTY_CONTACT_INFO, whatsapp: DEFAULT_CONTACT },
       });
@@ -204,6 +259,9 @@ const updateTheme = async (req, res) => {
       if (navConfig !== undefined) {
         settings.navConfig = navConfig;
       }
+      if (profileShortcuts !== undefined) {
+        settings.profileShortcuts = profileShortcuts;
+      }
       await settings.save();
     }
 
@@ -212,6 +270,7 @@ const updateTheme = async (req, res) => {
       activeTheme: settings.activeTheme,
       activeFontKey: settings.activeFontKey || "default",
       navConfig: settings.navConfig || DEFAULT_NAV_CONFIG,
+      profileShortcuts: sanitizeProfileShortcuts(settings.profileShortcuts),
     });
   } catch (err) {
     console.error("Update theme error:", err.message);

@@ -14,12 +14,20 @@ import {
   Snackbar,
   Alert,
   useTheme,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import PaletteIcon from "@mui/icons-material/Palette";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useTranslation } from "react-i18next";
 import { useActiveTheme } from "../context/ActiveThemeContext";
 import { themeAPI } from "../services/api";
+import {
+  PROFILE_SHORTCUT_CATALOG,
+  DEFAULT_PROFILE_SHORTCUT_IDS,
+  normalizeProfileShortcutIds,
+} from "../utils/profileShortcutCatalog";
 
 const THEME_OPTIONS = [
   { id: "default", label: "Default Theme" },
@@ -67,6 +75,7 @@ const NAV_ACTIONS = [
   { id: "shopping", label: "Shopping" },
   { id: "profile", label: "Account/Profile" },
   { id: "brands", label: "Brands" },
+  { id: "companies", label: "Companies" },
   { id: "jobs", label: "Jobs" },
   { id: "city", label: "City selector" },
   { id: "language", label: "Language" },
@@ -77,16 +86,20 @@ const CustomizationPage = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { activeTheme, activeFontKey, navConfig, fetchTheme } =
+  const { activeTheme, activeFontKey, navConfig, profileShortcuts, fetchTheme } =
     useActiveTheme();
   const [selectedTheme, setSelectedTheme] = useState(activeTheme);
   const [selectedFont, setSelectedFont] = useState(activeFontKey || "default");
   const [selectedNav, setSelectedNav] = useState(navConfig || {});
+  const [selectedProfileShortcuts, setSelectedProfileShortcuts] = useState(() =>
+    normalizeProfileShortcutIds(profileShortcuts),
+  );
   const [isDirty, setIsDirty] = useState(false);
   const lastServerSnapshotRef = useRef({
     activeTheme,
     activeFontKey: activeFontKey || "default",
     navConfig: navConfig || {},
+    profileShortcuts: normalizeProfileShortcutIds(profileShortcuts),
   });
   const [fontOptions, setFontOptions] = useState(FALLBACK_FONT_OPTIONS);
   const [saveToastOpen, setSaveToastOpen] = useState(false);
@@ -99,6 +112,7 @@ const CustomizationPage = () => {
       activeTheme,
       activeFontKey: activeFontKey || "default",
       navConfig: navConfig || {},
+      profileShortcuts: normalizeProfileShortcutIds(profileShortcuts),
     };
 
     // If user is actively editing, don't overwrite their changes due to polling.
@@ -108,7 +122,8 @@ const CustomizationPage = () => {
     setSelectedTheme(nextSnapshot.activeTheme);
     setSelectedFont(nextSnapshot.activeFontKey);
     setSelectedNav(nextSnapshot.navConfig);
-  }, [activeTheme, activeFontKey, navConfig, isDirty]);
+    setSelectedProfileShortcuts(nextSnapshot.profileShortcuts);
+  }, [activeTheme, activeFontKey, navConfig, profileShortcuts, isDirty]);
 
   useEffect(() => {
     let mounted = true;
@@ -136,7 +151,7 @@ const CustomizationPage = () => {
       sx={{
         minHeight: "100vh",
         backgroundColor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
-        pt: { xs: 2, md: 4 },
+        pt: { xs: 8, md: 4 },
         pb: 6,
       }}
     >
@@ -490,6 +505,77 @@ const CustomizationPage = () => {
                 </Box>
               )}
 
+              <Divider
+                sx={{
+                  my: 2,
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.08)"
+                    : "rgba(0,0,0,0.08)",
+                }}
+              />
+
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  mb: 0.5,
+                  color: isDark ? "rgba(255,255,255,0.85)" : "#111827",
+                }}
+              >
+                {t("Profile page shortcuts", {
+                  defaultValue: "Profile page shortcuts",
+                })}
+              </Typography>
+              <Typography
+                sx={{
+                  mb: 1.5,
+                  color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)",
+                  fontSize: "0.88rem",
+                }}
+              >
+                {t(
+                  "Choose which app pages appear as a horizontal row on the profile screen.",
+                  {
+                    defaultValue:
+                      "Choose which app pages appear as a horizontal row on the profile screen.",
+                  },
+                )}
+              </Typography>
+              <FormGroup
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" },
+                  gap: 0.25,
+                }}
+              >
+                {PROFILE_SHORTCUT_CATALOG.map((item) => (
+                  <FormControlLabel
+                    key={item.id}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={selectedProfileShortcuts.includes(item.id)}
+                        onChange={() => {
+                          setIsDirty(true);
+                          setSelectedProfileShortcuts((prev) => {
+                            if (prev.includes(item.id)) {
+                              return prev.filter((x) => x !== item.id);
+                            }
+                            return [...prev, item.id];
+                          });
+                        }}
+                      />
+                    }
+                    label={t(item.labelKey)}
+                    sx={{
+                      mr: 1,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: "0.875rem",
+                      },
+                    }}
+                  />
+                ))}
+              </FormGroup>
+
               <Box
                 sx={{
                   mt: 2,
@@ -552,6 +638,9 @@ const CustomizationPage = () => {
                     activeTheme: selectedTheme,
                     activeFontKey: selectedFont,
                     navConfig: selectedNav,
+                    profileShortcuts: normalizeProfileShortcutIds(
+                      selectedProfileShortcuts,
+                    ),
                   });
                   await fetchTheme();
                   setSaveOk(true);
@@ -580,6 +669,7 @@ const CustomizationPage = () => {
                 setIsDirty(true);
                 setSelectedTheme("default");
                 setSelectedFont("default");
+                setSelectedProfileShortcuts([...DEFAULT_PROFILE_SHORTCUT_IDS]);
               }}
               sx={{
                 textTransform: "none",

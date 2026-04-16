@@ -34,6 +34,7 @@ import {
   CircularProgress,
   IconButton,
   Stack,
+  Chip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
@@ -62,6 +63,17 @@ import {
   Storefront as StorefrontIcon,
   Add as AddIcon,
   DeleteOutline as DeleteOutlineIcon,
+  HomeOutlined,
+  Search as SearchNavIcon,
+  Category as CategoryNavIcon,
+  VideoLibrary as VideoLibraryNavIcon,
+  Favorite as FavoriteNavIcon,
+  Store as StoreNavIcon,
+  CardGiftcard as CardGiftcardNavIcon,
+  ShoppingBag as ShoppingBagNavIcon,
+  Business as BusinessNavIcon,
+  CorporateFare as CorporateFareNavIcon,
+  WorkOutline as WorkOutlineNavIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -88,6 +100,25 @@ import {
 } from "../utils/adminAccess";
 import { normalizeOwnerEntities } from "../utils/ownerEntities";
 import { storeAPI, brandAPI, companyAPI } from "../services/api";
+import { useActiveTheme } from "../context/ActiveThemeContext";
+import {
+  PROFILE_SHORTCUT_CATALOG,
+  normalizeProfileShortcutIds,
+} from "../utils/profileShortcutCatalog";
+
+const PROFILE_SHORTCUT_ICONS = {
+  home: HomeOutlined,
+  search: SearchNavIcon,
+  categories: CategoryNavIcon,
+  reels: VideoLibraryNavIcon,
+  favourites: FavoriteNavIcon,
+  stores: StoreNavIcon,
+  gifts: CardGiftcardNavIcon,
+  shopping: ShoppingBagNavIcon,
+  brands: BusinessNavIcon,
+  companies: CorporateFareNavIcon,
+  findjob: WorkOutlineNavIcon,
+};
 
 const ProfilePage = () => {
   const theme = useTheme();
@@ -97,6 +128,7 @@ const ProfilePage = () => {
   const { user: guestUser, updateGuestName } = useUserTracking();
   const { selectedCity, changeCity, cities } = useCityFilter();
   const { contactInfo } = useAppSettings();
+  const { profileShortcuts } = useActiveTheme();
   const { dataLanguage, setDataLanguage } = useDataLanguage();
   const { colorMode, setColorMode } = useDarkMode();
 
@@ -257,6 +289,15 @@ const ProfilePage = () => {
     return s === "" ? undefined : s;
   };
 
+  const profileShortcutItems = useMemo(() => {
+    const byId = Object.fromEntries(
+      PROFILE_SHORTCUT_CATALOG.map((x) => [x.id, x]),
+    );
+    return normalizeProfileShortcutIds(profileShortcuts)
+      .map((id) => byId[id])
+      .filter(Boolean);
+  }, [profileShortcuts]);
+
   const contactItems = [
     { key: "whatsapp", value: contactStr(contactInfo?.whatsapp), icon: <WhatsAppIcon /> },
     { key: "facebook", value: contactStr(contactInfo?.facebook), icon: <FacebookIcon /> },
@@ -319,24 +360,11 @@ const ProfilePage = () => {
                 </Typography>
               )}
             </Box>
-            {/* {!countdown.expired && (
-              <Alert
-                severity="info"
-                sx={{
-                  ml: { xs: 0, sm: "auto" },
-                  mt: { xs: 1.5, sm: 0 },
-                  px: 1.5,
-                  py: 0.5,
-                  fontSize: "0.75rem",
-                }}
-              >
-                {t("Time until 30/05/2026")}:{" "}
-                {countdown.days}d {countdown.hours}h {countdown.minutes}m{" "}
-                {countdown.seconds}s
-              </Alert>
-            )} */}
+           
           </Box>
         </Box>
+
+        
 
         <List disablePadding>
           <ListItemButton
@@ -375,168 +403,7 @@ const ProfilePage = () => {
             </>
           )}
 
-          {/* {user?.role === "owner" && (
-            <>
-              <Divider />
-              <Box sx={{ px: 2, py: 2 }}>
-                <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                  {t("Linked businesses", {
-                    defaultValue: "Linked businesses",
-                  })}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  sx={{ mb: 1.5 }}
-                >
-                  {t(
-                    "Link one or more stores, brands, or companies you manage. The owner dashboard uses the selected business when you have more than one.",
-                    {
-                      defaultValue:
-                        "Link one or more stores, brands, or companies you manage. The owner dashboard uses the selected business when you have more than one.",
-                    },
-                  )}
-                </Typography>
-                {ownerSaveError ? (
-                  <Alert severity="error" sx={{ mb: 1.5 }}>
-                    {ownerSaveError}
-                  </Alert>
-                ) : null}
-                {loadingEntities ? (
-                  <Box display="flex" justifyContent="center" py={2}>
-                    <CircularProgress size={28} />
-                  </Box>
-                ) : (
-                  <>
-                    {draftOwnerEntities.map((row, idx) => {
-                      const options = getOptionsForOwnerType(row.entityType);
-                      const selected =
-                        options.find(
-                          (o) => String(o._id) === String(row.entityId),
-                        ) || null;
-                      return (
-                        <Stack
-                          key={`${idx}-${row.entityType}`}
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1}
-                          alignItems={{ xs: "stretch", sm: "center" }}
-                          sx={{ mb: 1.5 }}
-                        >
-                          <FormControl size="small" sx={{ minWidth: 120 }}>
-                            <InputLabel id={`owner-typ-${idx}`}>
-                              {t("Type", { defaultValue: "Type" })}
-                            </InputLabel>
-                            <Select
-                              labelId={`owner-typ-${idx}`}
-                              label={t("Type", { defaultValue: "Type" })}
-                              value={row.entityType || "store"}
-                              onChange={(e) => {
-                                const next = [...draftOwnerEntities];
-                                next[idx] = {
-                                  entityType: e.target.value,
-                                  entityId: "",
-                                };
-                                setDraftOwnerEntities(next);
-                              }}
-                            >
-                              <MenuItem value="store">
-                                {t("Store", { defaultValue: "Store" })}
-                              </MenuItem>
-                              <MenuItem value="brand">
-                                {t("Brand", { defaultValue: "Brand" })}
-                              </MenuItem>
-                              <MenuItem value="company">
-                                {t("Company", { defaultValue: "Company" })}
-                              </MenuItem>
-                            </Select>
-                          </FormControl>
-                          <Autocomplete
-                            sx={{ flex: 1, minWidth: 0 }}
-                            options={options}
-                            value={selected}
-                            onChange={(_, option) => {
-                              const next = [...draftOwnerEntities];
-                              next[idx] = {
-                                ...next[idx],
-                                entityId: option?._id
-                                  ? String(option._id)
-                                  : "",
-                              };
-                              setDraftOwnerEntities(next);
-                            }}
-                            getOptionLabel={(opt) =>
-                              opt?.nameEn || opt?.name || opt?.nameKu || ""
-                            }
-                            isOptionEqualToValue={(a, b) =>
-                              !!a &&
-                              !!b &&
-                              String(a._id) === String(b._id)
-                            }
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                size="small"
-                                label={t("Business", {
-                                  defaultValue: "Business",
-                                })}
-                              />
-                            )}
-                          />
-                          <IconButton
-                            aria-label={t("Remove", {
-                              defaultValue: "Remove",
-                            })}
-                            onClick={() =>
-                              setDraftOwnerEntities((prev) =>
-                                prev.filter((_, i) => i !== idx),
-                              )
-                            }
-                            color="error"
-                            size="small"
-                          >
-                            <DeleteOutlineIcon />
-                          </IconButton>
-                        </Stack>
-                      );
-                    })}
-                    <Button
-                      startIcon={<AddIcon />}
-                      size="small"
-                      onClick={() =>
-                        setDraftOwnerEntities((prev) => [
-                          ...prev,
-                          { entityType: "store", entityId: "" },
-                        ])
-                      }
-                      sx={{ mb: 1 }}
-                    >
-                      {t("Add business", { defaultValue: "Add business" })}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={savingOwnerEntity}
-                      onClick={handleSaveOwnerEntities}
-                    >
-                      {savingOwnerEntity
-                        ? t("Saving...", { defaultValue: "Saving..." })
-                        : t("Save linked businesses", {
-                            defaultValue: "Save linked businesses",
-                          })}
-                    </Button>
-                  </>
-                )}
-              </Box>
-            </>
-          )} */}
-
-          {/* <ListItemButton component={Link} to="/favourites">
-            <ListItemIcon>
-              <FavoriteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primary={t("Favourites")} />
-          </ListItemButton> */}
+       
 
           {showDataEntryLink && (
             <>
@@ -590,46 +457,77 @@ const ProfilePage = () => {
 
           <Divider />
 
-          {/* <Box sx={{ px: 2, py: 2 }}>
+          {profileShortcutItems.length > 0 && (
+          <Box
+            sx={{
+              px: { xs: 2, sm: 2.5 },
+              py: { xs: 2, sm: 2.25 },
+              borderBottom: `1px solid ${theme.palette.divider}`,
+            }}
+          >
             <Typography
-              variant="caption"
+              variant="subtitle2"
               color="text.secondary"
-              sx={{ mb: 1, display: "block" }}
+              fontWeight={700}
+              display="block"
+              sx={{ mb: 1.25, fontSize: { xs: "0.95rem", sm: "1rem" } }}
             >
-              {t("Theme")}
+              {t("Shortcuts", { defaultValue: "Shortcuts" })}
             </Typography>
-            <FormControl fullWidth size="small">
-              <InputLabel>{t("Theme")}</InputLabel>
-              <Select
-                label={t("Theme")}
-                value={userThemeOverride || "__global__"}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "__global__") {
-                    clearUserThemeOverride();
-                  } else {
-                    setUserThemeOverride(v);
-                  }
-                }}
-              >
-                <MenuItem value="__global__">
-                  {t("Use Global Theme")} ({activeTheme})
-                </MenuItem>
-                {THEME_OPTIONS.map((opt) => (
-                  <MenuItem key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mt: 1, display: "block" }}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
+                gap: { xs: 1.25, sm: 1.5 },
+                overflowX: "auto",
+                py: 0.5,
+                mx: -0.5,
+                px: 0.5,
+                scrollbarWidth: "thin",
+                WebkitOverflowScrolling: "touch",
+                "&::-webkit-scrollbar": { height: 8 },
+              }}
             >
-              {t("This changes theme only for you on this device.")}
-            </Typography>
-          </Box> */}
+              {profileShortcutItems.map((item) => {
+                const IconComp = PROFILE_SHORTCUT_ICONS[item.id];
+                return (
+                  <Chip
+                    key={item.id}
+                    component={Link}
+                    to={item.path}
+                    clickable
+                    variant="outlined"
+                    label={t(item.labelKey)}
+                    icon={
+                      IconComp ? (
+                        <IconComp sx={{ fontSize: 22 }} />
+                      ) : undefined
+                    }
+                    sx={{
+                      flexShrink: 0,
+                      borderRadius: 2.5,
+                      fontWeight: 650,
+                      fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                      minHeight: 44,
+                      height: "auto",
+                      py: 0.75,
+                      px: 0.5,
+                      "& .MuiChip-label": {
+                        px: 0.75,
+                        py: 0.25,
+                      },
+                      "& .MuiChip-icon": {
+                        ml: 1,
+                        mr: -0.25,
+                      },
+                    }}
+                  />
+                );
+              })}
+            </Box>
+          </Box>
+        )}
 
           <Divider />
           <Box sx={{ px: 2, py: 1.5 }}>

@@ -1,8 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  Paper,
-  BottomNavigation,
-  BottomNavigationAction,
   Box,
   useTheme,
   Menu,
@@ -14,22 +11,24 @@ import {
   ListItemButton,
 } from "@mui/material";
 import {
-  Home as HomeIcon,
-  Category as CategoryIcon,
-  Store as StoreIcon,
-  CardGiftcard as CardGiftcardIcon,
-  Favorite as FavoriteIcon,
-  VideoLibrary as VideoLibraryIcon,
-  ShoppingBag as ShoppingBagIcon,
-  Person as PersonIcon,
-  Business as BusinessIcon,
-  WorkOutline as WorkOutlineIcon,
-  LocationOn as LocationOnIcon,
-  Language as LanguageIcon,
-  Search as SearchIcon,
-  Refresh as RefreshIcon,
-  Notifications as NotificationsIcon,
-} from "@mui/icons-material";
+  Home,
+  Search,
+  RefreshCw,
+  LayoutGrid,
+  Clapperboard,
+  Heart,
+  Store,
+  Gift,
+  ShoppingBag,
+  User,
+  Building2,
+  Landmark,
+  Briefcase,
+  MapPin,
+  Languages,
+  Bell,
+} from "lucide-react";
+import { motion, LayoutGroup, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useIsMobileLayout from "../hooks/useIsMobileLayout";
@@ -44,13 +43,28 @@ import {
   useDataLanguage,
 } from "../context/DataLanguageContext";
 import kurdishFlag from "../styles/kurdish_flag.jpg";
+import {
+  MAIN_PAGE_SCROLL_KEY,
+  MAIN_PAGE_SCROLL_STATE_KEY,
+  resetMainPageScrollPositionInSession,
+  scrollWindowToTop,
+} from "../utils/mainPageScrollSession";
 
 const NAV_PATH_CITY = "__nav_city__";
 const NAV_PATH_LANG = "__nav_language__";
 const NAV_PATH_REFRESH = "__nav_refresh__";
 const NAV_PATH_NOTIFICATIONS = "__nav_notifications__";
-const MAIN_PAGE_SCROLL_KEY = "mainPage.scrollY.v1";
-const MAIN_PAGE_SCROLL_STATE_KEY = "mainPage.scrollState.v1";
+
+/** Same dark glass as `NavigationBar.js` (`NAV_BAR_GRADIENT_DARK_GLASS`). */
+const NAV_BAR_GRADIENT_DARK_GLASS =
+  "linear-gradient(118deg, rgba(7,11,20,0.78) 0%, rgba(15,23,42,0.7) 42%, rgba(23,37,84,0.62) 78%, rgba(37,99,235,0.45) 100%)";
+
+/** MUI Box + Framer Motion — keeps layout/animation working without relying on Tailwind. */
+const MotionBox = motion(Box);
+
+/** Full-width bottom bar: shared icon + label scale (readable on wide screens). */
+const NAV_ICON_SIZE = 26;
+const NAV_ICON_STROKE = { idle: 2, active: 2.4 };
 
 function persistMainPageScrollState(y) {
   try {
@@ -72,21 +86,23 @@ function persistMainPageScrollState(y) {
   }
 }
 
-/** Solid brand bar (light). Dark uses translucent glass gradient. */
-const BOTTOM_NAV_GRADIENT =
-  "linear-gradient(120deg, var(--color-primary) 0%, var(--color-secondary) 56%, var(--color-secondary) 100%)";
-const BOTTOM_NAV_GRADIENT_DARK_GLASS =
-  "linear-gradient(118deg, rgba(7,11,20,0.82) 0%, rgba(15,23,42,0.74) 42%, rgba(23,37,84,0.66) 78%, rgba(37,99,235,0.48) 100%)";
-
 const BottomNavigationBar = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const reduceMotion = useReducedMotion();
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobileLayout();
   const { navConfig } = useActiveTheme();
   const { triggerRefresh } = useContentRefresh();
+  const handleBottomNavRefresh = useCallback(() => {
+    if (location.pathname === "/") {
+      scrollWindowToTop("auto");
+      resetMainPageScrollPositionInSession();
+    }
+    triggerRefresh?.();
+  }, [location.pathname, triggerRefresh]);
   const { selectedCity, changeCity, cities } = useCityFilter();
   const { dataLanguage } = useDataLanguage();
   const {
@@ -123,8 +139,12 @@ const BottomNavigationBar = () => {
     };
   }, [dataLanguage]);
 
+  /** Same route matching as before — drives “active” tab + pill target. */
   const activeValue = useMemo(() => {
-    const pathname = location.pathname;
+    let pathname = location.pathname;
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+      pathname = pathname.slice(0, -1);
+    }
 
     if (pathname === "/") return "/";
     if (pathname === "/reels") return "/reels";
@@ -138,6 +158,7 @@ const BottomNavigationBar = () => {
 
     if (pathname.startsWith("/stores")) return "/stores";
     if (pathname.startsWith("/brands")) return "/brands";
+    if (pathname.startsWith("/companies")) return "/companies";
 
     return false;
   }, [location.pathname]);
@@ -146,197 +167,216 @@ const BottomNavigationBar = () => {
 
   const actionMap = useMemo(
     () => ({
-      home: { name: t("Home"), path: "/", icon: <HomeIcon /> },
-      search: {
-        name: t("Search"),
-        path: "/search",
-        icon: <SearchIcon />,
-      },
+      home: { name: t("Home"), path: "/", Icon: Home },
+      search: { name: t("Search"), path: "/search", Icon: Search },
       refresh: {
         kind: "refresh",
         name: t("Refresh"),
         path: NAV_PATH_REFRESH,
-        icon: <RefreshIcon />,
+        Icon: RefreshCw,
       },
       categories: {
         name: t("Categories"),
         path: "/categories",
-        icon: <CategoryIcon />,
+        Icon: LayoutGrid,
       },
-      reels: { name: t("Reels"), path: "/reels", icon: <VideoLibraryIcon /> },
+      reels: { name: t("Reels"), path: "/reels", Icon: Clapperboard },
       favourites: {
         name: t("Favourites"),
         path: "/favourites",
-        icon: <FavoriteIcon />,
+        Icon: Heart,
       },
-      stores: { name: t("Stores"), path: "/stores", icon: <StoreIcon /> },
-      gifts: { name: t("Gifts"), path: "/gifts", icon: <CardGiftcardIcon /> },
+      stores: { name: t("Stores"), path: "/stores", Icon: Store },
+      gifts: { name: t("Gifts"), path: "/gifts", Icon: Gift },
       shopping: {
         name: t("Shopping"),
         path: "/shopping",
-        icon: <ShoppingBagIcon />,
+        Icon: ShoppingBag,
       },
-      profile: { name: t("Account"), path: "/profile", icon: <PersonIcon /> },
-      brands: { name: t("Brands"), path: "/brands", icon: <BusinessIcon /> },
+      profile: { name: t("Account"), path: "/profile", Icon: User },
+      brands: { name: t("Brands"), path: "/brands", Icon: Building2 },
+      companies: {
+        name: t("Companies"),
+        path: "/companies",
+        Icon: Landmark,
+      },
       jobs: {
         name: t("Find Job"),
         path: "/findjob",
-        icon: <WorkOutlineIcon />,
+        Icon: Briefcase,
       },
       city: {
         kind: "city",
         name: t("City"),
         path: NAV_PATH_CITY,
-        icon: <LocationOnIcon />,
+        Icon: MapPin,
       },
       language: {
         kind: "language",
         name: t("Language"),
         path: NAV_PATH_LANG,
-        icon: <LanguageIcon />,
+        Icon: Languages,
       },
       notifications: {
         kind: "notifications",
         name: t("Notifications"),
         path: NAV_PATH_NOTIFICATIONS,
-        icon: (
-          <Badge badgeContent={unreadCount} color="error">
-            <NotificationsIcon />
-          </Badge>
-        ),
+        Icon: Bell,
       },
     }),
-    [t, unreadCount],
+    [t],
   );
 
-  const navItems =
-    template === "template2"
-      ? [
-          actionMap.home,
-          actionMap.categories,
-          actionMap.reels,
-          actionMap.favourites,
-          actionMap.profile,
-        ]
-      : template === "custom"
+  const navItems = useMemo(
+    () =>
+      template === "template2"
         ? [
-            actionMap[navConfig?.bottomSlots?.bottomleft1] || null,
-            actionMap[navConfig?.bottomSlots?.bottomleft2] || null,
-            actionMap[navConfig?.bottomSlots?.center] || null,
-            actionMap[navConfig?.bottomSlots?.bottomright1] || null,
-            actionMap[navConfig?.bottomSlots?.bottomright2] || null,
-          ]
-        : [
             actionMap.home,
             actionMap.categories,
             actionMap.reels,
-            actionMap.stores,
-            actionMap.gifts,
-          ];
+            actionMap.favourites,
+            actionMap.profile,
+          ]
+        : template === "custom"
+          ? [
+              actionMap[navConfig?.bottomSlots?.bottomleft1] || null,
+              actionMap[navConfig?.bottomSlots?.bottomleft2] || null,
+              actionMap[navConfig?.bottomSlots?.center] || null,
+              actionMap[navConfig?.bottomSlots?.bottomright1] || null,
+              actionMap[navConfig?.bottomSlots?.bottomright2] || null,
+            ]
+          : [
+              actionMap.home,
+              actionMap.categories,
+              actionMap.reels,
+              actionMap.stores,
+              actionMap.gifts,
+            ],
+    [template, actionMap, navConfig],
+  );
 
-  const actionSx = useCallback(
-    (isActive) => {
-      if (!isDark) {
-        return {
-          color: isActive
-            ? "white !important"
-            : "rgba(255,255,255,0.8) !important",
-          backgroundColor: isActive
-            ? "rgba(255,255,255,0.16) !important"
-            : "transparent !important",
-          borderRadius: isActive ? 1 : 0,
-          minWidth: "auto",
-          padding: "6px 8px",
-          transition: "all 0.3s ease",
-          "&.Mui-selected": {
-            color: "white !important",
-            backgroundColor: "rgba(255,255,255,0.16) !important",
-          },
-          "&.MuiBottomNavigationAction-root": {
-            color: isActive
-              ? "white !important"
-              : "rgba(255,255,255,0.8) !important",
-            backgroundColor: isActive
-              ? "rgba(255,255,255,0.16) !important"
-              : "transparent !important",
-          },
-          "& .MuiBottomNavigationAction-label": {
-            fontSize: isActive ? "0.75rem" : "0.7rem",
-            fontWeight: isActive ? 600 : 500,
-            marginTop: "4px",
-            transition: "all 0.3s ease",
-            color: isActive
-              ? "white !important"
-              : "rgba(255,255,255,0.8) !important",
-          },
-          "& .MuiSvgIcon-root": {
-            fontSize: "1.5rem",
-            transform: isActive ? "scale(1.1)" : "scale(1)",
-            transition: "all 0.3s ease",
-            color: isActive
-              ? "white !important"
-              : "rgba(255,255,255,0.8) !important",
-          },
-          "&:hover": {
-            backgroundColor: "rgba(255,255,255,0.1) !important",
-            borderRadius: 1,
-          },
-        };
+  /** Snappier spring so the active pill tracks tab switches quickly. */
+  const pillTransition = useMemo(
+    () =>
+      reduceMotion
+        ? { duration: 0.08 }
+        : { type: "spring", stiffness: 820, damping: 42, mass: 0.55 },
+    [reduceMotion],
+  );
+
+  const handleRouteNavigate = useCallback(
+    (item) => {
+      if (item.path === "/" && location.pathname === "/") {
+        const now = Date.now();
+        const isDoubleTap = now - lastHomeTapTsRef.current <= 450;
+        lastHomeTapTsRef.current = now;
+        const isAtTop = (window.scrollY || window.pageYOffset || 0) <= 8;
+
+        if (isDoubleTap || isAtTop) {
+          scrollWindowToTop("auto");
+          resetMainPageScrollPositionInSession();
+          triggerRefresh?.();
+          return;
+        }
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
-      return {
-        color: isActive
-          ? "#f8fafc !important"
-          : "rgba(226,232,240,0.78) !important",
-        backgroundColor: isActive
-          ? "rgba(255,255,255,0.14) !important"
-          : "transparent !important",
-        backdropFilter: isActive ? "blur(10px) saturate(150%)" : "none",
-        WebkitBackdropFilter: isActive ? "blur(10px) saturate(150%)" : "none",
-        borderRadius: isActive ? 2 : 0,
-        minWidth: "auto",
-        padding: "6px 8px",
-        transition: "all 0.25s ease",
-        boxShadow: isActive
-          ? "inset 0 1px 0 rgba(255,255,255,0.25), 0 0 0 1px rgba(255,255,255,0.12)"
-          : "none",
-        "&.Mui-selected": {
-          color: "#f8fafc !important",
-          backgroundColor: "rgba(255,255,255,0.14) !important",
-        },
-        "&.MuiBottomNavigationAction-root": {
-          color: isActive
-            ? "#f8fafc !important"
-            : "rgba(226,232,240,0.78) !important",
-          backgroundColor: isActive
-            ? "rgba(255,255,255,0.14) !important"
-            : "transparent !important",
-        },
-        "& .MuiBottomNavigationAction-label": {
-          fontSize: isActive ? "0.75rem" : "0.7rem",
-          fontWeight: isActive ? 600 : 500,
-          marginTop: "4px",
-          transition: "all 0.25s ease",
-          color: isActive
-            ? "#f8fafc !important"
-            : "rgba(226,232,240,0.78) !important",
-        },
-        "& .MuiSvgIcon-root": {
-          fontSize: "1.5rem",
-          transform: isActive ? "scale(1.08)" : "scale(1)",
-          transition: "all 0.25s ease",
-          color: isActive
-            ? "#f8fafc !important"
-            : "rgba(226,232,240,0.78) !important",
-          filter: isActive ? "drop-shadow(0 0 10px rgba(59,130,246,0.35))" : "none",
-        },
-        "&:hover": {
-          backgroundColor: "rgba(255,255,255,0.08) !important",
-          borderRadius: 1.5,
-        },
-      };
+
+      if (item.path === "/reels" && location.pathname === "/reels") {
+        const now = Date.now();
+        const isDoubleTap = now - lastReelsTapTsRef.current <= 450;
+        lastReelsTapTsRef.current = now;
+
+        window.dispatchEvent(
+          new CustomEvent("app:reels-nav-tap", {
+            detail: { doubleTap: isDoubleTap },
+          }),
+        );
+
+        if (isDoubleTap) {
+          triggerRefresh?.();
+          return;
+        }
+
+        return;
+      }
+
+      if (location.pathname === "/" && item.path !== "/") {
+        persistMainPageScrollState(window.scrollY || window.pageYOffset || 0);
+      }
+      navigate(item.path);
     },
+    [location.pathname, navigate, triggerRefresh],
+  );
+
+  /**
+   * Shell chrome in `sx` only — surface colors live on inline `style` so RTL (ar/ku) does not
+   * transform gradients (same pattern as `NavigationBar` AppBar + theme MuiAppBar note).
+   */
+  const glassNavSx = useMemo(
+    () => ({
+      display: "flex",
+      width: "100%",
+      maxWidth: "100%",
+      minHeight: 64,
+      maxHeight: "none",
+      borderRadius: "25px 25px 25px 25px",
+      alignItems: "stretch",
+      overflow: "hidden",
+      position: "relative",
+      boxSizing: "border-box",
+      ...(isDark
+        ? {
+            backdropFilter: "blur(22px) saturate(170%)",
+            WebkitBackdropFilter: "blur(22px) saturate(170%)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderBottom: "none",
+            boxShadow:
+              "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+          }
+        : {
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            border: "1px solid",
+            borderColor: "rgba(229,231,235,0.6)",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+          }),
+    }),
     [isDark],
   );
+
+  const bottomNavSurfaceStyle = useMemo(
+    () =>
+      isDark
+        ? { background: NAV_BAR_GRADIENT_DARK_GLASS }
+        : { backgroundColor: "rgba(255,255,255,0.85)" },
+    [isDark],
+  );
+
+  const inactiveIconColor = isDark ? "#a1a1aa" : "#71717a";
+
+  /** Equal columns + clip: stops active label/pill painting over neighbor icons. */
+  const tabBtnBaseSx = {
+    flex: "1 1 0",
+    minWidth: 0,
+    maxWidth: "100%",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "none",
+    bgcolor: "transparent",
+    cursor: "pointer",
+    p: 0,
+    borderRadius: 9999,
+    position: "relative",
+    zIndex: 1,
+    "&:focus-visible": {
+      outline: "2px solid rgba(251, 146, 60, 0.95)",
+      outlineOffset: 2,
+    },
+  };
 
   if (!isMobile) {
     return null;
@@ -346,229 +386,293 @@ const BottomNavigationBar = () => {
     <Box
       sx={{
         position: "fixed",
-        bottom: 0,
         left: 0,
         right: 0,
+        bottom: 0,
+        width: "100%",
         zIndex: 1000,
-        px: 0,
-        pb: "max(0px, env(safe-area-inset-bottom))",
+        pointerEvents: "none",
+        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
+        boxSizing: "border-box",
       }}
     >
-      <Paper
-        elevation={isDark ? 0 : 8}
-        style={{
-          background: isDark ? BOTTOM_NAV_GRADIENT_DARK_GLASS : BOTTOM_NAV_GRADIENT,
-        }}
+      <Box
         sx={{
-          ...(isDark
-            ? {
-                backdropFilter: "blur(22px) saturate(170%)",
-                WebkitBackdropFilter: "blur(22px) saturate(170%)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderBottom: "none",
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                overflow: "hidden",
-                minHeight: "64px",
-                display: "flex",
-                flexDirection: "column",
-                position: "relative",
-                boxShadow:
-                  "0 -12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "20px 20px 0 0",
-                  pointerEvents: "none",
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 42%)",
-                  zIndex: 0,
-                },
-              }
-            : {
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderBottom: "none",
-                overflow: "hidden",
-                minHeight: "64px",
-                display: "flex",
-                flexDirection: "column",
-              }),
+          pointerEvents: "auto",
+          width: "100%",
+          maxWidth: "100%",
         }}
       >
-        <BottomNavigation
-          value={activeValue}
-          onChange={() => {}}
-          showLabels
-          sx={{
-            position: "relative",
-            zIndex: isDark ? 1 : "auto",
-            background: "transparent !important",
-            minHeight: "64px",
-            "& .MuiBottomNavigationAction-root": {
-              color: isDark
-                ? "rgba(226,232,240,0.78) !important"
-                : "rgba(255,255,255,0.8) !important",
-              "&.Mui-selected": {
-                color: isDark
-                  ? "#f8fafc !important"
-                  : "white !important",
-                backgroundColor: isDark
-                  ? "rgba(255,255,255,0.14) !important"
-                  : "rgba(255,255,255,0.16) !important",
-              },
-            },
-          }}
-        >
-          {navItems.map((item, idx) => {
-            if (!item) {
-              return (
-                <BottomNavigationAction
-                  key={`empty-${idx}`}
-                  label=""
-                  value={`empty-${idx}`}
-                  disabled
-                  sx={{
-                    opacity: 0,
-                    pointerEvents: "none",
-                    minWidth: "auto",
-                    padding: "6px 8px",
-                  }}
-                />
-              );
-            }
-
-            if (item.kind === "city") {
-              const isActive = false;
-              return (
-                <BottomNavigationAction
-                  key={`${item.path}-${idx}`}
-                  label={item.name}
-                  value={item.path}
-                  icon={item.icon}
-                  component="button"
-                  type="button"
-                  onClick={(e) => setCityMenuAnchor(e.currentTarget)}
-                  sx={actionSx(isActive)}
-                />
-              );
-            }
-
-            if (item.kind === "language") {
-              const isActive = false;
-              return (
-                <BottomNavigationAction
-                  key={`${item.path}-${idx}`}
-                  label={item.name}
-                  value={item.path}
-                  icon={item.icon}
-                  component="button"
-                  type="button"
-                  onClick={(e) => setLangMenuAnchor(e.currentTarget)}
-                  sx={actionSx(isActive)}
-                />
-              );
-            }
-
-            if (item.kind === "notifications") {
-              const isActive = false;
-              return (
-                <BottomNavigationAction
-                  key={`${item.path}-${idx}`}
-                  label={item.name}
-                  value={item.path}
-                  icon={item.icon}
-                  component="button"
-                  type="button"
-                  onClick={(e) => {
-                    setNotifMenuAnchor(e.currentTarget);
-                    fetchNotifications?.();
-                  }}
-                  sx={actionSx(isActive)}
-                />
-              );
-            }
-
-            if (item.kind === "refresh") {
-              const isActive = false;
-              return (
-                <BottomNavigationAction
-                  key={`${item.path}-${idx}`}
-                  label={item.name}
-                  value={item.path}
-                  icon={item.icon}
-                  component="button"
-                  type="button"
-                  onClick={() => triggerRefresh?.()}
-                  sx={actionSx(isActive)}
-                />
-              );
-            }
-
-            const isActive = activeValue === item.path;
-
-            return (
-              <BottomNavigationAction
-                key={item.path}
-                label={item.name}
-                value={item.path}
-                icon={item.icon}
-                component="button"
-                type="button"
-                onClick={() => {
-                  if (item.path === "/" && location.pathname === "/") {
-                    const now = Date.now();
-                    const isDoubleTap = now - lastHomeTapTsRef.current <= 450;
-                    lastHomeTapTsRef.current = now;
-                    const isAtTop =
-                      (window.scrollY || window.pageYOffset || 0) <= 8;
-
-                    if (isDoubleTap || isAtTop) {
-                      triggerRefresh?.();
-                      return;
-                    }
-
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                    return;
-                  }
-
-                  if (
-                    item.path === "/reels" &&
-                    location.pathname === "/reels"
-                  ) {
-                    const now = Date.now();
-                    const isDoubleTap = now - lastReelsTapTsRef.current <= 450;
-                    lastReelsTapTsRef.current = now;
-
-                    window.dispatchEvent(
-                      new CustomEvent("app:reels-nav-tap", {
-                        detail: { doubleTap: isDoubleTap },
-                      }),
-                    );
-
-                    if (isDoubleTap) {
-                      triggerRefresh?.();
-                      return;
-                    }
-
-                    return;
-                  }
-
-                  if (location.pathname === "/" && item.path !== "/") {
-                    persistMainPageScrollState(
-                      window.scrollY || window.pageYOffset || 0,
-                    );
-                  }
-                  navigate(item.path);
+        <LayoutGroup id="floating-bottom-nav">
+          <Box
+            component="nav"
+            sx={glassNavSx}
+            style={bottomNavSurfaceStyle}
+          >
+            {isDark ? (
+              <Box
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "inherit",
+                  pointerEvents: "none",
+                  zIndex: 0,
                 }}
-                sx={actionSx(isActive)}
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 42%)",
+                }}
               />
-            );
-          })}
-        </BottomNavigation>
-      </Paper>
+            ) : null}
+            <Box
+              sx={{
+                position: "relative",
+                zIndex: 1,
+                display: "flex",
+                width: "100%",
+                minWidth: 0,
+                alignItems: "stretch",
+                gap: { xs: 1.5, sm: 2 },
+                px: { xs: 2, sm: 3 },
+                py: { xs: 1, sm: 1.125 },
+                boxSizing: "border-box",
+              }}
+            >
+              {navItems.map((item, idx) => {
+                if (!item) {
+                  return (
+                    <Box
+                      key={`empty-${idx}`}
+                      aria-hidden
+                      sx={{ flex: 1, minWidth: 0, opacity: 0 }}
+                    />
+                  );
+                }
+
+                const Icon = item.Icon;
+                const isRouteTab = !item.kind;
+                const routeActive =
+                  isRouteTab && activeValue !== false && activeValue === item.path;
+
+                if (item.kind === "city") {
+                  return (
+                    <MotionBox
+                      key={`${item.path}-${idx}`}
+                      component="button"
+                      type="button"
+                      aria-label={item.name}
+                      onClick={(e) => setCityMenuAnchor(e.currentTarget)}
+                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      sx={{
+                        ...tabBtnBaseSx,
+                        color: inactiveIconColor,
+                      }}
+                    >
+                      <Icon
+                        size={NAV_ICON_SIZE}
+                        color="currentColor"
+                        strokeWidth={NAV_ICON_STROKE.idle}
+                      />
+                    </MotionBox>
+                  );
+                }
+
+                if (item.kind === "language") {
+                  return (
+                    <MotionBox
+                      key={`${item.path}-${idx}`}
+                      component="button"
+                      type="button"
+                      aria-label={item.name}
+                      onClick={(e) => setLangMenuAnchor(e.currentTarget)}
+                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      sx={{
+                        ...tabBtnBaseSx,
+                        color: inactiveIconColor,
+                      }}
+                    >
+                      <Icon
+                        size={NAV_ICON_SIZE}
+                        color="currentColor"
+                        strokeWidth={NAV_ICON_STROKE.idle}
+                      />
+                    </MotionBox>
+                  );
+                }
+
+                if (item.kind === "notifications") {
+                  return (
+                    <MotionBox
+                      key={`${item.path}-${idx}`}
+                      component="button"
+                      type="button"
+                      aria-label={item.name}
+                      onClick={(e) => {
+                        setNotifMenuAnchor(e.currentTarget);
+                        fetchNotifications?.();
+                      }}
+                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      sx={{
+                        ...tabBtnBaseSx,
+                        color: inactiveIconColor,
+                      }}
+                    >
+                      <Badge badgeContent={unreadCount} color="error">
+                        <Icon
+                          size={NAV_ICON_SIZE}
+                          color="currentColor"
+                          strokeWidth={NAV_ICON_STROKE.idle}
+                        />
+                      </Badge>
+                    </MotionBox>
+                  );
+                }
+
+                if (item.kind === "refresh") {
+                  return (
+                    <MotionBox
+                      key={`${item.path}-${idx}`}
+                      component="button"
+                      type="button"
+                      aria-label={item.name}
+                      onClick={handleBottomNavRefresh}
+                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      sx={{
+                        ...tabBtnBaseSx,
+                        color: inactiveIconColor,
+                      }}
+                    >
+                      <Icon
+                        size={NAV_ICON_SIZE}
+                        color="currentColor"
+                        strokeWidth={NAV_ICON_STROKE.idle}
+                      />
+                    </MotionBox>
+                  );
+                }
+
+                return (
+                  <MotionBox
+                    key={item.path}
+                    component="button"
+                    type="button"
+                    aria-current={routeActive ? "page" : undefined}
+                    aria-label={item.name}
+                    onClick={() => handleRouteNavigate(item)}
+                    whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                    whileHover={
+                      reduceMotion
+                        ? undefined
+                        : routeActive
+                          ? { scale: 1.02 }
+                          : { scale: 1.06 }
+                    }
+                    sx={{
+                      ...tabBtnBaseSx,
+                      // Active tab gets extra horizontal space for the label.
+                      flex: routeActive ? "2.75 1 0%" : "1 1 0%",
+                      zIndex: routeActive ? 2 : 1,
+                    }}
+                  >
+                    {/* Framer `layoutId` morphs this pill between route tabs. */}
+                    <Box
+                      sx={{
+                        position: "relative",
+                        display: "flex",
+                        width: "100%",
+                        maxWidth: "100%",
+                        minWidth: 0,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 9999,
+                        py: 0.75,
+                        px: routeActive ? 1.5 : 0.5,
+                        boxSizing: "border-box",
+                        overflow: "hidden",
+                        isolation: "isolate",
+                      }}
+                    >
+                      {routeActive && (
+                        <motion.div
+                          layoutId="bottom-nav-active-pill"
+                          transition={pillTransition}
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            zIndex: 0,
+                            borderRadius: 9999,
+                            background:
+                              "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
+                            boxShadow: "0 10px 28px rgba(249,115,22,0.45)",
+                            willChange: "transform",
+                            pointerEvents: "none",
+                          }}
+                        />
+                      )}
+                      <Box
+                        component="span"
+                        sx={{
+                          position: "relative",
+                          zIndex: 2,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexDirection: "row",
+                          flexWrap: "nowrap",
+                          gap: routeActive ? 1.125 : 0.5,
+                          minWidth: 0,
+                          width: "100%",
+                          maxWidth: "100%",
+                          px: routeActive ? 0 : 0,
+                        }}
+                      >
+                        <Icon
+                          size={NAV_ICON_SIZE}
+                          color={routeActive ? "#ffffff" : inactiveIconColor}
+                          strokeWidth={
+                            routeActive
+                              ? NAV_ICON_STROKE.active
+                              : NAV_ICON_STROKE.idle
+                          }
+                          style={{ flexShrink: 0 }}
+                        />
+                        {routeActive && (
+                          <Typography
+                            component="span"
+                            sx={{
+                              flex: "1 1 auto",
+                              minWidth: 0,
+                              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+                              fontWeight: 650,
+                              lineHeight: 1.35,
+                              letterSpacing: "0.02em",
+                              color: "#ffffff !important",
+                              textAlign: "start",
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                              hyphens: "auto",
+                              whiteSpace: "normal",
+                            }}
+                          >
+                            {item.name || item.path}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </MotionBox>
+                );
+              })}
+            </Box>
+          </Box>
+        </LayoutGroup>
+      </Box>
 
       <Menu
         anchorEl={cityMenuAnchor}

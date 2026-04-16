@@ -42,6 +42,7 @@ import {
   VideoLibrary as VideoLibraryIcon,
   ShoppingBag as ShoppingBagIcon,
   WorkOutline as WorkOutlineIcon,
+  CorporateFare as CorporateFareIcon,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -63,6 +64,10 @@ import {
 import { giftAPI } from "./services/api";
 import { isExpiryStillValid } from "./utils/expiryDate";
 import { isAdminEmail, canAccessDataEntry } from "./utils/adminAccess";
+import {
+  resetMainPageScrollPositionInSession,
+  scrollWindowToTop,
+} from "./utils/mainPageScrollSession";
 
 // Enable notification center (bell + menu)
 const NOTIFICATIONS_CENTER_ENABLED = true;
@@ -111,6 +116,14 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const { navConfig } = useActiveTheme();
   const { dataLanguage } = useDataLanguage();
   const location = useLocation();
+  /** Toolbar refresh: scroll home to top + clear saved scroll, then bump refreshKey (all routes). */
+  const handleNavRefresh = useCallback(() => {
+    if (location.pathname === "/") {
+      scrollWindowToTop("auto");
+      resetMainPageScrollPositionInSession();
+    }
+    triggerRefresh?.();
+  }, [location.pathname, triggerRefresh]);
   const isAuthenticated = !!user;
   const isFullAdmin = isAdminEmail(user);
   const showAdminNav = !!user && canAccessDataEntry(user);
@@ -578,7 +591,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   <HomeIcon />
                 </IconButton>
                 <IconButton
-                  onClick={() => triggerRefresh?.()}
+                  onClick={handleNavRefresh}
                   sx={navIconBtnSx}
                   aria-label={t("Refresh")}
                 >
@@ -653,7 +666,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   <HomeIcon />
                 </IconButton>
                 <IconButton
-                  onClick={() => triggerRefresh?.()}
+                  onClick={handleNavRefresh}
                   sx={navIconBtnSx}
                   aria-label={t("Refresh")}
                 >
@@ -688,6 +701,10 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                   shopping: { to: "/shopping", icon: <ShoppingBagIcon /> },
                   profile: { to: "/profile", icon: <PersonIcon /> },
                   brands: { to: "/brands", icon: <BusinessIcon /> },
+                  companies: {
+                    to: "/companies",
+                    icon: <CorporateFareIcon />,
+                  },
                   jobs: { to: "/findjob", icon: <WorkOutlineIcon /> },
                 };
 
@@ -701,7 +718,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     return (
                       <IconButton
                         key={key}
-                        onClick={() => triggerRefresh?.()}
+                        onClick={handleNavRefresh}
                         sx={sxBtn}
                       >
                         <RefreshIcon />
