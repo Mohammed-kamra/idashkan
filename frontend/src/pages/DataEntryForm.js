@@ -245,6 +245,7 @@ const DataEntryForm = () => {
     {},
   );
   const [products, setProducts] = useState([]);
+  const [productListImageUploadId, setProductListImageUploadId] = useState(null);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [gifts, setGifts] = useState([]);
   const [ads, setAds] = useState([]);
@@ -1306,6 +1307,44 @@ const DataEntryForm = () => {
     } catch (error) {
       console.error("Error uploading image:", error);
       throw error;
+    }
+  };
+
+  const handleProductListImageUpload = async (e, product) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !product?._id) return;
+    const pid = String(product._id);
+    setProductListImageUploadId(pid);
+    try {
+      const imageUrl = await uploadProductImage(
+        file,
+        product.expireDate != null && product.expireDate !== ""
+          ? product.expireDate
+          : undefined,
+      );
+      await productAPI.update(pid, { image: imageUrl });
+      setMessage({
+        type: "success",
+        text: t("productListImageUpdated", {
+          defaultValue: "Product image updated",
+        }),
+      });
+      await fetchProducts(selectedStoreFilter);
+    } catch (err) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text:
+          err?.response?.data?.msg ||
+          err?.response?.data?.message ||
+          err?.message ||
+          t("productListImageFailed", {
+            defaultValue: "Failed to update product image",
+          }),
+      });
+    } finally {
+      setProductListImageUploadId(null);
     }
   };
 
@@ -5869,22 +5908,65 @@ const DataEntryForm = () => {
                         </TableCell>
                         <TableCell>{product.name}</TableCell>
                         <TableCell>
-                          {product.image && (
-                            <img
-                              src={
-                                product.image.startsWith("http")
-                                  ? product.image
-                                  : `${API_URL}${product.image}`
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            {product.image && (
+                              <img
+                                src={
+                                  product.image.startsWith("http")
+                                    ? product.image
+                                    : `${API_URL}${product.image}`
+                                }
+                                alt={product.name}
+                                style={{
+                                  width: 48,
+                                  height: 48,
+                                  objectFit: "cover",
+                                  borderRadius: 4,
+                                }}
+                              />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              id={`product-list-img-${product._id}`}
+                              style={{ display: "none" }}
+                              onChange={(ev) =>
+                                handleProductListImageUpload(ev, product)
                               }
-                              alt={product.name}
-                              style={{
-                                width: 48,
-                                height: 48,
-                                objectFit: "cover",
-                                borderRadius: 4,
-                              }}
                             />
-                          )}
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              component="span"
+                              disabled={
+                                productListImageUploadId ===
+                                String(product._id)
+                              }
+                              aria-label={t("productListUploadImage", {
+                                defaultValue: "Upload or change image",
+                              })}
+                              onClick={() =>
+                                document
+                                  .getElementById(
+                                    `product-list-img-${product._id}`,
+                                  )
+                                  ?.click()
+                              }
+                            >
+                              {productListImageUploadId ===
+                              String(product._id) ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <CloudUploadIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Box>
                         </TableCell>
 
                         <TableCell>

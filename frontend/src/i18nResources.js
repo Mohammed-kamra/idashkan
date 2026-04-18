@@ -267,6 +267,9 @@ export const resources = {
         "Upload complete with {{count}} errors. Please check the file.",
       "Brand updated successfully!": "Brand updated successfully!",
       "Product updated successfully!": "Product updated successfully!",
+      productListImageUpdated: "Product image updated",
+      productListImageFailed: "Failed to update product image",
+      productListUploadImage: "Upload or change image",
       "Failed to update. Please try again.":
         "Failed to update. Please try again.",
       "Brand deleted successfully!": "Brand deleted successfully!",
@@ -952,6 +955,9 @@ export const resources = {
         "اكتمل التحميل مع {{count}} أخطاء. يرجى مراجعة الملف.",
       "Brand updated successfully!": "تم تحديث الشركة بنجاح!",
       "Product updated successfully!": "تم تحديث المنتج بنجاح!",
+      productListImageUpdated: "تم تحديث صورة المنتج",
+      productListImageFailed: "فشل تحديث صورة المنتج",
+      productListUploadImage: "رفع أو تغيير الصورة",
       "Failed to update. Please try again.":
         "فشل التحديث. يرجى المحاولة مرة أخرى.",
       "Number of stores that are available in the system":
@@ -1608,6 +1614,9 @@ export const resources = {
         "بارکردن تەواو بوو بە {{count}} هەڵە. تکایە سەیری فایلەکە بکە.",
       "Brand updated successfully!": "بڕاند بە سەرکەوتوویی نوێکرایەوە!",
       "Product updated successfully!": "کاڵاکە بە سەرکەوتوویی نوێکرایەوە!",
+      productListImageUpdated: "وێنەی کاڵا نوێکرایەوە",
+      productListImageFailed: "نوێکردنەوەی وێنەی کاڵا سەرکەوتوو نەبوو",
+      productListUploadImage: "بارکردن یان گۆڕینی وێنە",
       "Failed to update. Please try again.":
         "نوێکردنەوە سەرکەوتوو نەبوو. تکایە دووبارە هەوڵبدەرەوە.",
       "Brand deleted successfully!": "بڕاند بە سەرکەوتوویی سڕایەوە!",
