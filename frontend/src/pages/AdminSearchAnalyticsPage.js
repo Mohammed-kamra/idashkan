@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "@mui/material/styles";
 import { adminAPI } from "../services/api";
 import {
   Box,
@@ -51,7 +52,7 @@ function defaultRange() {
 
 const AdminSearchAnalyticsPage = () => {
   const navigate = useNavigate();
-
+  const theme = useTheme();
   const { user, isAuthenticated } = useAuth();
   const [range, setRange] = useState(() => defaultRange());
   const [city, setCity] = useState("");
@@ -315,7 +316,17 @@ const AdminSearchAnalyticsPage = () => {
           </Box>
         ) : (
           <>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid
+              container
+              spacing={2}
+              sx={{
+                mb: 3,
+                color:
+                  theme.palette.mode === "dark"
+                    ? "secondary.main"
+                    : "primary.main",
+              }}
+            >
               {[
                 {
                   label: "Total searches",
@@ -357,11 +368,21 @@ const AdminSearchAnalyticsPage = () => {
                           alignItems: "center",
                           gap: 1,
                           mb: 1,
-                          color: "primary.main",
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "text.primary"
+                              : "text.secondary",
                         }}
                       >
                         {card.icon}
-                        <Typography color="text.secondary" variant="body2">
+                        <Typography
+                          color={
+                            theme.palette.mode === "dark"
+                              ? "text.primary"
+                              : "text.secondary"
+                          }
+                          variant="body2"
+                        >
                           {card.label}
                         </Typography>
                       </Box>
@@ -371,12 +392,23 @@ const AdminSearchAnalyticsPage = () => {
                         sx={{
                           fontSize: { xs: "1.35rem", sm: "2.125rem" },
                           wordBreak: "break-word",
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "text.primary"
+                              : "text.secondary",
                         }}
                       >
                         {card.value}
                       </Typography>
                       {card.prev != null && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color={
+                            theme.palette.mode === "dark"
+                              ? "text.primary"
+                              : "text.secondary"
+                          }
+                        >
                           Previous period: {card.prev}
                         </Typography>
                       )}
