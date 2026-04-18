@@ -304,17 +304,22 @@ const LoginPage = () => {
 
   const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
 
-  /** Full-page OAuth return: ?google_oauth_token= or ?google_error= */
+  /** Full-page OAuth return: #google_oauth_token= (preferred) or ?google_oauth_token=; ?google_error= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(
+      (window.location.hash || "").replace(/^#/, ""),
+    );
     const oauthErr = params.get("google_error");
-    const oauthTok = params.get("google_oauth_token");
+    const oauthTok =
+      params.get("google_oauth_token") ||
+      hashParams.get("google_oauth_token");
 
-    const stripQuery = () => {
+    const stripOAuthFromUrl = () => {
       window.history.replaceState(
         {},
         document.title,
-        window.location.pathname + window.location.hash,
+        window.location.pathname,
       );
     };
 
@@ -324,14 +329,14 @@ const LoginPage = () => {
       } catch {
         setError(oauthErr);
       }
-      stripQuery();
+      stripOAuthFromUrl();
       return undefined;
     }
 
     if (!oauthTok) return undefined;
 
     const tokenSnapshot = oauthTok;
-    stripQuery();
+    stripOAuthFromUrl();
 
     let cancelled = false;
     (async () => {

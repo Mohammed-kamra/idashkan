@@ -76,6 +76,36 @@ function getGoogleOAuthRedirectUri() {
   return `http://localhost:${port}/api/auth/google/callback`;
 }
 
+/** Short OAuth `state` for Google (avoids long JWTs in URLs; mod_security often blocks them). Single-node memory; use one app instance or add Redis if you scale out horizontally. */
+const GOOGLE_OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
+const googleOAuthStateByKey = new Map();
+
+function pruneExpiredGoogleOAuthStates() {
+  const now = Date.now();
+  for (const [k, v] of googleOAuthStateByKey) {
+    if (!v || v.expiresAt <= now) googleOAuthStateByKey.delete(k);
+  }
+}
+
+function createGoogleOAuthState(returnTo) {
+  pruneExpiredGoogleOAuthStates();
+  const key = crypto.randomBytes(24).toString("hex");
+  googleOAuthStateByKey.set(key, {
+    returnTo: sanitizeOAuthReturnPath(returnTo),
+    expiresAt: Date.now() + GOOGLE_OAUTH_STATE_TTL_MS,
+  });
+  return key;
+}
+
+function consumeGoogleOAuthState(key) {
+  if (!key || typeof key !== "string") return null;
+  pruneExpiredGoogleOAuthStates();
+  const row = googleOAuthStateByKey.get(key);
+  googleOAuthStateByKey.delete(key);
+  if (!row || row.expiresAt < Date.now()) return null;
+  return sanitizeOAuthReturnPath(row.returnTo || "/login");
+}
+
 /**
  * Create or update user from verified Google ID token payload.
  * @param {object|null} payload - From verifyIdToken (sub, email, email_verified, name, picture)
@@ -653,15 +683,7 @@ const googleOAuthStart = (req, res) => {
   }
 
   const returnTo = sanitizeOAuthReturnPath(req.query.returnTo || "/login");
-  const state = jwt.sign(
-    {
-      returnTo,
-      jti: crypto.randomBytes(16).toString("hex"),
-      v: 1,
-    },
-    process.env.JWT_SECRET || "your-secret-key",
-    { expiresIn: "15m" },
-  );
+  const state = createGoogleOAuthState(returnTo);
 
   const redirectUri = getGoogleOAuthRedirectUri();
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -702,17 +724,10 @@ const googleOAuthCallback = async (req, res) => {
       return fail("Missing OAuth code or state");
     }
 
-    let decoded;
-    try {
-      decoded = jwt.verify(
-        state,
-        process.env.JWT_SECRET || "your-secret-key",
-      );
-    } catch {
+    const returnPath = consumeGoogleOAuthState(state);
+    if (!returnPath) {
       return fail("Invalid or expired OAuth state");
     }
-
-    const returnPath = sanitizeOAuthReturnPath(decoded.returnTo || "/login");
 
     const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
     const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
@@ -751,9 +766,10 @@ const googleOAuthCallback = async (req, res) => {
     }
 
     const appJwt = result.data.token;
+    // Fragment is not sent to the server — avoids mod_security / WAF blocking long JWT query strings on the frontend host.
     res.redirect(
       302,
-      `${frontBase}${returnPath}?google_oauth_token=${encodeURIComponent(appJwt)}`,
+      `${frontBase}${returnPath}#google_oauth_token=${encodeURIComponent(appJwt)}`,
     );
   } catch (e) {
     console.error("Google OAuth callback error:", e);
