@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Store = require("../models/Store");
 const Brand = require("../models/Brand");
@@ -15,6 +16,36 @@ const {
   companyDetail,
   storeTypeList,
 } = require("../utils/refPopulate");
+
+/**
+ * Strip immutable fields and fix empty strings on ObjectId refs — "" breaks Mongoose cast
+ * and was incorrectly surfaced as 404 "Product not found" via CastError.kind === "ObjectId".
+ */
+function sanitizeProductUpdateBody(body) {
+  const {
+    storeTypeId,
+    storeType: storeTypeName,
+    _id,
+    __v,
+    createdAt,
+    updatedAt,
+    ...rest
+  } = body || {};
+  const updateDoc = { ...rest };
+  const optionalNullIfEmpty = ["brandId", "companyId", "storeId"];
+  for (const key of optionalNullIfEmpty) {
+    if (updateDoc[key] === "") {
+      updateDoc[key] = null;
+    }
+  }
+  if (updateDoc.categoryId === "") {
+    delete updateDoc.categoryId;
+  }
+  if (updateDoc.storeTypeId === "") {
+    delete updateDoc.storeTypeId;
+  }
+  return { updateDoc, storeTypeId, storeTypeName };
+}
 
 const getPublicStoreIds = async () => {
   const stores = await Store.find({ statusAll: { $ne: "off" } }).select("_id").lean();
@@ -406,8 +437,14 @@ const getCategories = async (req, res) => {
 // @access  Private (Admin)
 const updateProduct = async (req, res) => {
   try {
-    const { storeTypeId, storeType: storeTypeName, ...rest } = req.body;
-    const updateDoc = { ...rest };
+    const paramId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(paramId)) {
+      return res.status(400).json({ msg: "Invalid product id" });
+    }
+
+    const { updateDoc: rawDoc, storeTypeId, storeTypeName } =
+      sanitizeProductUpdateBody(req.body);
+    const updateDoc = { ...rawDoc };
     if (updateDoc.expireDate !== undefined) {
       updateDoc.expireDate = normalizeExpiryDate(updateDoc.expireDate);
     }
@@ -420,7 +457,7 @@ const updateProduct = async (req, res) => {
       updateDoc.storeTypeId = storeTypeId;
     }
 
-    const product = await Product.findByIdAndUpdate(req.params.id, updateDoc, {
+    const product = await Product.findByIdAndUpdate(paramId, updateDoc, {
       new: true,
     })
       .populate("brandId", brandList)
@@ -433,8 +470,10 @@ const updateProduct = async (req, res) => {
     res.json(product);
   } catch (err) {
     console.error(err.message);
-    if (err.kind === "ObjectId") {
-      return res.status(404).json({ msg: "Product not found" });
+    if (err.name === "CastError") {
+      return res.status(400).json({
+        msg: err.message || "Invalid field value",
+      });
     }
     res.status(500).send("Server Error");
   }

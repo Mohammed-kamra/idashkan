@@ -167,9 +167,7 @@ const AdminVisitorsReportPage = () => {
             type="date"
             size="small"
             value={range.from}
-            onChange={(e) =>
-              setRange((r) => ({ ...r, from: e.target.value }))
-            }
+            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -202,10 +200,24 @@ const AdminVisitorsReportPage = () => {
                 <Grid item xs={12} sm={6}>
                   <Card>
                     <CardContent>
-                      <Typography color="text.secondary" variant="body2">
+                      <Typography
+                        color={
+                          theme.palette.mode === "dark"
+                            ? "text.primary"
+                            : "text.secondary"
+                        }
+                        variant="body2"
+                      >
                         {t("visitorsReportTotalVisits")}
                       </Typography>
-                      <Typography variant="h5">
+                      <Typography
+                        color={
+                          theme.palette.mode === "dark"
+                            ? "text.primary"
+                            : "text.secondary"
+                        }
+                        variant="h5"
+                      >
                         {summary.totalVisits ?? 0}
                       </Typography>
                     </CardContent>
@@ -214,10 +226,24 @@ const AdminVisitorsReportPage = () => {
                 <Grid item xs={12} sm={6}>
                   <Card>
                     <CardContent>
-                      <Typography color="text.secondary" variant="body2">
+                      <Typography
+                        color={
+                          theme.palette.mode === "dark"
+                            ? "text.primary"
+                            : "text.secondary"
+                        }
+                        variant="body2"
+                      >
                         {t("visitorsReportSumDailyUnique")}
                       </Typography>
-                      <Typography variant="h5">
+                      <Typography
+                        color={
+                          theme.palette.mode === "dark"
+                            ? "text.primary"
+                            : "text.secondary"
+                        }
+                        variant="h5"
+                      >
                         {summary.sumDailyUniqueVisitors ?? 0}
                       </Typography>
                     </CardContent>

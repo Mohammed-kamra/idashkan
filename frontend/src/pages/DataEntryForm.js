@@ -3020,14 +3020,18 @@ const DataEntryForm = () => {
           barcode: editForm.barcode,
           weight: editForm.weight,
           expireDate: normalizeExpiryInputForApi(editForm.expireDate),
-          brandId: editForm.brandId,
+          brandId: editForm.brandId || null,
           categoryId: editForm.categoryId,
           categoryTypeId: editForm.categoryTypeId,
-          storeId: editForm.storeId,
+          storeId: editForm.storeId || null,
           storeTypeId: editForm.storeTypeId,
+          companyId: editForm.companyId || null,
         };
 
-        await productAPI.update(editDialog.data._id, productUpdateData);
+        await productAPI.update(
+          String(editDialog.data._id),
+          productUpdateData,
+        );
         setMessage({
           type: "success",
           text: t("Product updated successfully!"),
