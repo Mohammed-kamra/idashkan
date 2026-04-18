@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const Store = require("../models/Store");
@@ -48,6 +49,138 @@ async function uniqueUsernameFromEmail(email) {
     candidate = `${base.slice(0, 20)}_${n}`;
   }
   return candidate;
+}
+
+function sanitizeOAuthReturnPath(p) {
+  if (typeof p !== "string") return "/login";
+  const t = p.trim();
+  if (!t.startsWith("/") || t.startsWith("//")) return "/login";
+  if (/[\r\n\0]/.test(t)) return "/login";
+  const pathOnly = t.split("?")[0].split("#")[0];
+  if (pathOnly.length > 512) return "/login";
+  return pathOnly || "/login";
+}
+
+function getServerFrontendBaseUrl() {
+  return (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
+}
+
+/** Must match an Authorized redirect URI in Google Cloud (OAuth Web client). */
+function getGoogleOAuthRedirectUri() {
+  const explicit = (process.env.GOOGLE_OAUTH_REDIRECT_URI || "").trim();
+  if (explicit) return explicit;
+  const port = process.env.PORT || "5000";
+  return `http://localhost:${port}/api/auth/google/callback`;
+}
+
+/**
+ * Create or update user from verified Google ID token payload.
+ * @param {object|null} payload - From verifyIdToken (sub, email, email_verified, name, picture)
+ */
+async function finalizeGoogleLoginFromIdTokenPayload(payload) {
+  if (!payload) {
+    return {
+      ok: false,
+      status: 401,
+      message: "Invalid Google token",
+    };
+  }
+
+  if (!payload.email_verified) {
+    return {
+      ok: false,
+      status: 400,
+      message: "Google email must be verified",
+    };
+  }
+
+  const googleId = payload.sub;
+  const email = (payload.email || "").toLowerCase().trim();
+  const displayName = (payload.name || "").trim() || null;
+  const picture = (payload.picture || "").trim() || null;
+
+  if (!email) {
+    return {
+      ok: false,
+      status: 400,
+      message: "Google account has no email",
+    };
+  }
+
+  let user =
+    (await User.findOne({ googleId })) || (await User.findOne({ email }));
+
+  if (user && user.deviceId && !user.username) {
+    return {
+      ok: false,
+      status: 400,
+      message:
+        "This email is linked to a guest session. Use a full account or another email.",
+    };
+  }
+
+  if (user && !user.isActive && user.scheduledDeletionAt) {
+    const now = new Date();
+    if (now >= user.scheduledDeletionAt) {
+      await deleteUserAndAssociatedData(user._id);
+      return {
+        ok: false,
+        status: 401,
+        message: "Account has been permanently deleted after the grace period",
+      };
+    }
+    user.isActive = true;
+    user.deactivatedAt = undefined;
+    user.scheduledDeletionAt = undefined;
+    if (!user.googleId) user.googleId = googleId;
+    if (picture && !user.avatar) user.avatar = picture;
+    if (displayName && !user.displayName) user.displayName = displayName;
+    user.lastLogin = new Date();
+    await user.save();
+    const token = generateToken(user._id);
+    return {
+      ok: true,
+      data: { user: user.getPublicProfile(), token },
+      message: "Login successful. Account reactivated.",
+    };
+  }
+
+  if (user && !user.isActive) {
+    return {
+      ok: false,
+      status: 401,
+      message: "Account is deactivated",
+    };
+  }
+
+  if (!user) {
+    const username = await uniqueUsernameFromEmail(email);
+    user = new User({
+      username,
+      email,
+      googleId,
+      displayName,
+      avatar: picture || undefined,
+      isVerified: true,
+    });
+    await user.save();
+  } else {
+    if (!user.googleId) user.googleId = googleId;
+    if (picture && !user.avatar) user.avatar = picture;
+    if (displayName && !user.displayName) user.displayName = displayName;
+    user.lastLogin = new Date();
+    await user.save();
+  }
+
+  const token = generateToken(user._id);
+  return {
+    ok: true,
+    data: { user: user.getPublicProfile(), token },
+    message: "Login successful",
+  };
 }
 
 // @desc    Register new user
@@ -481,102 +614,19 @@ const googleLogin = async (req, res) => {
       audience: clientId,
     });
     const payload = ticket.getPayload();
-    if (!payload) {
-      return res.status(401).json({
+
+    const result = await finalizeGoogleLoginFromIdTokenPayload(payload);
+    if (!result.ok) {
+      return res.status(result.status).json({
         success: false,
-        message: "Invalid Google token",
+        message: result.message,
       });
     }
 
-    if (!payload.email_verified) {
-      return res.status(400).json({
-        success: false,
-        message: "Google email must be verified",
-      });
-    }
-
-    const googleId = payload.sub;
-    const email = (payload.email || "").toLowerCase().trim();
-    const displayName = (payload.name || "").trim() || null;
-    const picture = (payload.picture || "").trim() || null;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Google account has no email",
-      });
-    }
-
-    let user =
-      (await User.findOne({ googleId })) ||
-      (await User.findOne({ email }));
-
-    if (user && user.deviceId && !user.username) {
-      return res.status(400).json({
-        success: false,
-        message: "This email is linked to a guest session. Use a full account or another email.",
-      });
-    }
-
-    if (user && !user.isActive && user.scheduledDeletionAt) {
-      const now = new Date();
-      if (now >= user.scheduledDeletionAt) {
-        await deleteUserAndAssociatedData(user._id);
-        return res.status(401).json({
-          success: false,
-          message: "Account has been permanently deleted after the grace period",
-        });
-      }
-      user.isActive = true;
-      user.deactivatedAt = undefined;
-      user.scheduledDeletionAt = undefined;
-      if (!user.googleId) user.googleId = googleId;
-      if (picture && !user.avatar) user.avatar = picture;
-      if (displayName && !user.displayName) user.displayName = displayName;
-      user.lastLogin = new Date();
-      await user.save();
-      const token = generateToken(user._id);
-      return res.json({
-        success: true,
-        data: { user: user.getPublicProfile(), token },
-        message: "Login successful. Account reactivated.",
-      });
-    }
-
-    if (user && !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: "Account is deactivated",
-      });
-    }
-
-    if (!user) {
-      const username = await uniqueUsernameFromEmail(email);
-      user = new User({
-        username,
-        email,
-        googleId,
-        displayName,
-        avatar: picture || undefined,
-        isVerified: true,
-      });
-      await user.save();
-    } else {
-      if (!user.googleId) user.googleId = googleId;
-      if (picture && !user.avatar) user.avatar = picture;
-      if (displayName && !user.displayName) user.displayName = displayName;
-      user.lastLogin = new Date();
-      await user.save();
-    }
-
-    const token = generateToken(user._id);
     res.json({
       success: true,
-      data: {
-        user: user.getPublicProfile(),
-        token,
-      },
-      message: "Login successful",
+      data: result.data,
+      message: result.message || "Login successful",
     });
   } catch (error) {
     console.error("Google login error:", error);
@@ -587,10 +637,136 @@ const googleLogin = async (req, res) => {
   }
 };
 
+// @desc    Start Google OAuth redirect (WebView-friendly full-page flow)
+// @route   GET /api/auth/google/start
+// @access  Public
+const googleOAuthStart = (req, res) => {
+  const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+  const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+  if (!clientId || !clientSecret) {
+    const err =
+      "Google redirect sign-in is not configured (set GOOGLE_CLIENT_SECRET and GOOGLE_OAUTH_REDIRECT_URI on the server)";
+    return res.redirect(
+      302,
+      `${getServerFrontendBaseUrl()}/login?google_error=${encodeURIComponent(err)}`,
+    );
+  }
+
+  const returnTo = sanitizeOAuthReturnPath(req.query.returnTo || "/login");
+  const state = jwt.sign(
+    {
+      returnTo,
+      jti: crypto.randomBytes(16).toString("hex"),
+      v: 1,
+    },
+    process.env.JWT_SECRET || "your-secret-key",
+    { expiresIn: "15m" },
+  );
+
+  const redirectUri = getGoogleOAuthRedirectUri();
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("state", state);
+  url.searchParams.set("access_type", "online");
+  url.searchParams.set("prompt", "select_account");
+
+  res.redirect(302, url.toString());
+};
+
+// @desc    OAuth redirect callback — exchange code, issue app JWT, redirect to SPA
+// @route   GET /api/auth/google/callback
+// @access  Public
+const googleOAuthCallback = async (req, res) => {
+  const frontBase = getServerFrontendBaseUrl();
+
+  const fail = (message) => {
+    res.redirect(
+      302,
+      `${frontBase}/login?google_error=${encodeURIComponent(message)}`,
+    );
+  };
+
+  try {
+    const { code, state, error, error_description: errDesc } = req.query;
+    if (error) {
+      return fail(
+        typeof errDesc === "string" && errDesc.trim()
+          ? errDesc.trim()
+          : String(error),
+      );
+    }
+    if (!code || !state || typeof state !== "string") {
+      return fail("Missing OAuth code or state");
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(
+        state,
+        process.env.JWT_SECRET || "your-secret-key",
+      );
+    } catch {
+      return fail("Invalid or expired OAuth state");
+    }
+
+    const returnPath = sanitizeOAuthReturnPath(decoded.returnTo || "/login");
+
+    const clientId = (process.env.GOOGLE_CLIENT_ID || "").trim();
+    const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || "").trim();
+    const redirectUri = getGoogleOAuthRedirectUri();
+
+    if (!clientId || !clientSecret) {
+      return fail("Google OAuth is not configured on the server");
+    }
+
+    const oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
+    let tokens;
+    try {
+      const exchanged = await oauth2Client.getToken({
+        code: typeof code === "string" ? code : String(code),
+      });
+      tokens = exchanged.tokens;
+    } catch (e) {
+      console.error("Google token exchange error:", e?.message || e);
+      return fail("Could not complete Google sign-in. Try again.");
+    }
+
+    const idToken = tokens.id_token;
+    if (!idToken) {
+      return fail("Google did not return an ID token");
+    }
+
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken,
+      audience: clientId,
+    });
+    const payload = ticket.getPayload();
+
+    const result = await finalizeGoogleLoginFromIdTokenPayload(payload);
+    if (!result.ok) {
+      return fail(result.message);
+    }
+
+    const appJwt = result.data.token;
+    res.redirect(
+      302,
+      `${frontBase}${returnPath}?google_oauth_token=${encodeURIComponent(appJwt)}`,
+    );
+  } catch (e) {
+    console.error("Google OAuth callback error:", e);
+    return fail("Server error during Google sign-in");
+  }
+};
+
 module.exports = {
   register,
   login,
   googleLogin,
+  googleOAuthStart,
+  googleOAuthCallback,
   getProfile,
   updateProfile,
   changePassword,

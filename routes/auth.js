@@ -4,6 +4,8 @@ const {
   register,
   login,
   googleLogin,
+  googleOAuthStart,
+  googleOAuthCallback,
   getProfile,
   updateProfile,
   changePassword,
@@ -15,6 +17,8 @@ const { protect } = require("../middleware/auth");
 // Public routes
 router.post("/register", register);
 router.post("/login", login);
+router.get("/google/start", googleOAuthStart);
+router.get("/google/callback", googleOAuthCallback);
 router.post("/google", googleLogin);
 
 // Protected routes (require authentication)

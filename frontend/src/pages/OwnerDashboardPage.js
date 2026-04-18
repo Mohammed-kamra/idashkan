@@ -28,6 +28,7 @@ import {
   TextField,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
@@ -126,6 +127,8 @@ function MiniSparkline({ values, color }) {
 }
 
 function SummaryMetricCard({ title, metric, onCardClick, sparkColor, t }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { current, changePercent, direction, spark } = metric || {};
   const pct =
     changePercent == null || Number.isNaN(changePercent)
@@ -139,11 +142,22 @@ function SummaryMetricCard({ title, metric, onCardClick, sparkColor, t }) {
       sx={{
         height: "100%",
         cursor: onCardClick ? "pointer" : "default",
-        transition: "box-shadow 0.2s, transform 0.15s",
+        bgcolor: "background.paper",
+        borderColor: isDark ? alpha(theme.palette.divider, 0.9) : "divider",
+        backgroundImage: isDark
+          ? `linear-gradient(145deg, ${alpha("#1e293b", 0.55)} 0%, ${alpha("#0f172a", 0.35)} 100%)`
+          : undefined,
+        boxShadow: isDark
+          ? "0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)"
+          : undefined,
+        transition: "box-shadow 0.2s, transform 0.15s, border-color 0.2s",
         "&:hover": onCardClick
           ? {
-              boxShadow: 3,
+              boxShadow: isDark ? 6 : 3,
               transform: "translateY(-1px)",
+              borderColor: isDark
+                ? alpha(theme.palette.primary.main, 0.45)
+                : undefined,
             }
           : undefined,
       }}
@@ -229,6 +243,7 @@ export default function OwnerDashboardPage() {
   const { user } = useAuth();
   const isRtl = i18n.language === "ar" || i18n.language === "ku";
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
 
   const ownerEntities = useMemo(() => normalizeOwnerEntities(user), [user]);
   const [selectionKey, setSelectionKey] = useState("");
@@ -466,8 +481,85 @@ export default function OwnerDashboardPage() {
     /* reserved for future detail routes */
   };
 
+  const sectionPaperSx = {
+    p: 2,
+    mb: 2,
+    borderRadius: 2,
+    bgcolor: isDark ? alpha(theme.palette.background.paper, 0.72) : "background.paper",
+    borderColor: isDark ? alpha(theme.palette.divider, 0.85) : "divider",
+    border: "1px solid",
+    boxShadow: isDark
+      ? "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)"
+      : "0 1px 3px rgba(15,23,42,0.06)",
+    backdropFilter: isDark ? "blur(10px)" : "none",
+  };
+
+  const chartTooltipProps = {
+    contentStyle: {
+      backgroundColor: theme.palette.background.paper,
+      border: `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`,
+      borderRadius: 10,
+      color: theme.palette.text.primary,
+      boxShadow: isDark
+        ? "0 12px 40px rgba(0,0,0,0.5)"
+        : "0 8px 24px rgba(15,23,42,0.12)",
+    },
+    labelStyle: { color: theme.palette.text.secondary, fontWeight: 600 },
+    itemStyle: { color: theme.palette.text.primary },
+  };
+
+  const chartAxisTick = {
+    fill: theme.palette.text.secondary,
+    fontSize: 11,
+  };
+
+  const toggleGroupSx = {
+    "& .MuiToggleButton-root": {
+      borderColor: "divider",
+      color: "text.secondary",
+      textTransform: "none",
+      fontWeight: 600,
+      "&.Mui-selected": {
+        color: "primary.main",
+        bgcolor: isDark
+          ? alpha(theme.palette.primary.main, 0.18)
+          : alpha(theme.palette.primary.main, 0.12),
+        borderColor: alpha(theme.palette.primary.main, 0.45),
+        "&:hover": {
+          bgcolor: isDark
+            ? alpha(theme.palette.primary.main, 0.26)
+            : alpha(theme.palette.primary.main, 0.18),
+        },
+      },
+    },
+  };
+
+  const tablePaperSx = {
+    borderRadius: 2,
+    bgcolor: isDark ? alpha(theme.palette.background.paper, 0.65) : "background.paper",
+    borderColor: isDark ? alpha(theme.palette.divider, 0.85) : "divider",
+    boxShadow: isDark ? "0 4px 24px rgba(0,0,0,0.35)" : undefined,
+  };
+
+  const tableHeadRowSx = {
+    bgcolor: isDark
+      ? alpha(theme.palette.common.white, 0.04)
+      : alpha(theme.palette.common.black, 0.03),
+    "& th": {
+      fontWeight: 700,
+      color: "text.secondary",
+      borderBottomColor: "divider",
+    },
+  };
+
   return (
-    <div style={{ maxWidth: "100%", py: 3, pt: { xs: 20, sm: 20 } }}>
+    <Box
+      sx={{
+        maxWidth: "100%",
+        py: 3,
+        pt: { xs: 20, sm: 20 },
+      }}
+    >
       <Stack spacing={1.5} sx={{ mb: 2, mt: 6 }}>
         <Box>
           <IconButton
@@ -475,7 +567,15 @@ export default function OwnerDashboardPage() {
             to="/profile"
             aria-label={t("Back")}
             size="small"
-            sx={{ ml: -0.5 }}
+            sx={{
+              ml: -0.5,
+              color: "text.secondary",
+              "&:hover": {
+                bgcolor: isDark
+                  ? alpha(theme.palette.common.white, 0.06)
+                  : "action.hover",
+              },
+            }}
           >
             <ArrowBackIcon
               sx={{ transform: isRtl ? "scaleX(-1)" : undefined }}
@@ -541,7 +641,7 @@ export default function OwnerDashboardPage() {
         </Alert>
       )}
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={sectionPaperSx}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={2}
@@ -557,6 +657,7 @@ export default function OwnerDashboardPage() {
               size="small"
               value={preset}
               onChange={(_, v) => v != null && setPreset(v)}
+              sx={toggleGroupSx}
             >
               <ToggleButton value="last7">
                 {t("Last 7 days", { defaultValue: "Last 7 days" })}
@@ -689,14 +790,14 @@ export default function OwnerDashboardPage() {
               title={t("Order requests", { defaultValue: "Order requests" })}
               metric={cards?.orderRequests}
               onCardClick={handleCardPlaceholder}
-              sparkColor="#5e35b1"
+              sparkColor={isDark ? "#A78BFA" : "#6D28D9"}
               t={t}
             />
           </Grid>
         </Grid>
       )}
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ ...sectionPaperSx, mb: 3 }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={2}
@@ -712,6 +813,7 @@ export default function OwnerDashboardPage() {
             exclusive
             value={chartMode}
             onChange={(_, v) => v != null && setChartMode(v)}
+            sx={toggleGroupSx}
           >
             <ToggleButton value="bar">
               <BarChartIcon fontSize="small" sx={{ mr: 0.5 }} />
@@ -737,11 +839,31 @@ export default function OwnerDashboardPage() {
               data={comparisonChartData}
               margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
             >
-              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={theme.palette.divider}
+                vertical={false}
+                opacity={isDark ? 0.55 : 0.4}
+              />
+              <XAxis
+                dataKey="name"
+                tick={chartAxisTick}
+                stroke={theme.palette.divider}
+                tickLine={{ stroke: theme.palette.divider }}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={chartAxisTick}
+                stroke={theme.palette.divider}
+                tickLine={{ stroke: theme.palette.divider }}
+              />
+              <Tooltip {...chartTooltipProps} />
+              <Legend
+                wrapperStyle={{ color: theme.palette.text.primary }}
+                formatter={(value) => (
+                  <span style={{ color: theme.palette.text.primary }}>{value}</span>
+                )}
+              />
               <Bar
                 dataKey="thisPeriod"
                 name={t("This period", { defaultValue: "This period" })}
@@ -751,7 +873,11 @@ export default function OwnerDashboardPage() {
               <Bar
                 dataKey="lastPeriod"
                 name={t("Previous period", { defaultValue: "Previous period" })}
-                fill={theme.palette.action.disabled}
+                fill={
+                  isDark
+                    ? alpha(theme.palette.common.white, 0.22)
+                    : theme.palette.action.disabled
+                }
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -762,26 +888,55 @@ export default function OwnerDashboardPage() {
               data={lineChartData}
               margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
             >
-              <CartesianGrid strokeDasharray="3 3" opacity={0.35} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={theme.palette.divider}
+                vertical={false}
+                opacity={isDark ? 0.55 : 0.4}
+              />
+              <XAxis
+                dataKey="name"
+                tick={chartAxisTick}
+                stroke={theme.palette.divider}
+                tickLine={{ stroke: theme.palette.divider }}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={chartAxisTick}
+                stroke={theme.palette.divider}
+                tickLine={{ stroke: theme.palette.divider }}
+              />
+              <Tooltip {...chartTooltipProps} />
+              <Legend
+                wrapperStyle={{ color: theme.palette.text.primary }}
+                formatter={(value) => (
+                  <span style={{ color: theme.palette.text.primary }}>{value}</span>
+                )}
+              />
               <Line
                 type="monotone"
                 dataKey="thisPeriod"
                 name={t("This period", { defaultValue: "This period" })}
                 stroke={theme.palette.primary.main}
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={{ r: 3, fill: theme.palette.primary.main }}
               />
               <Line
                 type="monotone"
                 dataKey="lastPeriod"
                 name={t("Previous period", { defaultValue: "Previous period" })}
-                stroke={theme.palette.text.disabled}
+                stroke={
+                  isDark
+                    ? alpha(theme.palette.common.white, 0.45)
+                    : theme.palette.text.disabled
+                }
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={{
+                  r: 3,
+                  fill: isDark
+                    ? alpha(theme.palette.common.white, 0.45)
+                    : theme.palette.text.disabled,
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -796,7 +951,7 @@ export default function OwnerDashboardPage() {
           <TableContainer
             component={Paper}
             variant="outlined"
-            sx={{ borderRadius: 2 }}
+            sx={tablePaperSx}
           >
             {loading && !topViewed.length ? (
               <Box sx={{ p: 2 }}>
@@ -815,7 +970,7 @@ export default function OwnerDashboardPage() {
             ) : (
               <Table size="small">
                 <TableHead>
-                  <TableRow>
+                  <TableRow sx={tableHeadRowSx}>
                     <TableCell>
                       {t("Product", { defaultValue: "Product" })}
                     </TableCell>
@@ -833,7 +988,18 @@ export default function OwnerDashboardPage() {
                 </TableHead>
                 <TableBody>
                   {topViewed.map((row) => (
-                    <TableRow key={row._id} hover sx={{ cursor: "pointer" }}>
+                    <TableRow
+                      key={row._id}
+                      hover
+                      sx={{
+                        cursor: "pointer",
+                        "&:hover": {
+                          bgcolor: isDark
+                            ? alpha(theme.palette.primary.main, 0.06)
+                            : "action.hover",
+                        },
+                      }}
+                    >
                       <TableCell>
                         <Stack
                           direction="row"
@@ -875,7 +1041,7 @@ export default function OwnerDashboardPage() {
           <TableContainer
             component={Paper}
             variant="outlined"
-            sx={{ borderRadius: 2 }}
+            sx={tablePaperSx}
           >
             {loading && !topLiked.length ? (
               <Box sx={{ p: 2 }}>
@@ -894,7 +1060,7 @@ export default function OwnerDashboardPage() {
             ) : (
               <Table size="small">
                 <TableHead>
-                  <TableRow>
+                  <TableRow sx={tableHeadRowSx}>
                     <TableCell>
                       {t("Product", { defaultValue: "Product" })}
                     </TableCell>
@@ -912,7 +1078,18 @@ export default function OwnerDashboardPage() {
                 </TableHead>
                 <TableBody>
                   {topLiked.map((row) => (
-                    <TableRow key={row._id} hover sx={{ cursor: "pointer" }}>
+                    <TableRow
+                      key={row._id}
+                      hover
+                      sx={{
+                        cursor: "pointer",
+                        "&:hover": {
+                          bgcolor: isDark
+                            ? alpha(theme.palette.primary.main, 0.06)
+                            : "action.hover",
+                        },
+                      }}
+                    >
                       <TableCell>
                         <Stack
                           direction="row"
@@ -951,6 +1128,6 @@ export default function OwnerDashboardPage() {
           </TableContainer>
         </Grid>
       </Grid>
-    </div>
+    </Box>
   );
 }

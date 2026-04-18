@@ -29,6 +29,8 @@ import {
   Lock,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
+import { getApiBaseURL } from "../utils/getApiBaseURL";
+import { isEmbeddedWebView } from "../utils/isEmbeddedWebView";
 
 const BRAND = "var(--brand-primary-blue, #1E6FD9)";
 
@@ -107,7 +109,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, register, loginWithGoogle, completeSessionWithToken } =
+    useAuth();
   const googleHandlerRef = useRef(async () => {});
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,6 +130,11 @@ const LoginPage = () => {
 
   const [activeTab, setActiveTab] = useState("login");
   const googleRenderRef = useRef(null);
+
+  const useGoogleOAuthRedirect = useMemo(() => {
+    if (process.env.REACT_APP_GOOGLE_OAUTH_REDIRECT === "true") return true;
+    return isEmbeddedWebView();
+  }, []);
 
   const fieldSx = useMemo(
     () => ({
@@ -270,30 +278,100 @@ const LoginPage = () => {
           const from = location.state?.from?.pathname || "/";
           navigate(from, { replace: true });
         } else {
-          console.error(
-            "Google sign-in failed:",
-            result.message || "Google sign-in failed",
+          setError(
+            result.message ||
+              t("Google sign-in failed", {
+                defaultValue: "Google sign-in failed",
+              }),
           );
         }
       } catch (err) {
-        console.error("Google sign-in failed:", err);
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            t("Google sign-in failed", {
+              defaultValue: "Google sign-in failed",
+            }),
+        );
       } finally {
         setLoading(false);
       }
     },
-    [loginWithGoogle, navigate, location.state],
+    [loginWithGoogle, navigate, location.state, t],
   );
 
   googleHandlerRef.current = handleGoogleCredential;
 
   const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
 
+  /** Full-page OAuth return: ?google_oauth_token= or ?google_error= */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthErr = params.get("google_error");
+    const oauthTok = params.get("google_oauth_token");
+
+    const stripQuery = () => {
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname + window.location.hash,
+      );
+    };
+
+    if (oauthErr) {
+      try {
+        setError(decodeURIComponent(oauthErr));
+      } catch {
+        setError(oauthErr);
+      }
+      stripQuery();
+      return undefined;
+    }
+
+    if (!oauthTok) return undefined;
+
+    const tokenSnapshot = oauthTok;
+    stripQuery();
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      const result = await completeSessionWithToken(tokenSnapshot);
+      if (cancelled) return;
+      if (result.success) {
+        const from = location.state?.from?.pathname || "/";
+        navigate(from, { replace: true });
+      } else {
+        setError(
+          result.message ||
+            t("Google sign-in failed", {
+              defaultValue: "Google sign-in failed",
+            }),
+        );
+      }
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [completeSessionWithToken, navigate, location.state, t]);
+
+  const startGoogleOAuthRedirect = useCallback(() => {
+    const returnTo = location.state?.from?.pathname || "/";
+    const base = getApiBaseURL();
+    const url = `${base}/auth/google/start?returnTo=${encodeURIComponent(returnTo)}`;
+    window.location.assign(url);
+  }, [location.state]);
+
   /**
    * Use Google's `renderButton` (iframe) instead of One Tap `prompt()` — One Tap is
    * often blocked or empty on mobile Safari / in-app browsers; the rendered button works.
+   * In embedded WebViews, use full-page OAuth (`/auth/google/start`) instead.
    */
   useEffect(() => {
-    if (!googleClientId) return undefined;
+    if (!googleClientId || useGoogleOAuthRedirect) return undefined;
 
     let cancelled = false;
 
@@ -362,7 +440,7 @@ const LoginPage = () => {
       cancelled = true;
       if (googleRenderRef.current) googleRenderRef.current.innerHTML = "";
     };
-  }, [googleClientId]);
+  }, [googleClientId, useGoogleOAuthRedirect]);
 
   return (
     <Box
@@ -816,46 +894,67 @@ const LoginPage = () => {
                   gap: 1,
                 }}
               >
-                {/* <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 1,
-                    mb: 0.5,
-                  }}
-                >
-                  <GoogleGLogo size={22} />
-                  <Typography
-                    component="span"
-                    variant="subtitle2"
+                {useGoogleOAuthRedirect && isEmbeddedWebView() && (
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>
+                    {t("googleWebViewRedirectHint", {
+                      defaultValue:
+                        "Google sign-in will continue in this window (full page), then bring you back here.",
+                    })}
+                  </Alert>
+                )}
+                {useGoogleOAuthRedirect ? (
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="outlined"
+                    size="large"
+                    disabled={loading}
+                    onClick={startGoogleOAuthRedirect}
                     sx={{
+                      py: 1.25,
+                      borderRadius: "14px",
+                      textTransform: "none",
                       fontWeight: 700,
-                      color: isDark
-                        ? "rgba(255,255,255,0.9)"
-                        : "text.primary",
+                      fontSize: "1rem",
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.22)"
+                        : "rgba(0,0,0,0.14)",
+                      color: isDark ? "rgba(255,255,255,0.95)" : "text.primary",
+                      bgcolor: isDark
+                        ? "rgba(255,255,255,0.03)"
+                        : "rgba(255,255,255,0.9)",
+                      gap: 1.25,
+                      "&:hover": {
+                        borderColor: isDark
+                          ? "rgba(255,255,255,0.35)"
+                          : "rgba(0,0,0,0.2)",
+                        bgcolor: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(0,0,0,0.04)",
+                      },
                     }}
                   >
+                    <GoogleGLogo size={22} />
                     {t("Continue with Google")}
-                  </Typography>
-                </Box> */}
-                <Box
-                  ref={googleRenderRef}
-                  className="gsi-google-button-mount"
-                  sx={{
-                    width: "100%",
-                    minHeight: 48,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    /** Let Google's iframe use full card width on narrow screens */
-                    "& > div": { width: "100% !important" },
-                    "& iframe": {
-                      width: "100% !important",
-                      maxWidth: "100% !important",
-                    },
-                  }}
-                />
+                  </Button>
+                ) : (
+                  <Box
+                    ref={googleRenderRef}
+                    className="gsi-google-button-mount"
+                    sx={{
+                      width: "100%",
+                      minHeight: 48,
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      "& > div": { width: "100% !important" },
+                      "& iframe": {
+                        width: "100% !important",
+                        maxWidth: "100% !important",
+                      },
+                    }}
+                  />
+                )}
               </Box>
             )}
             <Box

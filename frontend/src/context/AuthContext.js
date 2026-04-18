@@ -104,6 +104,39 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** After Google OAuth redirect (?google_oauth_token= app JWT). */
+  const completeSessionWithToken = async (appJwt) => {
+    if (!appJwt || typeof appJwt !== "string") {
+      return { success: false, message: "Invalid session" };
+    }
+    try {
+      const response = await authAPI.getProfile({
+        headers: { Authorization: `Bearer ${appJwt}` },
+      });
+      if (response.data?.success) {
+        const u = response.data.data.user;
+        setToken(appJwt);
+        setUser(u);
+        localStorage.setItem("token", appJwt);
+        localStorage.setItem("user", JSON.stringify(u));
+        return { success: true };
+      }
+      logout();
+      return {
+        success: false,
+        message: response.data?.message || "Could not complete sign-in",
+      };
+    } catch (error) {
+      console.error("completeSessionWithToken:", error);
+      logout();
+      return {
+        success: false,
+        message:
+          error.response?.data?.message || "Could not complete sign-in",
+      };
+    }
+  };
+
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
@@ -196,6 +229,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         loginWithGoogle,
+        completeSessionWithToken,
         logout,
         deactivate,
         register,
