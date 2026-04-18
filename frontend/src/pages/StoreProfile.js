@@ -153,6 +153,9 @@ const StoreProfile = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState({});
   const [cartToast, setCartToast] = useState({ open: false, text: "" });
+  const notifyWhatsAppFallback = useCallback((hint) => {
+    setCartToast({ open: true, text: hint });
+  }, []);
   /** Incremented on each add-to-cart to replay floating cart button animation */
   const [cartPulseKey, setCartPulseKey] = useState(0);
   const cartButtonRef = useRef(null);
@@ -440,7 +443,7 @@ const StoreProfile = () => {
     const text = encodeURIComponent(buildWhatsAppOrderText());
     const url = wa.includes("?") ? `${wa}&text=${text}` : `${wa}?text=${text}`;
     trackOwnerContactClick("store", id, "whatsapp");
-    openWhatsAppLink(url);
+    openWhatsAppLink(url, { onClipboardFallback: notifyWhatsAppFallback });
   };
 
   const isProductAvailableForCart = (p) => {
@@ -1646,7 +1649,9 @@ const StoreProfile = () => {
                 onClick={(e) => {
                   e.preventDefault();
                   trackOwnerContactClick("store", id, "whatsapp");
-                  openWhatsAppLink(href);
+                  openWhatsAppLink(href, {
+                    onClipboardFallback: notifyWhatsAppFallback,
+                  });
                 }}
                 size="small"
                 sx={{

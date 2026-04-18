@@ -312,15 +312,10 @@ const LoginPage = () => {
     );
     const oauthErr = params.get("google_error");
     const oauthTok =
-      params.get("google_oauth_token") ||
-      hashParams.get("google_oauth_token");
+      params.get("google_oauth_token") || hashParams.get("google_oauth_token");
 
     const stripOAuthFromUrl = () => {
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname,
-      );
+      window.history.replaceState({}, document.title, window.location.pathname);
     };
 
     if (oauthErr) {
@@ -885,7 +880,7 @@ const LoginPage = () => {
               gap: 2,
             }}
           >
-            {!googleClientId ? (
+            {/* {!googleClientId ? (
               <Alert severity="warning" sx={{ borderRadius: 2 }}>
                 {t("googleEnvMissing")}
               </Alert>
@@ -961,7 +956,7 @@ const LoginPage = () => {
                   />
                 )}
               </Box>
-            )}
+            )} */}
             <Box
               sx={{
                 display: "flex",
