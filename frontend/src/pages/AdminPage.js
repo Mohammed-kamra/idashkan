@@ -577,6 +577,13 @@ const AdminPage = () => {
             Search analytics
           </Button>
           <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => navigate("/admin/visitors")}
+          >
+            {t("Visitors report")}
+          </Button>
+          <Button
             variant="contained"
             color="error"
             onClick={handleDeleteExpiredProducts}

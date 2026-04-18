@@ -105,6 +105,7 @@ app.use("/api/translations", require("./routes/translation"));
 app.use("/api/ai", require("./routes/ai"));
 app.use("/api/owner-dashboard", require("./routes/ownerDashboard"));
 app.use("/api/owner-analytics", require("./routes/ownerAnalytics"));
+app.use("/api/app-visits", require("./routes/appVisits"));
 app.use("/api/cart-orders", require("./routes/cartOrders"));
 
 const PORT = process.env.PORT || 5000;

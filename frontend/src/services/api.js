@@ -311,6 +311,11 @@ export const searchAnalyticsAPI = {
   recordClick: (id, body) => api.patch(`/search-analytics/${id}/click`, body),
 };
 
+/** App visit ping after splash (optional auth via axios interceptor). */
+export const appVisitAPI = {
+  ping: (body) => api.post("/app-visits/ping", body),
+};
+
 /** Draft cart WhatsApp order — full payload (optional auth). */
 export const cartOrderLogAPI = {
   log: (body) => api.post("/cart-orders/log", body),
@@ -370,6 +375,9 @@ export const adminAPI = {
 
   getCartOrderLogs: (params = {}) =>
     api.get("/admin/cart-order-logs", { params }),
+
+  getVisitorsReportDaily: (params = {}) =>
+    api.get("/admin/visitors-report/daily", { params }),
 };
 
 /** Owner analytics dashboard (requires role `owner` + linked entity). */

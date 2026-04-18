@@ -42,6 +42,7 @@ import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminCitiesPage from "./pages/AdminCitiesPage";
 import AdminSearchAnalyticsPage from "./pages/AdminSearchAnalyticsPage";
+import AdminVisitorsReportPage from "./pages/AdminVisitorsReportPage";
 import CustomizationPage from "./pages/CustomizationPage";
 import TranslationPage from "./pages/TranslationPage";
 import NavigationBar from "./NavigationBar";
@@ -67,6 +68,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import NotificationEnableBanner from "./components/NotificationEnableBanner";
 import SplashScreen from "./components/SplashScreen";
 import ConnectionLostBanner from "./components/ConnectionLostBanner";
+import AppUpdateBanner from "./components/AppUpdateBanner";
 import {
   ContentRefreshProvider,
   useContentRefresh,
@@ -78,6 +80,26 @@ import {
   useActiveTheme,
 } from "./context/ActiveThemeContext";
 import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext";
+import { appVisitAPI } from "./services/api";
+import { getDeviceId } from "./utils/deviceId";
+
+const APP_VISIT_SESSION_KEY = "appVisitSessionId";
+
+function getOrCreateVisitSessionId() {
+  try {
+    let id = sessionStorage.getItem(APP_VISIT_SESSION_KEY);
+    if (id && id.length >= 8) return id;
+    const part =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, "")
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    id = `vs_${part}`;
+    sessionStorage.setItem(APP_VISIT_SESSION_KEY, id);
+    return id;
+  } catch {
+    return `vs_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  }
+}
 
 // Footer component remains the same
 const Footer = () => (
@@ -127,6 +149,19 @@ function AppContent() {
   const handleSplashComplete = useCallback(() => {
     setSplashFinished(true);
   }, []);
+
+  useEffect(() => {
+    if (!splashFinished) return;
+    void (async () => {
+      try {
+        const visitSessionId = getOrCreateVisitSessionId();
+        const deviceId = getDeviceId();
+        await appVisitAPI.ping({ visitSessionId, deviceId });
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [splashFinished]);
 
   useEffect(() => {
     setLang(i18n.language || "en");
@@ -224,6 +259,7 @@ function AppContent() {
             </Alert>
           </Collapse>
           <ConnectionLostBanner />
+          <AppUpdateBanner />
           <NavigationBar
             darkMode={darkMode}
             setDarkMode={setDarkMode}
@@ -372,6 +408,20 @@ function AppContent() {
                       allowSupportRole
                     >
                       <AdminSearchAnalyticsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/visitors"
+                  element={
+                    <ProtectedRoute
+                      allowedEmails={[
+                        "mshexani45@gmail.com",
+                        "admin@gmail.com",
+                      ]}
+                      allowSupportRole
+                    >
+                      <AdminVisitorsReportPage />
                     </ProtectedRoute>
                   }
                 />

@@ -24,6 +24,7 @@ const {
 const { protect } = require("../middleware/auth");
 const requireDataEntry = require("../middleware/requireDataEntry");
 const searchAnalyticsController = require("../controllers/searchAnalyticsController");
+const { getVisitorsReportDaily } = require("../controllers/appVisitController");
 const { listCartOrderLogs } = require("../controllers/cartOrderLogController");
 
 // GET /api/admin/stats
@@ -148,6 +149,13 @@ router.get(
   protect,
   requireDataEntry,
   searchAnalyticsController.exportCsv,
+);
+
+router.get(
+  "/visitors-report/daily",
+  protect,
+  requireDataEntry,
+  getVisitorsReportDaily,
 );
 
 // Draft cart → WhatsApp order logs (full payload for admin)

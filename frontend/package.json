@@ -33,9 +33,9 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "prestart": "node scripts/generateFonts.js",
+    "prestart": "node scripts/generateFonts.js && node scripts/write-version.js",
     "start": "craco start",
-    "prebuild": "node scripts/generateFonts.js",
+    "prebuild": "node scripts/generateFonts.js && node scripts/write-version.js",
     "build": "cross-env CI=false craco build",
     "build:hostgator": "echo 'Ensure .env.production has REACT_APP_API_BASE_URL and REACT_APP_BACKEND_URL (HTTPS)' && npm run build",
     "test": "craco test",
@@ -54,6 +54,12 @@
         ],
         "rules": {
           "no-dupe-keys": "off"
+        }
+      },
+      {
+        "files": ["src/version.js"],
+        "globals": {
+          "__APP_VERSION__": "readonly"
         }
       }
     ]

@@ -74,6 +74,7 @@ import {
   Business as BusinessNavIcon,
   CorporateFare as CorporateFareNavIcon,
   WorkOutline as WorkOutlineNavIcon,
+  BarChart as BarChartIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -450,6 +451,12 @@ const ProfilePage = () => {
                       <PeopleIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText primary={t("Users")} />
+                  </ListItemButton>
+                  <ListItemButton component={Link} to="/admin/visitors">
+                    <ListItemIcon>
+                      <BarChartIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Visitors report")} />
                   </ListItemButton>
                   <ListItemButton component={Link} to="/admin/translations">
                     <ListItemIcon>
