@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -24,7 +24,7 @@ import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductCard from "./ProductCard";
 
-const MAX_PRODUCTS_IN_STORE_GROUP = 8;
+const PRODUCT_CHUNK = 8;
 
 const showMoreCardSx = (isDark) => ({
   flexShrink: 0,
@@ -73,6 +73,12 @@ const StoreGroupSection = memo(function StoreGroupSection({
   const isDark = theme.palette.mode === "dark";
   const isRtl = i18n.language === "ar" || i18n.language === "ku";
 
+  const [visibleCount, setVisibleCount] = useState(PRODUCT_CHUNK);
+
+  useEffect(() => {
+    setVisibleCount(PRODUCT_CHUNK);
+  }, [store._id, products.length]);
+
   const followed = isStoreFollowed(store._id);
   const discountedCount = products.filter(
     (p) =>
@@ -80,18 +86,29 @@ const StoreGroupSection = memo(function StoreGroupSection({
       (p.previousPrice && p.newPrice && p.previousPrice > p.newPrice),
   ).length;
 
-  const visibleProducts = products.slice(0, MAX_PRODUCTS_IN_STORE_GROUP);
-  const hasMoreOnStore = products.length > MAX_PRODUCTS_IN_STORE_GROUP;
-  const moreCount = hasMoreOnStore
-    ? products.length - MAX_PRODUCTS_IN_STORE_GROUP
-    : 0;
+  const visibleProducts = products.slice(0, visibleCount);
+  const remainingInStore = Math.max(0, products.length - visibleCount);
+  const hasMoreOnStore = remainingInStore > 0;
+  const nextBatchSize = Math.min(PRODUCT_CHUNK, remainingInStore);
+
+  const loadMoreProducts = useCallback(() => {
+    setVisibleCount((c) =>
+      Math.min(c + PRODUCT_CHUNK, products.length),
+    );
+  }, [products.length]);
 
   const showMoreCard = (
     <Card
-      component={Link}
-      to={`/stores/${store._id}`}
+      component="button"
+      type="button"
+      onClick={loadMoreProducts}
+      elevation={0}
+      aria-label={t("See more")}
       sx={{
         ...showMoreCardSx(isDark),
+        border: "none",
+        font: "inherit",
+        color: "inherit",
         ...(productLayout === "grid2" && visibleProducts.length >= 3
           ? {
               gridRow: "span 2",
@@ -119,14 +136,16 @@ const StoreGroupSection = memo(function StoreGroupSection({
             lineHeight: 1.25,
           }}
         >
-          {t("Show more")}
+          {t("See more")}
         </Typography>
         <Typography
           variant="caption"
           display="block"
           sx={{ mt: 0.75, color: "text.secondary", fontWeight: 600 }}
         >
-          {t("storeGroupMoreProducts", { count: moreCount })}
+          {hasMoreOnStore
+            ? t("storeGroupLoadNextBatch", { count: nextBatchSize })
+            : ""}
         </Typography>
       </CardContent>
     </Card>
