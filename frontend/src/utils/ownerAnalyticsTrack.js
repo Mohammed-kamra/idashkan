@@ -16,6 +16,11 @@ function getSessionId() {
   return sessionIdCache;
 }
 
+/** Same session id as owner analytics (for linking cart order logs). */
+export function getOwnerAnalyticsSessionId() {
+  return getSessionId();
+}
+
 /**
  * @param {"store"|"brand"|"company"} entityType
  * @param {string} entityId
@@ -45,6 +50,26 @@ export function trackOwnerContactClick(entityType, entityId, channel) {
       entityType,
       entityId,
       channel: String(channel).toLowerCase(),
+      sessionId: getSessionId(),
+    })
+    .catch(() => {});
+}
+
+/**
+ * Draft cart sent to the store (e.g. WhatsApp order message).
+ * @param {"store"|"brand"|"company"} entityType
+ * @param {string} entityId
+ * @param {string} [channel="whatsapp"]
+ */
+export function trackOwnerOrderRequest(entityType, entityId, channel = "whatsapp") {
+  if (!entityType || !entityId) return;
+  const ch = channel ? String(channel).toLowerCase() : "whatsapp";
+  ownerAnalyticsAPI
+    .track({
+      eventType: "order_request",
+      entityType,
+      entityId,
+      channel: ch,
       sessionId: getSessionId(),
     })
     .catch(() => {});

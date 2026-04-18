@@ -178,7 +178,10 @@ const ShoppingPage = () => {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(2, minmax(0, 1fr))" },
+            gridTemplateColumns: {
+              xs: "repeat(2, minmax(0, 1fr))",
+              sm: "repeat(2, minmax(0, 1fr))",
+            },
             gap: 1.5,
             width: "100%",
           }}
@@ -770,12 +773,10 @@ const ShoppingPage = () => {
                     fontWeight: 700,
                     fontSize: { xs: "0.82rem", sm: "0.88rem" },
                     color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
+                    textAlign: "center",
                     lineHeight: 1.3,
                     minHeight: "2.6em",
+                    textAlign: "center",
                   }}
                 >
                   {locName(store)}
@@ -786,10 +787,13 @@ const ShoppingPage = () => {
                     sx={{
                       color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
                       fontSize: "0.7rem",
+                      alignItems: "center",
+                      justifyContent: "center",
                       lineHeight: 1.2,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      textAlign: "center",
                     }}
                   >
                     {locName(store.storeTypeId) || t(store.storeTypeId.name)}

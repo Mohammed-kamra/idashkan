@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   Box,
   Stack,
@@ -2784,6 +2790,18 @@ const DataEntryForm = () => {
       return { ...prev, types: updated };
     });
   };
+
+  /** After enabling delivery, put the selected store/brand city first in delivery cities. */
+  const mergeDeliveryCitiesWithStoreCityFirst = useCallback((prev) => {
+    if (prev.deliveryAllCities) return prev;
+    const city = prev.storecity;
+    if (!city || typeof city !== "string") return prev;
+    const list = Array.isArray(prev.deliveryCities)
+      ? [...prev.deliveryCities]
+      : [];
+    const rest = list.filter((c) => c !== city);
+    return { ...prev, deliveryCities: [city, ...rest] };
+  }, []);
 
   const handleEditFormChange = (e) => {
     const { name, value } = e.target;
@@ -10270,16 +10288,18 @@ const DataEntryForm = () => {
                       onChange={(e) =>
                         setEditForm((prev) => {
                           const on = e.target.checked;
-                          return {
+                          if (!on) {
+                            return {
+                              ...prev,
+                              isHasDelivery: false,
+                              deliveryAllCities: false,
+                              deliveryCities: [],
+                            };
+                          }
+                          return mergeDeliveryCitiesWithStoreCityFirst({
                             ...prev,
-                            isHasDelivery: on,
-                            ...(!on
-                              ? {
-                                  deliveryAllCities: false,
-                                  deliveryCities: [],
-                                }
-                              : {}),
-                          };
+                            isHasDelivery: true,
+                          });
                         })
                       }
                     />
@@ -10752,16 +10772,18 @@ const DataEntryForm = () => {
                       onChange={(e) =>
                         setEditForm((prev) => {
                           const on = e.target.checked;
-                          return {
+                          if (!on) {
+                            return {
+                              ...prev,
+                              isHasDelivery: false,
+                              deliveryAllCities: false,
+                              deliveryCities: [],
+                            };
+                          }
+                          return mergeDeliveryCitiesWithStoreCityFirst({
                             ...prev,
-                            isHasDelivery: on,
-                            ...(!on
-                              ? {
-                                  deliveryAllCities: false,
-                                  deliveryCities: [],
-                                }
-                              : {}),
-                          };
+                            isHasDelivery: true,
+                          });
                         })
                       }
                     />

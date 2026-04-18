@@ -24,6 +24,10 @@ import {
   TableRow,
   TextField,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -34,6 +38,7 @@ import {
   CardGiftcard as GiftsIcon,
   FileDownload as FileDownloadIcon,
   AccessTime as AccessTimeIcon,
+  ShoppingCart as ShoppingCartIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 
@@ -67,6 +72,14 @@ const AdminPage = () => {
   const [expirePlanFilter, setExpirePlanFilter] = useState("all");
   const [expireStores, setExpireStores] = useState([]);
   const [expireBrands, setExpireBrands] = useState([]);
+  const [cartOrderLogs, setCartOrderLogs] = useState([]);
+  const [cartOrderTotal, setCartOrderTotal] = useState(0);
+  const [cartOrderPage, setCartOrderPage] = useState(1);
+  const [cartOrderStoreName, setCartOrderStoreName] = useState("");
+  const [cartOrderFrom, setCartOrderFrom] = useState("");
+  const [cartOrderTo, setCartOrderTo] = useState("");
+  const [cartOrderMessageOpen, setCartOrderMessageOpen] = useState(false);
+  const [cartOrderMessageText, setCartOrderMessageText] = useState("");
   const [tabLoading, setTabLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20); // 20, 50, 100, -1 = all
@@ -105,6 +118,8 @@ const AdminPage = () => {
       });
     } else if (activeTab === 4) {
       loadExpirePlanData();
+    } else if (activeTab === 5) {
+      loadCartOrderLogs({ page: 1 });
     }
   }, [
     activeTab,
@@ -205,6 +220,29 @@ const AdminPage = () => {
     }
   };
 
+  const loadCartOrderLogs = async (opts = {}) => {
+    setTabLoading(true);
+    try {
+      const page = Math.max(1, opts.page != null ? opts.page : cartOrderPage);
+      const params = { page, limit: 50 };
+      const sn = cartOrderStoreName.trim();
+      if (sn) params.storeName = sn;
+      if (cartOrderFrom) params.from = cartOrderFrom;
+      if (cartOrderTo) params.to = cartOrderTo;
+      const res = await adminAPI.getCartOrderLogs(params);
+      const body = res.data || {};
+      setCartOrderLogs(Array.isArray(body.data) ? body.data : []);
+      setCartOrderTotal(Number(body.total) || 0);
+      setCartOrderPage(Number(body.page) || page);
+    } catch (error) {
+      console.error("Error loading cart order logs:", error);
+      setCartOrderLogs([]);
+      setCartOrderTotal(0);
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
   const handleDeleteExpiredProducts = async () => {
     if (
       !window.confirm(
@@ -258,7 +296,14 @@ const AdminPage = () => {
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setPage(0);
+    if (newValue === 5) setCartOrderPage(1);
   };
+
+  const cartOrderLimit = 50;
+  const cartOrderTotalPages = Math.max(
+    1,
+    Math.ceil(cartOrderTotal / cartOrderLimit) || 1,
+  );
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
@@ -268,6 +313,19 @@ const AdminPage = () => {
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const yyyy = date.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return "-";
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    const ss = String(date.getSeconds()).padStart(2, "0");
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
   };
 
   const formatDateForExcel = (dateStr) => {
@@ -605,6 +663,11 @@ const AdminPage = () => {
             icon={<AccessTimeIcon />}
             iconPosition="start"
           />
+          <Tab
+            label={t("Cart order logs")}
+            icon={<ShoppingCartIcon />}
+            iconPosition="start"
+          />
         </Tabs>
 
         <Box sx={{ p: 3 }}>
@@ -905,57 +968,268 @@ const AdminPage = () => {
               )}
             </Box>
           )}
-          <Box
-            sx={{
-              mt: 3,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Typography variant="body2">{t("Rows per page")}:</Typography>
-              <TextField
-                select
-                size="small"
-                value={rowsPerPage}
-                onChange={handleRowsPerPageChange}
-                sx={{ minWidth: 80 }}
+          {activeTab === 5 && (
+            <Box>
+              <Typography variant="h5" sx={{ mb: 2 }}>
+                {t("Cart order logs")}
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  mb: 2,
+                  alignItems: "flex-end",
+                }}
               >
-                <MenuItem value={20}>20</MenuItem>
-                <MenuItem value={50}>50</MenuItem>
-                <MenuItem value={100}>100</MenuItem>
-                <MenuItem value={-1}>{t("All")}</MenuItem>
-              </TextField>
-            </Box>
-            {rowsPerPage !== -1 && totalItems > 0 && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                <Typography variant="body2">
-                  {t("Page")} {page + 1} {t("of")} {totalPages}
-                </Typography>
-                <Button
-                  variant="outlined"
+                <TextField
                   size="small"
-                  onClick={handlePrevPage}
-                  disabled={page === 0}
-                >
-                  {t("Previous page")}
-                </Button>
-                <Button
-                  variant="outlined"
+                  label={t("Filter by store name")}
+                  value={cartOrderStoreName}
+                  onChange={(e) => setCartOrderStoreName(e.target.value)}
+                  sx={{ minWidth: 260 }}
+                />
+                <TextField
                   size="small"
-                  onClick={handleNextPage}
-                  disabled={page >= totalPages - 1}
+                  type="date"
+                  label={t("From date")}
+                  InputLabelProps={{ shrink: true }}
+                  value={cartOrderFrom}
+                  onChange={(e) => setCartOrderFrom(e.target.value)}
+                />
+                <TextField
+                  size="small"
+                  type="date"
+                  label={t("To date")}
+                  InputLabelProps={{ shrink: true }}
+                  value={cartOrderTo}
+                  onChange={(e) => setCartOrderTo(e.target.value)}
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => loadCartOrderLogs({ page: 1 })}
+                  disabled={tabLoading}
                 >
-                  {t("Next page")}
+                  {t("Apply filters")}
                 </Button>
               </Box>
-            )}
-          </Box>
+              {tabLoading ? (
+                <Box display="flex" justifyContent="center" py={4}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "action.hover" }}>
+                        <TableCell>{t("DateTime")}</TableCell>
+                        <TableCell>{t("Order ID")}</TableCell>
+                        <TableCell>{t("Store")}</TableCell>
+                        <TableCell>{t("Items")}</TableCell>
+                        <TableCell>{t("User")}</TableCell>
+                        <TableCell align="right">{t("Actions")}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {cartOrderLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center">
+                            {t("No data to display")}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        cartOrderLogs.map((row) => (
+                          <TableRow key={row._id} hover>
+                            <TableCell>
+                              {row.createdAt
+                                ? formatDateTime(row.createdAt)
+                                : "-"}
+                            </TableCell>
+                            <TableCell
+                              sx={{
+                                maxWidth: 180,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {row.orderId || "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" noWrap title={row.storeName}>
+                                {row.storeName || "-"}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                display="block"
+                                noWrap
+                              >
+                                {row.storeId ? String(row.storeId) : "-"}
+                              </Typography>
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 280 }}>
+                              {(Array.isArray(row.items) ? row.items : [])
+                                .map(
+                                  (it) =>
+                                    `${it.productName || "?"} ×${it.qty || 0}`,
+                                )
+                                .join(", ") || "-"}
+                            </TableCell>
+                            <TableCell>
+                              {row.userId?.email ||
+                                row.userId?.username ||
+                                "—"}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  setCartOrderMessageText(
+                                    row.messageText || "",
+                                  );
+                                  setCartOrderMessageOpen(true);
+                                }}
+                              >
+                                {t("View message")}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              <Box
+                sx={{
+                  mt: 2,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 2,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {t("Total")}: {cartOrderTotal}
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography variant="body2">
+                    {t("Page")} {cartOrderPage} {t("of")}{" "}
+                    {cartOrderTotalPages}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() =>
+                      loadCartOrderLogs({ page: Math.max(1, cartOrderPage - 1) })
+                    }
+                    disabled={tabLoading || cartOrderPage <= 1}
+                  >
+                    {t("Previous page")}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() =>
+                      loadCartOrderLogs({
+                        page: Math.min(
+                          cartOrderTotalPages,
+                          cartOrderPage + 1,
+                        ),
+                      })
+                    }
+                    disabled={
+                      tabLoading || cartOrderPage >= cartOrderTotalPages
+                    }
+                  >
+                    {t("Next page")}
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          )}
+          {activeTab !== 5 && (
+            <Box
+              sx={{
+                mt: 3,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Typography variant="body2">{t("Rows per page")}:</Typography>
+                <TextField
+                  select
+                  size="small"
+                  value={rowsPerPage}
+                  onChange={handleRowsPerPageChange}
+                  sx={{ minWidth: 80 }}
+                >
+                  <MenuItem value={20}>20</MenuItem>
+                  <MenuItem value={50}>50</MenuItem>
+                  <MenuItem value={100}>100</MenuItem>
+                  <MenuItem value={-1}>{t("All")}</MenuItem>
+                </TextField>
+              </Box>
+              {rowsPerPage !== -1 && totalItems > 0 && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography variant="body2">
+                    {t("Page")} {page + 1} {t("of")} {totalPages}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handlePrevPage}
+                    disabled={page === 0}
+                  >
+                    {t("Previous page")}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleNextPage}
+                    disabled={page >= totalPages - 1}
+                  >
+                    {t("Next page")}
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       </Paper>
+
+      <Dialog
+        open={cartOrderMessageOpen}
+        onClose={() => setCartOrderMessageOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{t("Order message")}</DialogTitle>
+        <DialogContent>
+          <Typography
+            component="pre"
+            sx={{
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontFamily: "inherit",
+              m: 0,
+            }}
+          >
+            {cartOrderMessageText}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCartOrderMessageOpen(false)}>
+            {t("Close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

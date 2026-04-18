@@ -20,6 +20,7 @@ import {
   Paper,
   alpha,
   Fade,
+  CardContent,
 } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { brandAPI, companyAPI, adAPI, brandTypeAPI } from "../services/api";
@@ -27,6 +28,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import BusinessIcon from "@mui/icons-material/Business";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SearchIcon from "@mui/icons-material/Search";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -44,14 +46,13 @@ function capitalize(s) {
     : s;
 }
 
-const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }) => {
-  const accent = theme.palette.primary.main;
+/** Matches store cards on `ShoppingPage` (logo band, Delivery/VIP chips, title + type). */
+const BrandCard = ({ brand, index, isDark, locName, onClick, t }) => {
   const titleRaw = brand.statusAll === "off" ? "" : locName(brand);
   const title =
     typeof titleRaw === "string"
       ? titleRaw.trim()
       : String(titleRaw || "").trim();
-  const displayAddress = String(locAddress(brand) || "").trim();
 
   return (
     <Fade in timeout={280 + Math.min(index * 50, 400)}>
@@ -59,47 +60,40 @@ const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }
         elevation={0}
         onClick={onClick}
         sx={{
-          cursor: "pointer",
           display: "flex",
           flexDirection: "column",
-          alignItems: "stretch",
-          borderRadius: 2.5,
+          cursor: "pointer",
+          borderRadius: "16px",
           overflow: "hidden",
           width: "100%",
           height: "100%",
-          border: "1px solid",
-          borderColor: isDark
-            ? alpha("#fff", 0.08)
-            : alpha(theme.palette.divider, 0.9),
           background: isDark
-            ? alpha("#1a2235", 0.92)
-            : theme.palette.background.paper,
-          transition:
-            "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s",
+            ? "linear-gradient(145deg,#1e2a3a,#243040)"
+            : "#ffffff",
+          border: isDark
+            ? "1px solid rgba(255,255,255,0.07)"
+            : "1px solid #eef0f4",
+          boxShadow: isDark
+            ? "0 4px 16px rgba(0,0,0,0.3)"
+            : "0 2px 12px rgba(0,0,0,0.05)",
+          transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
           "&:hover": {
-            transform: "translateY(-4px)",
+            transform: "translateY(-3px)",
             boxShadow: isDark
-              ? `0 10px 28px ${alpha("#000", 0.35)}`
-              : `0 10px 28px ${alpha(accent, 0.14)}`,
-            borderColor: alpha(accent, isDark ? 0.4 : 0.28),
-            "& .brand-card-logo": { transform: "scale(1.04)" },
+              ? "0 8px 28px rgba(0,0,0,0.45)"
+              : "0 8px 24px rgba(245,158,11,0.16)",
+            borderColor: isDark ? "rgba(245,158,11,0.3)" : "#fde68a",
           },
+          "&:active": { transform: "translateY(0)" },
         }}
       >
         <Box
-          className="brand-card-logo"
           sx={{
             position: "relative",
-            width: "100%",
-            aspectRatio: "1",
-            maxHeight: { xs: 140, sm: 160 },
-            background: isDark
-              ? `linear-gradient(145deg, ${alpha("#2d3a52", 0.9)} 0%, ${alpha("#1a2235", 1)} 100%)`
-              : `linear-gradient(145deg, ${alpha(accent, 0.06)} 0%, ${alpha("#f8fafc", 1)} 100%)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "transform 0.3s ease",
+            height: { xs: 115, sm: 130, md: 145 },
+            flexShrink: 0,
+            background: isDark ? "rgba(255,255,255,0.04)" : "#f9fafb",
+            overflow: "hidden",
           }}
         >
           {brand.logo ? (
@@ -108,89 +102,122 @@ const BrandCard = ({ brand, index, isDark, theme, locName, locAddress, onClick }
               image={resolveMediaUrl(brand.logo)}
               alt={title}
               sx={{
-                objectFit: "contain",
                 width: "100%",
                 height: "100%",
-                p: 1.5,
+                objectFit: "contain",
+                transition: "transform 0.35s ease",
+                ".MuiCard-root:hover &": { transform: "scale(1.05)" },
               }}
             />
           ) : (
-            <BusinessIcon sx={{ fontSize: 56, color: alpha(accent, 0.35) }} />
-          )}
-
-          {brand.isVip && (
             <Box
               sx={{
-                position: "absolute",
-                top: 6,
-                left: 6,
-                zIndex: 2,
-                backgroundColor: "white",
-                borderRadius: "50%",
-                width: 28,
-                height: 28,
+                height: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                "&::before": { content: '"👑"', fontSize: "13px" },
+              }}
+            >
+              <BusinessIcon
+                sx={{
+                  fontSize: { xs: 40, sm: 48 },
+                  color: isDark ? "rgba(255,255,255,0.18)" : "#d1d5db",
+                }}
+              />
+            </Box>
+          )}
+
+          {brand.isHasDelivery && (
+            <Chip
+              icon={
+                <LocalShippingIcon
+                  sx={{
+                    fontSize: "0.75rem !important",
+                    color: "white !important",
+                  }}
+                />
+              }
+              label={t("Delivery")}
+              size="small"
+              sx={{
+                position: "absolute",
+                bottom: 7,
+                left: 7,
+                height: 22,
+                fontSize: "0.65rem",
+                fontWeight: 700,
+                bgcolor: "rgba(239,68,68,0.85)",
+                color: "white",
+                border: "none",
+                backdropFilter: "blur(4px)",
+                "& .MuiChip-label": { px: 0.6 },
+              }}
+            />
+          )}
+
+          {brand.isVip && (
+            <Chip
+              label="VIP"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 7,
+                right: 7,
+                height: 20,
+                fontSize: "0.6rem",
+                fontWeight: 800,
+                bgcolor: "#f59e0b",
+                color: "white",
+                border: "none",
+                boxShadow: "0 2px 6px rgba(245,158,11,0.5)",
+                "& .MuiChip-label": { px: 0.6 },
               }}
             />
           )}
         </Box>
 
         {title ? (
-          <Box
+          <CardContent
             sx={{
-              px: 1,
-              py: 1.25,
+              p: "10px 10px 12px !important",
               flex: 1,
               display: "flex",
-              alignItems: "center",
-              minHeight: 44,
+              flexDirection: "column",
+              gap: 0.4,
             }}
           >
             <Typography
-              variant="subtitle2"
-              component="h2"
-              align="center"
               sx={{
-                width: "100%",
-                fontWeight: 800,
-                fontSize: { xs: "0.78rem", sm: "0.85rem" },
+                fontWeight: 700,
+                fontSize: { xs: "0.82rem", sm: "0.88rem" },
+                color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
+                textAlign: "center",
                 lineHeight: 1.3,
-                color: "text.primary",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
+                minHeight: "2.6em",
               }}
             >
               {title}
             </Typography>
-          </Box>
+            {brand.brandTypeId?.name && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
+                  fontSize: "0.7rem",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  textAlign: "center",
+                }}
+              >
+                {locName(brand.brandTypeId) || t(brand.brandTypeId.name)}
+              </Typography>
+            )}
+          </CardContent>
         ) : null}
-
-        {/* {displayAddress ? (
-          <Typography
-            variant="caption"
-            component="div"
-            sx={{
-              px: 1,
-              pb: 1.25,
-              color: "text.secondary",
-              fontSize: "0.72rem",
-              textAlign: "center",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              width: "100%",
-              minWidth: 0,
-            }}
-          >
-            {displayAddress}
-          </Typography>
-        ) : null} */}
       </Card>
     </Fade>
   );
@@ -206,7 +233,7 @@ const BrandCompanyList = ({ variant }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { t } = useTranslation();
-  const { locName, locAddress } = useLocalizedContent();
+  const { locName } = useLocalizedContent();
   const { selectedCity } = useCityFilter();
   const isCompanyMode = variant === "company";
 
@@ -484,34 +511,35 @@ const BrandCompanyList = ({ variant }) => {
           <Box
             sx={{
               display: "grid",
-              gap: 1.5,
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(3, minmax(0, 1fr))",
+                md: "repeat(4, minmax(0, 1fr))",
+                lg: "repeat(5, minmax(0, 1fr))",
+              },
+              gap: { xs: 1.2, sm: 1.5, md: 2 },
             }}
           >
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card
-                key={i}
-                elevation={0}
-                sx={{
-                  borderRadius: 2.5,
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
+              <Box key={i} sx={{ minWidth: 0, width: "100%" }}>
                 <Skeleton
-                  variant="rectangular"
-                  sx={{ aspectRatio: "1", width: "100%" }}
+                  variant="rounded"
+                  sx={{
+                    width: "100%",
+                    height: { xs: 115, sm: 130, md: 145 },
+                    borderRadius: "16px 16px 0 0",
+                  }}
                 />
-                <Box sx={{ px: 1, py: 1 }}>
-                  <Skeleton
-                    variant="text"
-                    width="90%"
-                    height={20}
-                    sx={{ mx: "auto" }}
-                  />
-                </Box>
-              </Card>
+                <Skeleton
+                  variant="rounded"
+                  sx={{
+                    width: "100%",
+                    height: 70,
+                    borderRadius: "0 0 16px 16px",
+                    mt: "1px",
+                  }}
+                />
+              </Box>
             ))}
           </Box>
         </Container>
@@ -817,19 +845,27 @@ const BrandCompanyList = ({ variant }) => {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: { xs: 1.5, sm: 2 },
+            gridTemplateColumns: {
+              xs: "repeat(2, 1fr)",
+              sm: "repeat(3, 1fr)",
+              md: "repeat(4, 1fr)",
+              lg: "repeat(5, 1fr)",
+            },
+            gap: { xs: 1.2, sm: 1.5, md: 2 },
           }}
         >
           {filteredBrands.map((brand, index) => (
             <BrandCard
+              sx={{
+                alignItems: "center",
+                justifyContent: "center",
+              }}
               key={brand._id}
               brand={brand}
               index={index}
               isDark={isDark}
-              theme={theme}
               locName={locName}
-              locAddress={locAddress}
+              t={t}
               onClick={() => handleBrandClick(brand)}
             />
           ))}

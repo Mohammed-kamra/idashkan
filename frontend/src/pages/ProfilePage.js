@@ -299,18 +299,46 @@ const ProfilePage = () => {
   }, [profileShortcuts]);
 
   const contactItems = [
-    { key: "whatsapp", value: contactStr(contactInfo?.whatsapp), icon: <WhatsAppIcon /> },
-    { key: "facebook", value: contactStr(contactInfo?.facebook), icon: <FacebookIcon /> },
+    {
+      key: "whatsapp",
+      value: contactStr(contactInfo?.whatsapp),
+      icon: <WhatsAppIcon />,
+    },
+    {
+      key: "facebook",
+      value: contactStr(contactInfo?.facebook),
+      icon: <FacebookIcon />,
+    },
     {
       key: "instagram",
       value: contactStr(contactInfo?.instagram),
       icon: <InstagramIcon />,
     },
-    { key: "snapchat", value: contactStr(contactInfo?.snapchat), icon: <SnapchatIcon /> },
-    { key: "gmail", value: contactStr(contactInfo?.gmail), icon: <GmailIcon /> },
-    { key: "tiktok", value: contactStr(contactInfo?.tiktok), icon: <TikTokIcon /> },
-    { key: "viber", value: contactStr(contactInfo?.viber), icon: <ViberIcon /> },
-    { key: "telegram", value: contactStr(contactInfo?.telegram), icon: <TelegramIcon /> },
+    {
+      key: "snapchat",
+      value: contactStr(contactInfo?.snapchat),
+      icon: <SnapchatIcon />,
+    },
+    {
+      key: "gmail",
+      value: contactStr(contactInfo?.gmail),
+      icon: <GmailIcon />,
+    },
+    {
+      key: "tiktok",
+      value: contactStr(contactInfo?.tiktok),
+      icon: <TikTokIcon />,
+    },
+    {
+      key: "viber",
+      value: contactStr(contactInfo?.viber),
+      icon: <ViberIcon />,
+    },
+    {
+      key: "telegram",
+      value: contactStr(contactInfo?.telegram),
+      icon: <TelegramIcon />,
+    },
   ].filter((item) => Boolean(item.value));
 
   return (
@@ -360,11 +388,8 @@ const ProfilePage = () => {
                 </Typography>
               )}
             </Box>
-           
           </Box>
         </Box>
-
-        
 
         <List disablePadding>
           <ListItemButton
@@ -402,8 +427,6 @@ const ProfilePage = () => {
               </ListItemButton>
             </>
           )}
-
-       
 
           {showDataEntryLink && (
             <>
@@ -458,76 +481,76 @@ const ProfilePage = () => {
           <Divider />
 
           {profileShortcutItems.length > 0 && (
-          <Box
-            sx={{
-              px: { xs: 2, sm: 2.5 },
-              py: { xs: 2, sm: 2.25 },
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              fontWeight={700}
-              display="block"
-              sx={{ mb: 1.25, fontSize: { xs: "0.95rem", sm: "1rem" } }}
-            >
-              {t("Shortcuts", { defaultValue: "Shortcuts" })}
-            </Typography>
             <Box
               sx={{
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "nowrap",
-                gap: { xs: 1.25, sm: 1.5 },
-                overflowX: "auto",
-                py: 0.5,
-                mx: -0.5,
-                px: 0.5,
-                scrollbarWidth: "thin",
-                WebkitOverflowScrolling: "touch",
-                "&::-webkit-scrollbar": { height: 8 },
+                px: { xs: 2, sm: 2.5 },
+                py: { xs: 2, sm: 2.25 },
+                borderBottom: `1px solid ${theme.palette.divider}`,
               }}
             >
-              {profileShortcutItems.map((item) => {
-                const IconComp = PROFILE_SHORTCUT_ICONS[item.id];
-                return (
-                  <Chip
-                    key={item.id}
-                    component={Link}
-                    to={item.path}
-                    clickable
-                    variant="outlined"
-                    label={t(item.labelKey)}
-                    icon={
-                      IconComp ? (
-                        <IconComp sx={{ fontSize: 22 }} />
-                      ) : undefined
-                    }
-                    sx={{
-                      flexShrink: 0,
-                      borderRadius: 2.5,
-                      fontWeight: 650,
-                      fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                      minHeight: 44,
-                      height: "auto",
-                      py: 0.75,
-                      px: 0.5,
-                      "& .MuiChip-label": {
-                        px: 0.75,
-                        py: 0.25,
-                      },
-                      "& .MuiChip-icon": {
-                        ml: 1,
-                        mr: -0.25,
-                      },
-                    }}
-                  />
-                );
-              })}
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                fontWeight={700}
+                display="block"
+                sx={{ mb: 1.25, fontSize: { xs: "0.95rem", sm: "1rem" } }}
+              >
+                {t("Shortcuts", { defaultValue: "Shortcuts" })}
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "row",
+                  flexWrap: "nowrap",
+                  gap: { xs: 1.25, sm: 1.5 },
+                  overflowX: "auto",
+                  py: 0.5,
+                  mx: -0.5,
+                  px: 0.5,
+                  scrollbarWidth: "thin",
+                  WebkitOverflowScrolling: "touch",
+                  "&::-webkit-scrollbar": { height: 8 },
+                }}
+              >
+                {profileShortcutItems.map((item) => {
+                  const IconComp = PROFILE_SHORTCUT_ICONS[item.id];
+                  return (
+                    <Chip
+                      key={item.id}
+                      component={Link}
+                      to={item.path}
+                      clickable
+                      variant="outlined"
+                      label={t(item.labelKey)}
+                      icon={
+                        IconComp ? (
+                          <IconComp sx={{ fontSize: 22 }} />
+                        ) : undefined
+                      }
+                      sx={{
+                        flexShrink: 0,
+                        borderRadius: 2.5,
+                        fontWeight: 650,
+                        fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                        minHeight: 44,
+                        height: "auto",
+                        py: 0.75,
+                        px: 0.5,
+                        "& .MuiChip-label": {
+                          px: 0.75,
+                          py: 0.25,
+                        },
+                        "& .MuiChip-icon": {
+                          ml: 1,
+                          mr: -0.25,
+                        },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
             </Box>
-          </Box>
-        )}
+          )}
 
           <Divider />
           <Box sx={{ px: 2, py: 1.5 }}>
@@ -747,7 +770,7 @@ const ProfilePage = () => {
 
           <Divider />
 
-          <Box sx={{ px: 2, pb: 2, pt: 0 }}>
+          {/* <Box sx={{ px: 2, pb: 2, pt: 0 }}>
             <Typography
               variant="caption"
               color="text.secondary"
@@ -807,7 +830,7 @@ const ProfilePage = () => {
               </Button>
             </Box>
           </Box>
-          <Divider />
+          <Divider /> */}
           <ListItem sx={{ py: 1 }}>
             <ListItemText primary={t("Contact Us")} />
           </ListItem>

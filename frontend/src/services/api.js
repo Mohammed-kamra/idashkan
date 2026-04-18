@@ -311,6 +311,11 @@ export const searchAnalyticsAPI = {
   recordClick: (id, body) => api.patch(`/search-analytics/${id}/click`, body),
 };
 
+/** Draft cart WhatsApp order — full payload (optional auth). */
+export const cartOrderLogAPI = {
+  log: (body) => api.post("/cart-orders/log", body),
+};
+
 // Admin API calls
 export const adminAPI = {
   getStats: () => api.get("/admin/stats"),
@@ -362,6 +367,9 @@ export const adminAPI = {
       params,
       responseType: "blob",
     }),
+
+  getCartOrderLogs: (params = {}) =>
+    api.get("/admin/cart-order-logs", { params }),
 };
 
 /** Owner analytics dashboard (requires role `owner` + linked entity). */

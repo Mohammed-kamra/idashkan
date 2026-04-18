@@ -35,7 +35,10 @@ exports.trackEvent = async (req, res) => {
       eventType,
       entityType,
       entityId,
-      channel: eventType === "contact_click" ? ch : null,
+      channel:
+        eventType === "contact_click" || eventType === "order_request"
+          ? ch
+          : null,
       userId: req.userId || null,
       sessionId: req.body.sessionId ? String(req.body.sessionId).slice(0, 128) : null,
     });

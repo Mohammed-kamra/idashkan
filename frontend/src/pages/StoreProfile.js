@@ -52,6 +52,7 @@ import {
   giftAPI,
   videoAPI,
   jobAPI,
+  cartOrderLogAPI,
 } from "../services/api";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
@@ -60,6 +61,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
+import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
 import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
@@ -89,6 +91,8 @@ import { formatPriceDigits } from "../utils/formatPriceNumber";
 import {
   trackOwnerProfileView,
   trackOwnerContactClick,
+  trackOwnerOrderRequest,
+  getOwnerAnalyticsSessionId,
 } from "../utils/ownerAnalyticsTrack";
 
 /** Cart/localStorage snapshot: include name* so `locName` respects data language. */
@@ -153,6 +157,8 @@ const StoreProfile = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState({});
   const [cartToast, setCartToast] = useState({ open: false, text: "" });
+  const [orderWhatsAppConfirmOpen, setOrderWhatsAppConfirmOpen] =
+    useState(false);
   const notifyWhatsAppFallback = useCallback((hint) => {
     setCartToast({ open: true, text: hint });
   }, []);
@@ -398,19 +404,25 @@ const StoreProfile = () => {
     return digits ? `https://api.whatsapp.com/send?phone=${digits}` : null;
   };
 
-  const buildWhatsAppOrderText = () => {
+  const buildWhatsAppOrderPayload = () => {
     const orderId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const storeName = locName(store) || "";
     const lines = [];
-    lines.push(`Order To: ${locName(store) || ""}`.trim());
+    lines.push(`Order To: ${storeName}`.trim());
     lines.push("");
-    const items = Object.values(cartItems || {})
+    const sortedItems = Object.values(cartItems || {})
       .filter((i) => (Number(i?.qty) || 0) > 0 && i?.product?._id)
       .sort((a, b) =>
         String(locName(a.product) || "").localeCompare(
           String(locName(b.product) || ""),
         ),
       );
-    items.forEach((item, idx) => {
+    const items = sortedItems.map((item) => ({
+      productId: String(item.product._id),
+      qty: Number(item.qty) || 0,
+      productName: locName(item.product) || "",
+    }));
+    sortedItems.forEach((item, idx) => {
       const name = locName(item.product) || "";
       const qty = Number(item.qty) || 0;
       lines.push(`${idx + 1}) ${name} x${qty}`);
@@ -431,19 +443,60 @@ const StoreProfile = () => {
     lines.push(`Order ID: ${orderId}`.trim());
     lines.push(`Ordered Via: iDashkan App`);
     lines.push("Thank you.");
-    return lines.join("\n");
+    const messageText = lines.join("\n");
+    return {
+      orderId,
+      messageText,
+      items,
+      storeName,
+      storeNamePrimary: store?.name || "",
+      storeNameEn: store?.nameEn || "",
+      storeNameAr: store?.nameAr || "",
+      storeNameKu: store?.nameKu || "",
+    };
   };
 
-  const handleOrderWhatsApp = () => {
+  const buildWhatsAppOrderText = () => buildWhatsAppOrderPayload().messageText;
+
+  const requestOrderWhatsApp = () => {
     const wa = getStoreWhatsAppUrl();
     if (!wa) {
       setCartToast({ open: true, text: t("WhatsApp number not found") });
       return;
     }
-    const text = encodeURIComponent(buildWhatsAppOrderText());
+    setOrderWhatsAppConfirmOpen(true);
+  };
+
+  const confirmOrderWhatsApp = () => {
+    const wa = getStoreWhatsAppUrl();
+    if (!wa) {
+      setOrderWhatsAppConfirmOpen(false);
+      setCartToast({ open: true, text: t("WhatsApp number not found") });
+      return;
+    }
+    const payload = buildWhatsAppOrderPayload();
+    const text = encodeURIComponent(payload.messageText);
     const url = wa.includes("?") ? `${wa}&text=${text}` : `${wa}?text=${text}`;
-    trackOwnerContactClick("store", id, "whatsapp");
+    const storeIdForLog = store?._id || id;
+    cartOrderLogAPI
+      .log({
+        storeId: storeIdForLog,
+        storeName: payload.storeName,
+        storeNamePrimary: payload.storeNamePrimary,
+        storeNameEn: payload.storeNameEn,
+        storeNameAr: payload.storeNameAr,
+        storeNameKu: payload.storeNameKu,
+        orderId: payload.orderId,
+        items: payload.items,
+        messageText: payload.messageText,
+        sessionId: getOwnerAnalyticsSessionId(),
+      })
+      .catch(() => {});
+    trackOwnerOrderRequest("store", id, "whatsapp");
     openWhatsAppLink(url, { onClipboardFallback: notifyWhatsAppFallback });
+    setOrderWhatsAppConfirmOpen(false);
+    setCartOpen(false);
+    clearCart();
   };
 
   const isProductAvailableForCart = (p) => {
@@ -2567,12 +2620,80 @@ const StoreProfile = () => {
             {t("Close")}
           </Button>
           <Button
-            onClick={handleOrderWhatsApp}
+            onClick={requestOrderWhatsApp}
             variant="contained"
             startIcon={<WhatsApp />}
             disabled={cartCount <= 0}
           >
             {t("Order")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={orderWhatsAppConfirmOpen}
+        onClose={() => setOrderWhatsAppConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{t("cartOrderWhatsAppWarningTitle")}</DialogTitle>
+        <DialogContent>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.5,
+              mb: 1.5,
+            }}
+          >
+            <Box
+              aria-hidden
+              sx={{
+                display: "inline-flex",
+                alignItems: "flex-start",
+                justifyContent: "flex-start",
+                px: 2.5,
+                py: 1,
+                borderRadius: 999,
+                bgcolor: "action.hover",
+                border: "1px solid",
+                borderColor: "divider",
+                "@keyframes cartOrderSwipeRight": {
+                  "0%, 100%": { transform: "translateX(-8px)" },
+                  "50%": { transform: "translateX(14px)" },
+                },
+                animation: "cartOrderSwipeRight 1.5s ease-in-out infinite",
+              }}
+            >
+              <KeyboardDoubleArrowRightIcon
+                color="primary"
+                sx={{ fontSize: 36 }}
+              />
+            </Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontWeight: 600 }}
+            >
+              {t("Scroll right")}
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {t("cartOrderWhatsAppWarningBody")}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOrderWhatsAppConfirmOpen(false)}>
+            {t("Cancel")}
+          </Button>
+          <Button
+            onClick={confirmOrderWhatsApp}
+            variant="contained"
+            color="success"
+            startIcon={<WhatsApp />}
+          >
+            {t("Continue to WhatsApp")}
           </Button>
         </DialogActions>
       </Dialog>
