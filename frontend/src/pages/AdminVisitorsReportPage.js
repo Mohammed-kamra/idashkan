@@ -21,6 +21,7 @@ import {
   Alert,
   Grid,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import {
   ResponsiveContainer,
@@ -51,6 +52,7 @@ function formatPct(v) {
 }
 
 const AdminVisitorsReportPage = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
