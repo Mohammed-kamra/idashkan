@@ -150,6 +150,21 @@ function isBrowserReloadNavigation() {
 /** After first consumption, ignore "reload" for scroll policy so Home → away → Home restores scroll. */
 let mainPageReloadScrollResetConsumed = false;
 
+/** Sentinel id for category chip: products with no categoryId */
+const UNCATEGORIZED_CATEGORY_ID = "__uncategorized__";
+
+/**
+ * Normalized category id for filters, or null when the product has no category.
+ * Avoids bad comparisons when categoryId is missing, null, or populated.
+ */
+function productCategoryIdString(product, getID) {
+  const raw = getID(product?.categoryId ?? product?.category);
+  if (raw == null || raw === "") return null;
+  const s = String(raw).trim();
+  if (!s || s === "undefined" || s === "null") return null;
+  return s;
+}
+
 const MainPage = () => {
   const theme = useTheme();
   const isMobile = useIsMobileLayout();
@@ -884,7 +899,7 @@ const MainPage = () => {
       new Set(
         stores
           .filter((s) => storeMatchesSelectedCity(s, selectedCity))
-          .map((s) => getID(s._id)),
+          .map((s) => String(getID(s._id))),
       ),
     [stores, selectedCity],
   );
@@ -911,10 +926,6 @@ const MainPage = () => {
     return getID(store?.storeTypeId ?? product?.storeTypeId);
   };
 
-  /** categoryId or populated category reference */
-  const effectiveProductCategoryId = (product) =>
-    getID(product?.categoryId ?? product?.category);
-
   /**
    * Products used only to decide which store-type chips to show.
    * Ignores store type, category, and category-type so the full store-type row stays
@@ -922,7 +933,7 @@ const MainPage = () => {
    */
   const filteredProductsForStoreTypeChips = useMemo(() => {
     return allProducts.filter((product) => {
-      if (!storeIdsInCity.has(getID(product.storeId))) return false;
+      if (!storeIdsInCity.has(String(getID(product.storeId)))) return false;
 
       if (
         product.newPrice < priceRange[0] ||
@@ -954,12 +965,16 @@ const MainPage = () => {
   const finalFilteredStoresForStoreTypeChips = useMemo(() => {
     const storeIdsWithProducts = [
       ...new Set(
-        filteredProductsForStoreTypeChips.map((p) => getID(p.storeId)),
+        filteredProductsForStoreTypeChips.map((p) =>
+          String(getID(p.storeId)),
+        ),
       ),
     ];
     return stores.filter((store) => {
       const storeID = getID(store._id);
-      const hasMatchingProducts = storeIdsWithProducts.includes(storeID);
+      const hasMatchingProducts = storeIdsWithProducts.includes(
+        String(storeID),
+      );
       const storeNameMatch =
         search && store.name?.toLowerCase().includes(search.toLowerCase());
       const cityMatch = storeMatchesSelectedCity(store, selectedCity);
@@ -981,7 +996,7 @@ const MainPage = () => {
   const filteredProductsForCategoryChips = useMemo(() => {
     if (selectedStoreTypeId === "all") return [];
     return allProducts.filter((product) => {
-      if (!storeIdsInCity.has(getID(product.storeId))) return false;
+      if (!storeIdsInCity.has(String(getID(product.storeId)))) return false;
 
       if (
         String(effectiveProductStoreTypeId(product)) !==
@@ -1036,15 +1051,32 @@ const MainPage = () => {
     if (selectedStoreTypeId === "all") return filteredCategories;
     const ids = new Set(
       filteredProductsForCategoryChips
-        .map((p) => effectiveProductCategoryId(p))
+        .map((p) => productCategoryIdString(p, getID))
         .filter(Boolean)
         .map((id) => String(id)),
     );
-    return filteredCategories.filter((c) => ids.has(String(getID(c._id))));
+    const hasUncategorized = filteredProductsForCategoryChips.some(
+      (p) => !productCategoryIdString(p, getID),
+    );
+    const cats = filteredCategories.filter((c) =>
+      ids.has(String(getID(c._id))),
+    );
+    if (hasUncategorized) {
+      return [
+        {
+          _id: UNCATEGORIZED_CATEGORY_ID,
+          name: t("Uncategorized"),
+        },
+        ...cats,
+      ];
+    }
+    return cats;
   }, [
     filteredCategories,
     filteredProductsForCategoryChips,
     selectedStoreTypeId,
+    getID,
+    t,
   ]);
 
   useEffect(() => {
@@ -1073,7 +1105,7 @@ const MainPage = () => {
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
       // Same city universe as filter chips: discounted products in selected city only
-      if (!storeIdsInCity.has(getID(product.storeId))) return false;
+      if (!storeIdsInCity.has(String(getID(product.storeId)))) return false;
 
       // Filter by Store Type (product or parent store)
       if (
@@ -1084,13 +1116,15 @@ const MainPage = () => {
         return false;
       }
 
-      // Filter by Category
-      if (
-        selectedCategory &&
-        String(effectiveProductCategoryId(product)) !==
-          String(getID(selectedCategory._id))
-      ) {
-        return false;
+      // Filter by Category (including "Uncategorized" for products with no categoryId)
+      if (selectedCategory) {
+        const want = String(getID(selectedCategory._id));
+        const have = productCategoryIdString(product, getID);
+        if (want === UNCATEGORIZED_CATEGORY_ID) {
+          if (have != null) return false;
+        } else if (have !== want) {
+          return false;
+        }
       }
 
       // Filter by Category Type
@@ -1268,7 +1302,9 @@ const MainPage = () => {
   const finalFilteredStores = useMemo(() => {
     // Get unique store IDs from the already filtered products
     const storeIdsWithFilteredProducts = [
-      ...new Set(filteredProducts.map((p) => getID(p.storeId))),
+      ...new Set(
+        filteredProducts.map((p) => String(getID(p.storeId))),
+      ),
     ];
 
     // Filter the stores themselves
@@ -1277,7 +1313,7 @@ const MainPage = () => {
 
       // Store must have products that passed the filters
       const hasMatchingProducts =
-        storeIdsWithFilteredProducts.includes(storeID);
+        storeIdsWithFilteredProducts.includes(String(storeID));
 
       // Or the store name itself matches the search
       const storeNameMatch =
@@ -1408,11 +1444,14 @@ const MainPage = () => {
           ) {
             return false;
           }
-          if (
-            selectedCategory &&
-            getID(product.categoryId) !== getID(selectedCategory._id)
-          ) {
-            return false;
+          if (selectedCategory) {
+            const want = String(getID(selectedCategory._id));
+            const have = productCategoryIdString(product, getID);
+            if (want === UNCATEGORIZED_CATEGORY_ID) {
+              if (have != null) return false;
+            } else if (have !== want) {
+              return false;
+            }
           }
           if (
             selectedCategoryType &&
@@ -1459,11 +1498,14 @@ const MainPage = () => {
           ) {
             return false;
           }
-          if (
-            selectedCategory &&
-            getID(product.categoryId) !== getID(selectedCategory._id)
-          ) {
-            return false;
+          if (selectedCategory) {
+            const want = String(getID(selectedCategory._id));
+            const have = productCategoryIdString(product, getID);
+            if (want === UNCATEGORIZED_CATEGORY_ID) {
+              if (have != null) return false;
+            } else if (have !== want) {
+              return false;
+            }
           }
           if (
             selectedCategoryType &&

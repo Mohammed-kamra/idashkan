@@ -32,6 +32,7 @@ import {
   IconButton,
   Fade,
   Skeleton,
+  Tooltip,
 } from "@mui/material";
 import {
   LocationOn,
@@ -54,6 +55,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CategoryIcon from "@mui/icons-material/Category";
 import BusinessIcon from "@mui/icons-material/Business";
 import StarIcon from "@mui/icons-material/Star";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   brandAPI,
   companyAPI,
@@ -67,6 +69,9 @@ import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import ProductDetailDialog from "../components/ProductDetailDialog";
+import AdminProductEditDialog from "../components/AdminProductEditDialog";
+import { useAuth } from "../context/AuthContext";
+import { isAdminEmail } from "../utils/adminAccess";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
@@ -145,6 +150,8 @@ const BrandProfile = () => {
     useLocalizedContent();
   const { selectedCity } = useCityFilter();
   const { toggleLike, isProductLiked, recordView } = useUserTracking();
+  const { user } = useAuth();
+  const profileAdminEdit = isAdminEmail(user);
 
   const productMatchesSelectedCity = useCallback(
     (product) =>
@@ -162,6 +169,7 @@ const BrandProfile = () => {
   // Product detail dialog state
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [adminEditProduct, setAdminEditProduct] = useState(null);
 
   const [brand, setBrand] = useState(null);
   const [products, setProducts] = useState([]);
@@ -787,35 +795,66 @@ const BrandProfile = () => {
                 ) : (
                   <Box />
                 )}
-                <IconButton
-                  size="small"
-                  onClick={(e) => handleLikeClick(product._id, e)}
-                  disabled={likeLoading[product._id]}
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    bgcolor: "rgba(255,255,255,0.92)",
-                    backdropFilter: "blur(8px)",
-                    color:
-                      likeStates[product._id] || isProductLiked(product._id)
-                        ? "#ef4444"
-                        : "#9ca3af",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                    transition: "all 0.2s ease",
-                    p: 0,
-                    "&:hover": {
-                      bgcolor: "white",
-                      color: "#ef4444",
-                      transform: "scale(1.15)",
-                    },
-                  }}
+                <Box
+                  sx={{ display: "flex", alignItems: "flex-start", gap: 0.5 }}
                 >
-                  {likeStates[product._id] || isProductLiked(product._id) ? (
-                    <FavoriteIcon sx={{ fontSize: "0.95rem" }} />
-                  ) : (
-                    <FavoriteBorderIcon sx={{ fontSize: "0.95rem" }} />
-                  )}
-                </IconButton>
+                  {profileAdminEdit ? (
+                    <Tooltip title={t("Edit Product")}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAdminEditProduct(product);
+                        }}
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          bgcolor: "rgba(255,255,255,0.92)",
+                          backdropFilter: "blur(8px)",
+                          color: "var(--brand-primary-blue, #1E6FD9)",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                          transition: "all 0.2s ease",
+                          p: 0,
+                          "&:hover": {
+                            bgcolor: "white",
+                            transform: "scale(1.15)",
+                          },
+                        }}
+                      >
+                        <EditIcon sx={{ fontSize: "0.95rem" }} />
+                      </IconButton>
+                    </Tooltip>
+                  ) : null}
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleLikeClick(product._id, e)}
+                    disabled={likeLoading[product._id]}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      bgcolor: "rgba(255,255,255,0.92)",
+                      backdropFilter: "blur(8px)",
+                      color:
+                        likeStates[product._id] || isProductLiked(product._id)
+                          ? "#ef4444"
+                          : "#9ca3af",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      transition: "all 0.2s ease",
+                      p: 0,
+                      "&:hover": {
+                        bgcolor: "white",
+                        color: "#ef4444",
+                        transform: "scale(1.15)",
+                      },
+                    }}
+                  >
+                    {likeStates[product._id] || isProductLiked(product._id) ? (
+                      <FavoriteIcon sx={{ fontSize: "0.95rem" }} />
+                    ) : (
+                      <FavoriteBorderIcon sx={{ fontSize: "0.95rem" }} />
+                    )}
+                  </IconButton>
+                </Box>
               </Box>
 
               {/* View count */}
@@ -1919,6 +1958,12 @@ const BrandProfile = () => {
         product={selectedProduct}
         candidateProducts={products}
         onProductChange={setSelectedProduct}
+      />
+      <AdminProductEditDialog
+        open={Boolean(adminEditProduct)}
+        product={adminEditProduct}
+        onClose={() => setAdminEditProduct(null)}
+        onSaved={fetchBrandData}
       />
 
       {/* Gift Details Dialog */}

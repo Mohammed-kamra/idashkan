@@ -463,42 +463,40 @@ const FilterChips = ({
         </Box>
       </Box>
 
-      {/* Category chips — only when a store type is selected */}
-      {selectedStoreTypeId !== "all" &&
-        visibleCategories &&
-        visibleCategories.length > 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              gap: 0.8,
-              overflowX: "auto",
-              overflowY: "hidden",
-              scrollbarWidth: "none",
-              "&::-webkit-scrollbar": { display: "none" },
-              mt: 1,
-              pb: 0.5,
-            }}
-          >
+      {/* Category chips — when a store type is selected (always show "All" so filters can reset) */}
+      {selectedStoreTypeId !== "all" && (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.8,
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+            mt: 1,
+            pb: 0.5,
+          }}
+        >
+          <Chip
+            icon={<CategoryIcon sx={{ fontSize: "0.9rem !important" }} />}
+            label={t("all")}
+            onClick={() => onCategorySelect(null)}
+            sx={selectedCategory === null ? activePillSx : inactivePillSx}
+          />
+          {(visibleCategories || []).map((cat) => (
             <Chip
-              icon={<CategoryIcon sx={{ fontSize: "0.9rem !important" }} />}
-              label={t("all")}
-              onClick={() => onCategorySelect(null)}
-              sx={selectedCategory === null ? activePillSx : inactivePillSx}
+              key={String(cat._id)}
+              label={locName(cat) || t(cat.name)}
+              onClick={() => onCategorySelect(cat)}
+              sx={
+                selectedCategory?._id === cat._id
+                  ? activePillSx
+                  : inactivePillSx
+              }
             />
-            {visibleCategories.map((cat) => (
-              <Chip
-                key={cat._id}
-                label={locName(cat) || t(cat.name)}
-                onClick={() => onCategorySelect(cat)}
-                sx={
-                  selectedCategory?._id === cat._id
-                    ? activePillSx
-                    : inactivePillSx
-                }
-              />
-            ))}
-          </Box>
-        )}
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };

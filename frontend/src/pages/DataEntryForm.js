@@ -125,6 +125,38 @@ function makeProductGroupRow() {
   };
 }
 
+function makeEditGroupRowFromProduct(product) {
+  const catId = product.categoryId?._id || product.categoryId || "";
+  const stId = product.storeTypeId?._id || product.storeTypeId || "";
+  const sid = product.storeId?._id || product.storeId || "";
+  return {
+    id: `egr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    productId: String(product._id),
+    storeId: sid ? String(sid) : "",
+    name: product.name || "",
+    categoryId: catId ? String(catId) : "",
+    categoryTypeId: product.categoryTypeId || "",
+    previousPrice:
+      product.previousPrice !== undefined && product.previousPrice !== null
+        ? String(product.previousPrice)
+        : "",
+    newPrice:
+      product.newPrice !== undefined && product.newPrice !== null
+        ? String(product.newPrice)
+        : "",
+    isDiscount: !!product.isDiscount,
+    brandId: product.brandId?._id || product.brandId || "",
+    companyId: product.companyId?._id || product.companyId || "",
+    imageFile: null,
+    currentImage: product.image || "",
+    storeTypeId: stId ? String(stId) : "",
+    status: product.status || "published",
+    expireDate: product.expireDate
+      ? toDatetimeLocalValue(product.expireDate)
+      : "",
+  };
+}
+
 /** Indices for admin Data Lists tabs (grouped UI: managing → service → main system → settings) */
 const LIST_TAB = {
   STORES: 0,
@@ -245,7 +277,8 @@ const DataEntryForm = () => {
     {},
   );
   const [products, setProducts] = useState([]);
-  const [productListImageUploadId, setProductListImageUploadId] = useState(null);
+  const [productListImageUploadId, setProductListImageUploadId] =
+    useState(null);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [gifts, setGifts] = useState([]);
   const [ads, setAds] = useState([]);
@@ -412,6 +445,11 @@ const DataEntryForm = () => {
   const [groupAddLoading, setGroupAddLoading] = useState(false);
   const [productGroupDialogOpen, setProductGroupDialogOpen] = useState(false);
 
+  /** Edit by group: products pre-selected in table → edit rows */
+  const [editGroupDialogOpen, setEditGroupDialogOpen] = useState(false);
+  const [editGroupRows, setEditGroupRows] = useState([]);
+  const [editGroupLoading, setEditGroupLoading] = useState(false);
+
   // Ad form state
   const [adForm, setAdForm] = useState({
     image: "",
@@ -522,6 +560,11 @@ const DataEntryForm = () => {
   const [translateMissingLoading, setTranslateMissingLoading] = useState(false);
 
   const [selectedStoreFilter, setSelectedStoreFilter] = useState("");
+  /** Products tab: client-side filters (name search + brand + company) */
+  const [productListSearchQuery, setProductListSearchQuery] = useState("");
+  const [productListFilterBrandId, setProductListFilterBrandId] = useState("");
+  const [productListFilterCompanyId, setProductListFilterCompanyId] =
+    useState("");
   const [editDialog, setEditDialog] = useState({
     open: false,
     type: "",
@@ -996,6 +1039,57 @@ const DataEntryForm = () => {
       cat?.storeTypeId?._id || cat?.storeTypeId || cat?.storeType?._id || "";
     return String(catStoreTypeId) === String(categoryStoreTypeFilter);
   });
+
+  const filteredProducts = useMemo(() => {
+    const q = (productListSearchQuery || "").trim().toLowerCase();
+    const brandF = (productListFilterBrandId || "").trim();
+    const companyF = (productListFilterCompanyId || "").trim();
+
+    return products.filter((p) => {
+      if (brandF) {
+        const bid =
+          p.brandId && typeof p.brandId === "object" && p.brandId._id != null
+            ? String(p.brandId._id)
+            : p.brandId != null
+              ? String(p.brandId)
+              : "";
+        if (bid !== brandF) return false;
+      }
+      if (companyF) {
+        const cid =
+          p.companyId &&
+          typeof p.companyId === "object" &&
+          p.companyId._id != null
+            ? String(p.companyId._id)
+            : p.companyId != null
+              ? String(p.companyId)
+              : "";
+        if (cid !== companyF) return false;
+      }
+      if (q) {
+        const hay = [p.name, p.nameEn, p.nameAr, p.nameKu]
+          .filter((s) => s != null && String(s).trim() !== "")
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [
+    products,
+    productListSearchQuery,
+    productListFilterBrandId,
+    productListFilterCompanyId,
+  ]);
+
+  useEffect(() => {
+    setProductsPage(0);
+  }, [
+    productListSearchQuery,
+    productListFilterBrandId,
+    productListFilterCompanyId,
+    selectedStoreFilter,
+  ]);
 
   const handleProductsPageChange = (event, newPage) => {
     setProductsPage(newPage);
@@ -2186,41 +2280,33 @@ const DataEntryForm = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      if (!productForm.storeIds?.length) {
-        setMessage({
-          type: "error",
-          text: t("Select at least one store.", {
-            defaultValue: "Select at least one store.",
-          }),
-        });
-        setLoading(false);
-        return;
-      }
       const storeTargets = [];
       const missingTypeNames = [];
-      for (const sid of productForm.storeIds) {
-        const store = stores.find((s) => String(s._id) === String(sid));
-        const typeId = getStoreTypeIdFromStore(store);
-        if (!typeId) {
-          missingTypeNames.push(store?.name || String(sid));
-          continue;
+      if (productForm.storeIds?.length) {
+        for (const sid of productForm.storeIds) {
+          const store = stores.find((s) => String(s._id) === String(sid));
+          const typeId = getStoreTypeIdFromStore(store);
+          if (!typeId) {
+            missingTypeNames.push(store?.name || String(sid));
+            continue;
+          }
+          storeTargets.push({ storeId: sid, storeTypeId: typeId });
         }
-        storeTargets.push({ storeId: sid, storeTypeId: typeId });
-      }
-      if (missingTypeNames.length) {
-        setMessage({
-          type: "error",
-          text: t(
-            "These stores have no store type — edit each store first: {{names}}",
-            {
-              names: missingTypeNames.join(", "),
-              defaultValue:
-                "These stores have no store type — edit each store first: {{names}}",
-            },
-          ),
-        });
-        setLoading(false);
-        return;
+        if (missingTypeNames.length) {
+          setMessage({
+            type: "error",
+            text: t(
+              "These stores have no store type — edit each store first: {{names}}",
+              {
+                names: missingTypeNames.join(", "),
+                defaultValue:
+                  "These stores have no store type — edit each store first: {{names}}",
+              },
+            ),
+          });
+          setLoading(false);
+          return;
+        }
       }
 
       let imageUrl = "";
@@ -2251,19 +2337,30 @@ const DataEntryForm = () => {
         expireDate: normalizeExpiryInputForApi(productForm.expireDate),
         brandId: productForm.brandId || null,
         companyId: productForm.companyId || null,
-        categoryId: productForm.categoryId,
-        categoryTypeId: productForm.categoryTypeId,
+        ...(productForm.categoryId
+          ? {
+              categoryId: productForm.categoryId,
+              ...(productForm.categoryTypeId
+                ? { categoryTypeId: productForm.categoryTypeId }
+                : {}),
+            }
+          : {}),
         status: productForm.status || "published",
       };
 
       let created = 0;
-      for (const { storeId, storeTypeId } of storeTargets) {
-        await productAPI.create({
-          ...basePayload,
-          storeId,
-          storeTypeId,
-        });
-        created += 1;
+      if (storeTargets.length === 0) {
+        await productAPI.create(basePayload);
+        created = 1;
+      } else {
+        for (const { storeId, storeTypeId } of storeTargets) {
+          await productAPI.create({
+            ...basePayload,
+            storeId,
+            storeTypeId,
+          });
+          created += 1;
+        }
       }
 
       setMessage({
@@ -2347,58 +2444,42 @@ const DataEntryForm = () => {
 
   const handleProductGroupSubmit = async () => {
     setMessage({ type: "", text: "" });
-    if (!groupAddStoreIds.length) {
-      setMessage({
-        type: "error",
-        text: t("Select at least one store for group add.", {
-          defaultValue: "Select at least one store for group add.",
-        }),
-      });
-      return;
-    }
     const storeTargets = [];
     const missingTypeNames = [];
-    for (const sid of groupAddStoreIds) {
-      const store = stores.find((s) => String(s._id) === String(sid));
-      const typeId = getStoreTypeIdFromStore(store);
-      if (!typeId) {
-        missingTypeNames.push(store?.name || String(sid));
-        continue;
+    if (groupAddStoreIds.length) {
+      for (const sid of groupAddStoreIds) {
+        const store = stores.find((s) => String(s._id) === String(sid));
+        const typeId = getStoreTypeIdFromStore(store);
+        if (!typeId) {
+          missingTypeNames.push(store?.name || String(sid));
+          continue;
+        }
+        storeTargets.push({ storeId: sid, storeTypeId: typeId });
       }
-      storeTargets.push({ storeId: sid, storeTypeId: typeId });
+      if (missingTypeNames.length) {
+        setMessage({
+          type: "error",
+          text: t(
+            "These stores have no store type — edit each store and assign a store type first: {{names}}",
+            {
+              names: missingTypeNames.join(", "),
+              defaultValue:
+                "These stores have no store type — edit each store and assign a store type first: {{names}}",
+            },
+          ),
+        });
+        return;
+      }
     }
-    if (missingTypeNames.length) {
-      setMessage({
-        type: "error",
-        text: t(
-          "These stores have no store type — edit each store and assign a store type first: {{names}}",
-          {
-            names: missingTypeNames.join(", "),
-            defaultValue:
-              "These stores have no store type — edit each store and assign a store type first: {{names}}",
-          },
-        ),
-      });
-      return;
-    }
-    const toCreate = productGroupRows.filter(
-      (r) =>
-        String(r.name || "").trim() &&
-        r.categoryId &&
-        r.categoryTypeId &&
-        r.newPrice !== "" &&
-        r.newPrice != null,
+    const toCreate = productGroupRows.filter((r) =>
+      String(r.name || "").trim(),
     );
     if (toCreate.length === 0) {
       setMessage({
         type: "error",
-        text: t(
-          "Add at least one row with name, category, category type, and new price.",
-          {
-            defaultValue:
-              "Add at least one row with name, category, category type, and new price.",
-          },
-        ),
+        text: t("Add at least one row with a product name.", {
+          defaultValue: "Add at least one row with a product name.",
+        }),
       });
       return;
     }
@@ -2413,7 +2494,11 @@ const DataEntryForm = () => {
             groupAddExpireDate,
           );
         }
-        for (const { storeId, storeTypeId } of storeTargets) {
+        const targets =
+          storeTargets.length > 0
+            ? storeTargets
+            : [{ storeId: undefined, storeTypeId: undefined }];
+        for (const { storeId, storeTypeId } of targets) {
           const productData = {
             name: String(row.name).trim(),
             previousPrice: parseFloat(row.previousPrice) || null,
@@ -2422,10 +2507,15 @@ const DataEntryForm = () => {
             expireDate: normalizeExpiryInputForApi(groupAddExpireDate),
             brandId: row.brandId || null,
             companyId: row.companyId || null,
-            categoryId: row.categoryId,
-            categoryTypeId: row.categoryTypeId,
-            storeId,
-            storeTypeId,
+            ...(row.categoryId
+              ? {
+                  categoryId: row.categoryId,
+                  ...(row.categoryTypeId
+                    ? { categoryTypeId: row.categoryTypeId }
+                    : {}),
+                }
+              : {}),
+            ...(storeId && storeTypeId ? { storeId, storeTypeId } : {}),
             status: groupAddStatus || "published",
             ...(imageUrl ? { image: imageUrl } : {}),
           };
@@ -2459,6 +2549,170 @@ const DataEntryForm = () => {
       });
     } finally {
       setGroupAddLoading(false);
+    }
+  };
+
+  const prefetchCategoryTypesForEditGroup = (categoryId) => {
+    if (!categoryId) return;
+    categoryAPI
+      .getTypes(categoryId)
+      .then((res) => {
+        setCategoryTypesByCategoryId((prev) => ({
+          ...prev,
+          [categoryId]: res.data || [],
+        }));
+      })
+      .catch(() => {
+        setCategoryTypesByCategoryId((prev) => ({
+          ...prev,
+          [categoryId]: [],
+        }));
+      });
+  };
+
+  const handleEditGroupRowFieldChange = (rowId, field, value) => {
+    setEditGroupRows((rows) =>
+      rows.map((r) => {
+        if (r.id !== rowId) return r;
+        const next = { ...r, [field]: value };
+        if (field === "categoryId") {
+          next.categoryTypeId = "";
+          if (value) prefetchCategoryTypesForEditGroup(value);
+        }
+        return next;
+      }),
+    );
+  };
+
+  const closeEditGroupDialog = () => {
+    setEditGroupDialogOpen(false);
+    setEditGroupRows([]);
+  };
+
+  const handleOpenEditGroupDialog = () => {
+    const idSet = new Set(selectedProductIds.map((id) => String(id)));
+    if (idSet.size === 0) {
+      setMessage({
+        type: "warning",
+        text: t("Select one or more products in the table first.", {
+          defaultValue: "Select one or more products in the table first.",
+        }),
+      });
+      return;
+    }
+    const selected = products.filter((p) => idSet.has(String(p._id)));
+    if (selected.length === 0) {
+      setMessage({
+        type: "warning",
+        text: t(
+          "Selected products could not be found. Refresh the list and try again.",
+          {
+            defaultValue:
+              "Selected products could not be found. Refresh the list and try again.",
+          },
+        ),
+      });
+      return;
+    }
+    const rows = selected.map((p) => makeEditGroupRowFromProduct(p));
+    rows.forEach((row) => {
+      if (row.categoryId) prefetchCategoryTypesForEditGroup(row.categoryId);
+    });
+    setEditGroupRows(rows);
+    setEditGroupDialogOpen(true);
+  };
+
+  const handleEditGroupSubmit = async () => {
+    setMessage({ type: "", text: "" });
+    const toSave = editGroupRows.filter((r) => String(r.name || "").trim());
+    if (toSave.length === 0) {
+      setMessage({
+        type: "error",
+        text: t("Each row must have a product name before saving.", {
+          defaultValue: "Each row must have a product name before saving.",
+        }),
+      });
+      return;
+    }
+    setEditGroupLoading(true);
+    let updated = 0;
+    try {
+      for (const row of toSave) {
+        const effectiveStoreId = row.storeId || "";
+        const storeDoc = effectiveStoreId
+          ? stores.find((s) => String(s._id) === String(effectiveStoreId))
+          : null;
+        let storeTypeForRow =
+          row.storeTypeId || getStoreTypeIdFromStore(storeDoc);
+        if (effectiveStoreId && !storeTypeForRow) {
+          setMessage({
+            type: "error",
+            text: t(
+              "This store has no store type. Assign a store type on the store first.",
+              {
+                defaultValue:
+                  "This store has no store type. Assign a store type on the store first.",
+              },
+            ),
+          });
+          setEditGroupLoading(false);
+          return;
+        }
+        let imagePayload = {};
+        if (row.imageFile) {
+          const imageUrl = await uploadProductImage(
+            row.imageFile,
+            row.expireDate,
+          );
+          imagePayload = { image: imageUrl };
+        } else if (row.currentImage) {
+          imagePayload = { image: row.currentImage };
+        }
+        const categoryPayload = row.categoryId
+          ? {
+              categoryId: row.categoryId,
+              categoryTypeId: row.categoryTypeId || "",
+            }
+          : { categoryId: "", categoryTypeId: "" };
+        const payload = {
+          name: String(row.name).trim(),
+          previousPrice: parseFloat(row.previousPrice) || null,
+          newPrice: parseFloat(row.newPrice) || null,
+          isDiscount: !!row.isDiscount,
+          expireDate: normalizeExpiryInputForApi(row.expireDate),
+          brandId: row.brandId || null,
+          companyId: row.companyId || null,
+          storeId: effectiveStoreId || null,
+          ...(storeTypeForRow ? { storeTypeId: storeTypeForRow } : {}),
+          status: row.status || "published",
+          ...categoryPayload,
+          ...imagePayload,
+        };
+        await productAPI.update(row.productId, payload);
+        updated += 1;
+      }
+      setMessage({
+        type: "success",
+        text: t("Updated {{count}} product(s).", {
+          count: updated,
+          defaultValue: "Updated {{count}} product(s).",
+        }),
+      });
+      closeEditGroupDialog();
+      fetchProducts(selectedStoreFilter);
+    } catch (err) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text:
+          err?.response?.data?.message ||
+          err?.message ||
+          t("Failed to update some products.", {
+            defaultValue: "Failed to update some products.",
+          }),
+      });
+    } finally {
+      setEditGroupLoading(false);
     }
   };
 
@@ -3063,14 +3317,11 @@ const DataEntryForm = () => {
           categoryId: editForm.categoryId,
           categoryTypeId: editForm.categoryTypeId,
           storeId: editForm.storeId || null,
-          storeTypeId: editForm.storeTypeId,
+          storeTypeId: editForm.storeId ? editForm.storeTypeId : null,
           companyId: editForm.companyId || null,
         };
 
-        await productAPI.update(
-          String(editDialog.data._id),
-          productUpdateData,
-        );
+        await productAPI.update(String(editDialog.data._id), productUpdateData);
         setMessage({
           type: "success",
           text: t("Product updated successfully!"),
@@ -3452,7 +3703,7 @@ const DataEntryForm = () => {
     }
   };
 
-  const currentPageProducts = products.slice(
+  const currentPageProducts = filteredProducts.slice(
     productsPage * rowsPerPage,
     productsPage * rowsPerPage + rowsPerPage,
   );
@@ -3569,7 +3820,7 @@ const DataEntryForm = () => {
                 />
                 <Chip
                   icon={<InventoryIcon />}
-                  label={`${t("Products")}(${products.length}) `}
+                  label={`${t("Products")}(${filteredProducts.length}) `}
                   sx={{
                     backgroundColor: "rgba(255,255,255,0.2)",
                     color: "white",
@@ -5228,7 +5479,7 @@ const DataEntryForm = () => {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: { xs: "flex-start", md: "space-between" },
+                  justifyContent: "flex-start",
                   gap: 1,
                   mb: 2,
                   ...DATA_LIST_TAB_TOOLBAR_SCROLL_SX,
@@ -5258,6 +5509,15 @@ const DataEntryForm = () => {
                     onClick={() => setProductGroupDialogOpen(true)}
                   >
                     {t("Add by group", { defaultValue: "Add by group" })}
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    disabled={!selectedProductIds.length}
+                    onClick={handleOpenEditGroupDialog}
+                  >
+                    {t("Edit by group", { defaultValue: "Edit by group" })}
                   </Button>
 
                   <Button
@@ -5333,13 +5593,28 @@ const DataEntryForm = () => {
                     )
                   </Button>
                 </Box>
-                <FormControl
+              </Box>
+
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems={{ xs: "stretch", sm: "center" }}
+                useFlexGap
+                sx={{ mb: 2, flexWrap: "wrap" }}
+              >
+                <TextField
+                  size="small"
+                  label={t("Search product name", {
+                    defaultValue: "Search product name",
+                  })}
+                  value={productListSearchQuery}
+                  onChange={(e) => setProductListSearchQuery(e.target.value)}
                   sx={{
-                    minWidth: 240,
-                    justifyContent: "flex-end",
-                    flexShrink: 0,
+                    minWidth: { xs: "100%", sm: 200 },
+                    flex: { sm: "1 1 180px" },
                   }}
-                >
+                />
+                <FormControl size="small" sx={{ minWidth: 200 }}>
                   <InputLabel>{t("Search by Store")}</InputLabel>
                   <Select
                     value={selectedStoreFilter}
@@ -5356,7 +5631,63 @@ const DataEntryForm = () => {
                     ))}
                   </Select>
                 </FormControl>
-              </Box>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>{t("Brand")}</InputLabel>
+                  <Select
+                    value={productListFilterBrandId}
+                    label={t("Brand")}
+                    onChange={(e) =>
+                      setProductListFilterBrandId(e.target.value)
+                    }
+                  >
+                    <MenuItem value="">
+                      <em>{t("All brands", { defaultValue: "All brands" })}</em>
+                    </MenuItem>
+                    {brands.map((b) => (
+                      <MenuItem key={b._id} value={String(b._id)}>
+                        {b.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>{t("Company")}</InputLabel>
+                  <Select
+                    value={productListFilterCompanyId}
+                    label={t("Company")}
+                    onChange={(e) =>
+                      setProductListFilterCompanyId(e.target.value)
+                    }
+                  >
+                    <MenuItem value="">
+                      <em>
+                        {t("All companies", { defaultValue: "All companies" })}
+                      </em>
+                    </MenuItem>
+                    {companies.map((c) => (
+                      <MenuItem key={c._id} value={String(c._id)}>
+                        {c.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => {
+                    setProductListSearchQuery("");
+                    setProductListFilterBrandId("");
+                    setProductListFilterCompanyId("");
+                  }}
+                  disabled={
+                    !productListSearchQuery &&
+                    !productListFilterBrandId &&
+                    !productListFilterCompanyId
+                  }
+                >
+                  {t("Clear filters", { defaultValue: "Clear filters" })}
+                </Button>
+              </Stack>
 
               <Dialog
                 open={productGroupDialogOpen}
@@ -5607,7 +5938,6 @@ const DataEntryForm = () => {
                                 e.target.value,
                               )
                             }
-                            required
                             sx={{ width: 110, flexShrink: 0 }}
                           />
                           <FormControlLabel
@@ -5649,7 +5979,6 @@ const DataEntryForm = () => {
                             </Select>
                           </FormControl>
                           <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <InputLabel>{t("Company")}</InputLabel>
                             <Select
                               label={t("Company")}
                               value={row.companyId || ""}
@@ -5729,6 +6058,328 @@ const DataEntryForm = () => {
                   >
                     {t("Create all products", {
                       defaultValue: "Create all products",
+                    })}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              <Dialog
+                open={editGroupDialogOpen}
+                onClose={() => {
+                  if (!editGroupLoading) closeEditGroupDialog();
+                }}
+                fullWidth
+                maxWidth={false}
+                PaperProps={{
+                  sx: {
+                    width: "calc(100% - 32px)",
+                    maxWidth: 1680,
+                    m: 2,
+                  },
+                }}
+              >
+                <DialogTitle>
+                  {t("Edit by group", { defaultValue: "Edit by group" })}
+                </DialogTitle>
+                <DialogContent dividers>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    {t(
+                      "Editing {{count}} product(s) from your table selection.",
+                      {
+                        count: editGroupRows.length,
+                        defaultValue:
+                          "Editing {{count}} product(s) from your table selection.",
+                      },
+                    )}
+                  </Typography>
+
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    {t("Edit fields", { defaultValue: "Edit fields" })}
+                  </Typography>
+                  <Box
+                    sx={{
+                      overflowX: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      pb: 0.5,
+                    }}
+                  >
+                    {editGroupRows.map((row, idx) => {
+                      const typesForRow =
+                        categoryTypesByCategoryId[row.categoryId] || [];
+                      return (
+                        <Stack
+                          key={row.id}
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          sx={{
+                            mb: 1,
+                            minWidth: "max-content",
+                            flexWrap: "nowrap",
+                          }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              width: 36,
+                              flexShrink: 0,
+                              textAlign: "center",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {idx + 1}
+                          </Typography>
+                          <TextField
+                            size="small"
+                            label={t("Product Name")}
+                            value={row.name}
+                            onChange={(e) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "name",
+                                e.target.value,
+                              )
+                            }
+                            sx={{ width: 150, flexShrink: 0 }}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <Select
+                              label={t("Category")}
+                              value={row.categoryId}
+                              onChange={(e) =>
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "categoryId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("Select Category")}</em>
+                              </MenuItem>
+                              {categories.map((c) => (
+                                <MenuItem key={c._id} value={c._id}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <FormControl
+                            size="small"
+                            sx={{ minWidth: 140 }}
+                            disabled={!row.categoryId}
+                          >
+                            <Select
+                              label={t("Category Type")}
+                              value={row.categoryTypeId ?? ""}
+                              onChange={(e) =>
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "categoryTypeId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("Select Category Type")}</em>
+                              </MenuItem>
+                              {typesForRow.map((type) => (
+                                <MenuItem key={type._id} value={type._id}>
+                                  {type.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <TextField
+                            size="small"
+                            label={t("Previous Price")}
+                            type="number"
+                            value={row.previousPrice}
+                            onChange={(e) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "previousPrice",
+                                e.target.value,
+                              )
+                            }
+                            sx={{ width: 110, flexShrink: 0 }}
+                          />
+                          <TextField
+                            size="small"
+                            label={t("New Price")}
+                            type="number"
+                            value={row.newPrice}
+                            onChange={(e) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "newPrice",
+                                e.target.value,
+                              )
+                            }
+                            sx={{ width: 110, flexShrink: 0 }}
+                          />
+                          <FormControlLabel
+                            sx={{ flexShrink: 0, mr: 0, ml: 0 }}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={!!row.isDiscount}
+                                onChange={(e) =>
+                                  handleEditGroupRowFieldChange(
+                                    row.id,
+                                    "isDiscount",
+                                    e.target.checked,
+                                  )
+                                }
+                              />
+                            }
+                            label={t("Is Discount Product")}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <Select
+                              label={t("Brand")}
+                              value={row.brandId || ""}
+                              onChange={(e) =>
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "brandId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("select brand")}</em>
+                              </MenuItem>
+                              {brands.map((b) => (
+                                <MenuItem key={b._id} value={b._id}>
+                                  {b.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <Select
+                              label={t("Company")}
+                              value={row.companyId || ""}
+                              onChange={(e) =>
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "companyId",
+                                  e.target.value,
+                                )
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="">
+                                <em>{t("select company")}</em>
+                              </MenuItem>
+                              {companies.map((c) => (
+                                <MenuItem key={c._id} value={c._id}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <TextField
+                            size="small"
+                            label={t("Expire date & time")}
+                            type="datetime-local"
+                            value={row.expireDate}
+                            onChange={(e) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "expireDate",
+                                e.target.value,
+                              )
+                            }
+                            InputLabelProps={{ shrink: true }}
+                            sx={{ width: 200, flexShrink: 0 }}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <Select
+                              label={t("Status")}
+                              value={row.status || "published"}
+                              onChange={(e) =>
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "status",
+                                  e.target.value,
+                                )
+                              }
+                            >
+                              <MenuItem value="published">
+                                {t("Published")}
+                              </MenuItem>
+                              <MenuItem value="pending">
+                                {t("Pending")}
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                          <Button
+                            variant="outlined"
+                            component="label"
+                            size="small"
+                            sx={{ flexShrink: 0 }}
+                          >
+                            {row.imageFile ? row.imageFile.name : t("Image")}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                handleEditGroupRowFieldChange(
+                                  row.id,
+                                  "imageFile",
+                                  f || null,
+                                );
+                              }}
+                            />
+                          </Button>
+                          <IconButton
+                            size="small"
+                            aria-label={t("Remove row")}
+                            onClick={() =>
+                              setEditGroupRows((rows) =>
+                                rows.filter((r) => r.id !== row.id),
+                              )
+                            }
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      );
+                    })}
+                  </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                  <Button
+                    onClick={() => closeEditGroupDialog()}
+                    disabled={editGroupLoading}
+                  >
+                    {t("Close")}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    disabled={editGroupLoading}
+                    startIcon={
+                      editGroupLoading ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <SaveIcon />
+                      )
+                    }
+                    onClick={handleEditGroupSubmit}
+                  >
+                    {t("Save all changes", {
+                      defaultValue: "Save all changes",
                     })}
                   </Button>
                 </DialogActions>
@@ -5945,8 +6596,7 @@ const DataEntryForm = () => {
                               color="primary"
                               component="span"
                               disabled={
-                                productListImageUploadId ===
-                                String(product._id)
+                                productListImageUploadId === String(product._id)
                               }
                               aria-label={t("productListUploadImage", {
                                 defaultValue: "Upload or change image",
@@ -6059,7 +6709,7 @@ const DataEntryForm = () => {
               </TableContainer>
               <TablePagination
                 component="div"
-                count={products.length}
+                count={filteredProducts.length}
                 page={productsPage}
                 onPageChange={handleProductsPageChange}
                 rowsPerPage={rowsPerPage}
@@ -8153,7 +8803,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel>{t("Status All")}</InputLabel>
                     <Select
                       name="statusAll"
                       value={brandForm.statusAll}
@@ -8297,7 +8946,6 @@ const DataEntryForm = () => {
                     type="number"
                     value={productForm.newPrice}
                     onChange={handleProductFormChange}
-                    required
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">ID</InputAdornment>
@@ -8342,7 +8990,7 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12}>
-                  <FormControl fullWidth required>
+                  <FormControl fullWidth>
                     <InputLabel id="dialog-add-product-store-label" shrink>
                       {t("Stores")}
                     </InputLabel>
@@ -8424,7 +9072,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Brand")}</InputLabel>
                     <Select
                       name="brandId"
                       value={productForm.brandId}
@@ -8445,7 +9092,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Company")}</InputLabel>
                     <Select
                       name="companyId"
                       value={productForm.companyId || ""}
@@ -8465,8 +9111,7 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel shrink>{t("Category")}</InputLabel>
+                  <FormControl fullWidth>
                     <Select
                       name="categoryId"
                       value={productForm.categoryId}
@@ -8486,8 +9131,7 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel shrink>{t("Category Type")}</InputLabel>
+                  <FormControl fullWidth>
                     <Select
                       name="categoryTypeId"
                       value={productForm.categoryTypeId ?? ""}
@@ -8627,7 +9271,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel>{t("Stores")}</InputLabel>
                     <Select
                       multiple
                       name="storeId"
@@ -8661,7 +9304,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel>{t("Brand")}</InputLabel>
                     <Select
                       name="brandId"
                       value={giftForm.brandId}
@@ -8669,7 +9311,7 @@ const DataEntryForm = () => {
                       label={t("Brand")}
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select brand")}</em>
                       </MenuItem>
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
@@ -8681,7 +9323,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel>{t("Company")}</InputLabel>
                     <Select
                       name="companyId"
                       value={giftForm.companyId || ""}
@@ -8689,7 +9330,7 @@ const DataEntryForm = () => {
                       label={t("Company")}
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select company")}</em>
                       </MenuItem>
                       {companies.map((company) => (
                         <MenuItem key={company._id} value={company._id}>
@@ -9050,7 +9691,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Brand")}</InputLabel>
                     <Select
                       name="brandId"
                       value={adForm.brandId}
@@ -9061,7 +9701,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select brand")}</em>
                       </MenuItem>
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
@@ -9073,7 +9713,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Store")}</InputLabel>
                     <Select
                       name="storeId"
                       value={adForm.storeId}
@@ -9084,7 +9723,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select store")}</em>
                       </MenuItem>
                       {stores.map((s) => (
                         <MenuItem key={s._id} value={s._id}>
@@ -9096,7 +9735,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Gift")}</InputLabel>
                     <Select
                       name="giftId"
                       value={adForm.giftId}
@@ -9107,7 +9745,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select gift")}</em>
                       </MenuItem>
                       {gifts.map((g) => (
                         <MenuItem key={g._id} value={g._id}>
@@ -9287,7 +9925,6 @@ const DataEntryForm = () => {
 
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Store")}</InputLabel>
                     <Select
                       value={jobForm.storeId || ""}
                       label={t("Store")}
@@ -9303,7 +9940,7 @@ const DataEntryForm = () => {
                       }
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select store")}</em>
                       </MenuItem>
                       {stores.map((s) => (
                         <MenuItem key={s._id} value={s._id}>
@@ -9316,7 +9953,6 @@ const DataEntryForm = () => {
 
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Brand")}</InputLabel>
                     <Select
                       value={jobForm.brandId || ""}
                       label={t("Brand")}
@@ -9332,7 +9968,7 @@ const DataEntryForm = () => {
                       }
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select brand")}</em>
                       </MenuItem>
                       {brands.map((b) => (
                         <MenuItem key={b._id} value={b._id}>
@@ -9345,7 +9981,6 @@ const DataEntryForm = () => {
 
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Company")}</InputLabel>
                     <Select
                       value={jobForm.companyId || ""}
                       label={t("Company")}
@@ -9361,7 +9996,7 @@ const DataEntryForm = () => {
                       }
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select company")}</em>
                       </MenuItem>
                       {companies.map((c) => (
                         <MenuItem key={c._id} value={c._id}>
@@ -9550,7 +10185,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Store")}</InputLabel>
                     <Select
                       value={videoForm.storeId}
                       onChange={(e) =>
@@ -9567,7 +10201,7 @@ const DataEntryForm = () => {
                       )}
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select store")}</em>
                       </MenuItem>
                       {stores.map((store) => (
                         <MenuItem key={store._id} value={store._id}>
@@ -9579,7 +10213,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Brand")}</InputLabel>
                     <Select
                       value={videoForm.brandId}
                       onChange={(e) =>
@@ -9597,7 +10230,7 @@ const DataEntryForm = () => {
                       )}
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select brand")}</em>
                       </MenuItem>
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
@@ -9609,7 +10242,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Company")}</InputLabel>
                     <Select
                       value={videoForm.companyId || ""}
                       onChange={(e) =>
@@ -9625,7 +10257,7 @@ const DataEntryForm = () => {
                       disabled={Boolean(videoForm.storeId || videoForm.brandId)}
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select company")}</em>
                       </MenuItem>
                       {companies.map((company) => (
                         <MenuItem key={company._id} value={company._id}>
@@ -10039,8 +10671,8 @@ const DataEntryForm = () => {
                         [
                           "123456789",
                           "Sample Product",
-                          "category_id_here",
-                          "categoryType_id_here",
+                          "",
+                          "",
                           "100",
                           "80",
                           "true",
@@ -10102,18 +10734,18 @@ const DataEntryForm = () => {
                     <strong>{t("Excel Format:")}</strong>
                     <br />• {t("Column A: Barcode (optional)")}
                     <br />• {t("Column B: Name (required)")}
-                    <br />• {t("Column C: Category ID (required)")}
-                    <br />• {t("Column D: Category Type ID (required)")}
+                    <br />• {t("Column C: Category ID (optional)")}
+                    <br />• {t("Column D: Category Type ID (optional)")}
                     <br />• {t("Column E: Previous Price (optional)")}
                     <br />• {t("Column F: New Price (optional)")}
                     <br />• {t("Column G: Is Discount (required)")}
                     <br />• {t("Column H: Brand ID (optional)")}
                     <br />•{" "}
                     {t(
-                      "Column I: Store ID (required if no stores selected above; optional if stores are selected in the dialog)",
+                      "Column I: Store ID (optional — leave blank with no stores above to create products without a store)",
                       {
                         defaultValue:
-                          "Column I: Store ID (required if no stores selected above; optional if stores are selected in the dialog)",
+                          "Column I: Store ID (optional — leave blank with no stores above to create products without a store)",
                       },
                     )}
                     <br />• {t("Column J: Description (optional)")}
@@ -10158,814 +10790,891 @@ const DataEntryForm = () => {
                         : "Edit Product",
           )}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           {editDialog.type === "brand" || editDialog.type === "company" ? (
             <Box component="form" sx={{ mt: 1 }}>
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Name")}
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Brand name (translations)")}
-                value={{
-                  english: editForm.nameEn,
-                  arabic: editForm.nameAr,
-                  kurdish: editForm.nameKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    nameEn: v.english,
-                    nameAr: v.arabic,
-                    nameKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.name}
-                aiType="brand"
-              />
-              <FormControl fullWidth required sx={{ mt: 2 }}>
-                <InputLabel shrink>{t("Brand Type")}</InputLabel>
-                <Select
-                  name="brandTypeId"
-                  value={editForm.brandTypeId || ""}
-                  onChange={handleEditFormChange}
-                  label={t("Brand Type")}
-                  displayEmpty
-                >
-                  <MenuItem value="">
-                    <em>{t("Select Brand Type")}</em>
-                  </MenuItem>
-                  {brandTypes.map((bt) => (
-                    <MenuItem key={bt._id} value={bt._id}>
-                      {bt.icon || "🏷️"} {t(bt.name)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              {/* Image Upload */}
-              <Box sx={{ mt: 2, mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  {t("Upload New Logo:")}
-                </Typography>
-                <input
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  id="edit-brand-logo-upload"
-                  type="file"
-                  onChange={handleEditImageChange}
-                />
-                <label htmlFor="edit-brand-logo-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mb: 1 }}
-                  >
-                    {t("Choose Image")}
-                  </Button>
-                </label>
-                {selectedEditImage && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" display="block">
-                      {t("Selected:")} {selectedEditImage.name}
+              <Grid container spacing={2}>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={
+                      editDialog.type === "company"
+                        ? t("Company Name")
+                        : t("Brand Name")
+                    }
+                    name="name"
+                    value={editForm.name}
+                    onChange={handleEditFormChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <BusinessIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={
+                      editDialog.type === "company"
+                        ? t("Company name (translations)")
+                        : t("Brand name (translations)")
+                    }
+                    value={{
+                      english: editForm.nameEn,
+                      arabic: editForm.nameAr,
+                      kurdish: editForm.nameKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        nameEn: v.english,
+                        nameAr: v.arabic,
+                        nameKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.name}
+                    aiType="brand"
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel shrink>{t("Brand Type")}</InputLabel>
+                    <Select
+                      name="brandTypeId"
+                      value={editForm.brandTypeId || ""}
+                      onChange={handleEditFormChange}
+                      label={t("Brand Type")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Brand Type")}</em>
+                      </MenuItem>
+                      {brandTypes.map((bt) => (
+                        <MenuItem key={bt._id} value={bt._id}>
+                          {bt.icon || "🏷️"} {t(bt.name)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  {/* Image Upload */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {t("Upload New Logo:")}
                     </Typography>
-                    <img
-                      src={URL.createObjectURL(selectedEditImage)}
-                      alt={t("Preview")}
-                      style={{
-                        width: "100px",
-                        height: "100px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid #ddd",
-                        marginTop: "8px",
-                      }}
+                    <input
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      id="edit-brand-logo-upload"
+                      type="file"
+                      onChange={handleEditImageChange}
                     />
+                    <label htmlFor="edit-brand-logo-upload">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<CloudUploadIcon />}
+                        sx={{ mb: 1 }}
+                      >
+                        {t("Choose Image")}
+                      </Button>
+                    </label>
+                    {selectedEditImage && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" display="block">
+                          {t("Selected:")} {selectedEditImage.name}
+                        </Typography>
+                        <img
+                          src={URL.createObjectURL(selectedEditImage)}
+                          alt={t("Preview")}
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "8px",
+                            border: "1px solid #ddd",
+                            marginTop: "8px",
+                          }}
+                        />
+                      </Box>
+                    )}
                   </Box>
-                )}
-              </Box>
-              {/* legacy type selector removed in favor of brandTypeId */}
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Address")}
-                name="address"
-                value={editForm.address}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Address (translations)")}
-                value={{
-                  english: editForm.addressEn || "",
-                  arabic: editForm.addressAr || "",
-                  kurdish: editForm.addressKu || "",
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    addressEn: v.english,
-                    addressAr: v.arabic,
-                    addressKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.address || ""}
-                aiType="brand"
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Phone")}
-                name="phone"
-                value={editForm.phone}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("WhatsApp")}
-                name="whatsapp"
-                value={editForm.whatsapp || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Facebook")}
-                name="facebook"
-                value={editForm.facebook || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Instagram")}
-                name="instagram"
-                value={editForm.instagram || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("TikTok")}
-                name="tiktok"
-                value={editForm.tiktok || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Snapchat")}
-                name="snapchat"
-                value={editForm.snapchat || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Google Maps")}
-                name="googleMaps"
-                value={editForm.googleMaps || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Apple Maps")}
-                name="appleMaps"
-                value={editForm.appleMaps || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Waze")}
-                name="waze"
-                value={editForm.waze || ""}
-                onChange={handleEditFormChange}
-              />
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("City")}</InputLabel>
-                <Select
-                  name="storecity"
-                  value={editForm.storecity || "Erbil"}
-                  onChange={handleEditFormChange}
-                  label={t("City")}
-                >
-                  {editFormCityOptions.map((c) => (
-                    <MenuItem key={c.value} value={c.value}>
-                      {c.flag} {c.label}
-                      {c.inactive
-                        ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
-                        : ""}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="isHasDelivery"
-                      checked={!!editForm.isHasDelivery}
-                      onChange={(e) =>
-                        setEditForm((prev) => {
-                          const on = e.target.checked;
-                          if (!on) {
-                            return {
-                              ...prev,
-                              isHasDelivery: false,
-                              deliveryAllCities: false,
-                              deliveryCities: [],
-                            };
-                          }
-                          return mergeDeliveryCitiesWithStoreCityFirst({
-                            ...prev,
-                            isHasDelivery: true,
-                          });
-                        })
-                      }
-                    />
-                  }
-                  label={t("Has Delivery")}
-                />
-              </Box>
-              {editForm.isHasDelivery && (
-                <>
-                  <Box sx={{ mt: 2 }}>
+                </Grid>
+                {/* legacy type selector removed in favor of brandTypeId */}
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Address")}
+                    name="address"
+                    value={editForm.address}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Address (translations)")}
+                    value={{
+                      english: editForm.addressEn || "",
+                      arabic: editForm.addressAr || "",
+                      kurdish: editForm.addressKu || "",
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        addressEn: v.english,
+                        addressAr: v.arabic,
+                        addressKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.address || ""}
+                    aiType="brand"
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Phone")}
+                    name="phone"
+                    value={editForm.phone}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("WhatsApp")}
+                    name="whatsapp"
+                    value={editForm.whatsapp || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Facebook")}
+                    name="facebook"
+                    value={editForm.facebook || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Instagram")}
+                    name="instagram"
+                    value={editForm.instagram || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("TikTok")}
+                    name="tiktok"
+                    value={editForm.tiktok || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Snapchat")}
+                    name="snapchat"
+                    value={editForm.snapchat || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label={t("Google Maps")}
+                    name="googleMaps"
+                    value={editForm.googleMaps || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label={t("Apple Maps")}
+                    name="appleMaps"
+                    value={editForm.appleMaps || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label={t("Waze")}
+                    name="waze"
+                    value={editForm.waze || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("City")}</InputLabel>
+                    <Select
+                      name="storecity"
+                      value={editForm.storecity || "Erbil"}
+                      onChange={handleEditFormChange}
+                      label={t("City")}
+                    >
+                      {editFormCityOptions.map((c) => (
+                        <MenuItem key={c.value} value={c.value}>
+                          {c.flag} {c.label}
+                          {c.inactive
+                            ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                            : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <Box sx={{ mt: 0 }}>
                     <FormControlLabel
                       control={
                         <Checkbox
-                          name="deliveryAllCities"
-                          checked={!!editForm.deliveryAllCities}
+                          name="isHasDelivery"
+                          checked={!!editForm.isHasDelivery}
                           onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              deliveryAllCities: e.target.checked,
-                              deliveryCities: e.target.checked
-                                ? []
-                                : prev.deliveryCities || [],
-                            }))
+                            setEditForm((prev) => {
+                              const on = e.target.checked;
+                              if (!on) {
+                                return {
+                                  ...prev,
+                                  isHasDelivery: false,
+                                  deliveryAllCities: false,
+                                  deliveryCities: [],
+                                };
+                              }
+                              return mergeDeliveryCitiesWithStoreCityFirst({
+                                ...prev,
+                                isHasDelivery: true,
+                              });
+                            })
                           }
                         />
                       }
-                      label={t("Delivery for all cities")}
+                      label={t("Has Delivery")}
                     />
                   </Box>
-                  {!editForm.deliveryAllCities && (
-                    <Box sx={{ mt: 2 }}>
-                      <Autocomplete
-                        multiple
-                        disableCloseOnSelect
-                        options={deliveryEditCityOptions.map((o) => o.value)}
-                        value={editForm.deliveryCities || []}
-                        onChange={(_, v) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            deliveryCities: v,
-                          }))
-                        }
-                        getOptionLabel={(opt) => {
-                          const row = deliveryEditCityOptions.find(
-                            (o) => o.value === opt,
-                          );
-                          return row ? row.label : String(opt);
-                        }}
-                        isOptionEqualToValue={(a, b) => a === b}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label={t("Delivery cities")}
-                            placeholder={t("Search...")}
+                </Grid>
+                {editForm.isHasDelivery && (
+                  <Grid xs={12}>
+                    <Box sx={{ mt: 0 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="deliveryAllCities"
+                            checked={!!editForm.deliveryAllCities}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                deliveryAllCities: e.target.checked,
+                                deliveryCities: e.target.checked
+                                  ? []
+                                  : prev.deliveryCities || [],
+                              }))
+                            }
                           />
-                        )}
+                        }
+                        label={t("Delivery for all cities")}
                       />
                     </Box>
-                  )}
-                </>
-              )}
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Description")}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Description (translations)")}
-                value={{
-                  english: editForm.descriptionEn,
-                  arabic: editForm.descriptionAr,
-                  kurdish: editForm.descriptionKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    descriptionEn: v.english,
-                    descriptionAr: v.arabic,
-                    descriptionKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.description}
-                aiType="general"
-                multiline
-                minRows={2}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Expire date & time")}
-                name="expireDate"
-                type="datetime-local"
-                value={editForm.expireDate || ""}
-                onChange={handleEditFormChange}
-                InputLabelProps={{ shrink: true }}
-              />
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Status All")}</InputLabel>
-                <Select
-                  name="statusAll"
-                  value={editForm.statusAll || "on"}
-                  onChange={handleEditFormChange}
-                  label={t("Status All")}
-                >
-                  <MenuItem value="on">{t("on")}</MenuItem>
-                  <MenuItem value="off">{t("off")}</MenuItem>
-                </Select>
-              </FormControl>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="isVip"
-                      checked={editForm.isVip || false}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          isVip: e.target.checked,
-                        })
+                    {!editForm.deliveryAllCities && (
+                      <Box sx={{ mt: 1 }}>
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={deliveryEditCityOptions.map((o) => o.value)}
+                          value={editForm.deliveryCities || []}
+                          onChange={(_, v) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              deliveryCities: v,
+                            }))
+                          }
+                          getOptionLabel={(opt) => {
+                            const row = deliveryEditCityOptions.find(
+                              (o) => o.value === opt,
+                            );
+                            return row ? row.label : String(opt);
+                          }}
+                          isOptionEqualToValue={(a, b) => a === b}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Delivery cities")}
+                              placeholder={t("Search...")}
+                            />
+                          )}
+                        />
+                      </Box>
+                    )}
+                  </Grid>
+                )}
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Description")}
+                    name="description"
+                    value={editForm.description}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Description (translations)")}
+                    value={{
+                      english: editForm.descriptionEn,
+                      arabic: editForm.descriptionAr,
+                      kurdish: editForm.descriptionKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        descriptionEn: v.english,
+                        descriptionAr: v.arabic,
+                        descriptionKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.description}
+                    aiType="general"
+                    multiline
+                    minRows={2}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Expire date & time")}
+                    name="expireDate"
+                    type="datetime-local"
+                    value={editForm.expireDate || ""}
+                    onChange={handleEditFormChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Status All")}</InputLabel>
+                    <Select
+                      name="statusAll"
+                      value={editForm.statusAll || "on"}
+                      onChange={handleEditFormChange}
+                      label={t("Status All")}
+                    >
+                      <MenuItem value="on">{t("on")}</MenuItem>
+                      <MenuItem value="off">{t("off")}</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <Box sx={{ mt: 0 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="isVip"
+                          checked={editForm.isVip || false}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              isVip: e.target.checked,
+                            })
+                          }
+                        />
+                      }
+                      label={
+                        editDialog.type === "company"
+                          ? t("VIP Company")
+                          : t("VIP Brand")
                       }
                     />
-                  }
-                  label={
-                    editDialog.type === "company"
-                      ? t("VIP Company")
-                      : t("VIP Brand")
-                  }
-                />
-              </Box>
+                  </Box>
+                </Grid>
+              </Grid>
             </Box>
           ) : editDialog.type === "store" ? (
             <Box component="form" sx={{ mt: 1 }}>
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Name")}
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Store name (translations)")}
-                value={{
-                  english: editForm.nameEn,
-                  arabic: editForm.nameAr,
-                  kurdish: editForm.nameKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    nameEn: v.english,
-                    nameAr: v.arabic,
-                    nameKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.name}
-                aiType="store"
-              />
-              {/* Image Upload */}
-              <Box sx={{ mt: 2, mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  {t("Upload New Logo:")}
-                </Typography>
-                <input
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  id="edit-product-image-upload"
-                  type="file"
-                  onChange={handleEditImageChange}
-                />
-                <label htmlFor="edit-product-image-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mb: 1 }}
-                  >
-                    {t("Choose Image")}
-                  </Button>
-                </label>
-                {selectedEditImage && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" display="block">
-                      {t("Selected:")} {selectedEditImage.name}
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    label={t("Store Name")}
+                    name="name"
+                    value={editForm.name}
+                    onChange={handleEditFormChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <StoreIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Store name (translations)")}
+                    value={{
+                      english: editForm.nameEn,
+                      arabic: editForm.nameAr,
+                      kurdish: editForm.nameKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        nameEn: v.english,
+                        nameAr: v.arabic,
+                        nameKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.name}
+                    aiType="store"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  {/* Image Upload */}
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {t("Upload New Logo:")}
                     </Typography>
-                    <img
-                      src={URL.createObjectURL(selectedEditImage)}
-                      alt={t("Preview")}
-                      style={{
-                        width: "100px",
-                        height: "100px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid #ddd",
-                        marginTop: "8px",
-                      }}
+                    <input
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      id="edit-store-dialog-logo"
+                      type="file"
+                      onChange={handleEditImageChange}
                     />
-                  </Box>
-                )}
-              </Box>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth required>
-                  <InputLabel shrink>{t("Store Type")}</InputLabel>
-                  <Select
-                    name="storeTypeId"
-                    value={editForm.storeTypeId || ""}
-                    onChange={handleEditFormChange}
-                    label={t("Store Type")}
-                    displayEmpty
-                  >
-                    <MenuItem value="">
-                      <em>{t("Select Store Type")}</em>
-                    </MenuItem>
-                    {storeTypes.map((st) => (
-                      <MenuItem key={st._id} value={st._id}>
-                        {st.icon || "🏪"} {t(st.name)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>{t("Store City")}</InputLabel>
-                  <Select
-                    name="storecity"
-                    value={editForm.storecity}
-                    onChange={handleEditFormChange}
-                    label={t("Store City")}
-                  >
-                    {editFormCityOptions.map((c) => (
-                      <MenuItem key={c.value} value={c.value}>
-                        {c.flag} {c.label}
-                        {c.inactive
-                          ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
-                          : ""}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Address")}
-                name="address"
-                value={editForm.address || ""}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Address (translations)")}
-                value={{
-                  english: editForm.addressEn || "",
-                  arabic: editForm.addressAr || "",
-                  kurdish: editForm.addressKu || "",
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    addressEn: v.english,
-                    addressAr: v.arabic,
-                    addressKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.address || ""}
-                aiType="store"
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Address")}
-                name="address"
-                value={editForm.address}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Phone")}
-                name="phone"
-                value={editForm.phone}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("WhatsApp")}
-                name="whatsapp"
-                value={editForm.whatsapp || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Facebook")}
-                name="facebook"
-                value={editForm.facebook || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Instagram")}
-                name="instagram"
-                value={editForm.instagram || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("TikTok")}
-                name="tiktok"
-                value={editForm.tiktok || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Snapchat")}
-                name="snapchat"
-                value={editForm.snapchat || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Google Maps")}
-                name="googleMaps"
-                value={editForm.googleMaps || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Apple Maps")}
-                name="appleMaps"
-                value={editForm.appleMaps || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Waze")}
-                name="waze"
-                value={editForm.waze || ""}
-                onChange={handleEditFormChange}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Description")}
-                name="description"
-                value={editForm.description}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Description (translations)")}
-                value={{
-                  english: editForm.descriptionEn,
-                  arabic: editForm.descriptionAr,
-                  kurdish: editForm.descriptionKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    descriptionEn: v.english,
-                    descriptionAr: v.arabic,
-                    descriptionKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.description}
-                aiType="general"
-                multiline
-                minRows={2}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Expire date & time")}
-                name="expireDate"
-                type="datetime-local"
-                value={editForm.expireDate || ""}
-                onChange={handleEditFormChange}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Last Release Discount Date")}
-                name="lastReleaseDiscountDate"
-                type="date"
-                value={editForm.lastReleaseDiscountDate || ""}
-                onChange={handleEditFormChange}
-                InputLabelProps={{ shrink: true }}
-              />
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Status All")}</InputLabel>
-                <Select
-                  name="statusAll"
-                  value={editForm.statusAll || "on"}
-                  onChange={handleEditFormChange}
-                  label={t("Status All")}
-                >
-                  <MenuItem value="on">{t("on")}</MenuItem>
-                  <MenuItem value="off">{t("off")}</MenuItem>
-                </Select>
-              </FormControl>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="isVip"
-                      checked={editForm.isVip || false}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          isVip: e.target.checked,
-                        })
-                      }
-                    />
-                  }
-                  label={t("VIP Store")}
-                />
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="show"
-                      checked={
-                        editForm.show !== undefined ? editForm.show : true
-                      }
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          show: e.target.checked,
-                        })
-                      }
-                    />
-                  }
-                  label={t("Show in Store List")}
-                />
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="showingOnStoreBranchShowcase"
-                      checked={editForm.showingOnStoreBranchShowcase !== false}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          showingOnStoreBranchShowcase: e.target.checked,
-                        })
-                      }
-                    />
-                  }
-                  label={t("Show in branch showcase")}
-                />
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      name="isHasDelivery"
-                      checked={!!editForm.isHasDelivery}
-                      onChange={(e) =>
-                        setEditForm((prev) => {
-                          const on = e.target.checked;
-                          if (!on) {
-                            return {
-                              ...prev,
-                              isHasDelivery: false,
-                              deliveryAllCities: false,
-                              deliveryCities: [],
-                            };
-                          }
-                          return mergeDeliveryCitiesWithStoreCityFirst({
-                            ...prev,
-                            isHasDelivery: true,
-                          });
-                        })
-                      }
-                    />
-                  }
-                  label={t("Has Delivery")}
-                />
-              </Box>
-              {editForm.isHasDelivery && (
-                <>
-                  <Box sx={{ mt: 2 }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          name="deliveryAllCities"
-                          checked={!!editForm.deliveryAllCities}
-                          onChange={(e) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              deliveryAllCities: e.target.checked,
-                              deliveryCities: e.target.checked
-                                ? []
-                                : prev.deliveryCities || [],
-                            }))
-                          }
+                    <label htmlFor="edit-store-dialog-logo">
+                      <Button
+                        variant="outlined"
+                        component="span"
+                        startIcon={<CloudUploadIcon />}
+                        sx={{ mb: 1 }}
+                      >
+                        {t("Choose Image")}
+                      </Button>
+                    </label>
+                    {selectedEditImage && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" display="block">
+                          {t("Selected:")} {selectedEditImage.name}
+                        </Typography>
+                        <img
+                          src={URL.createObjectURL(selectedEditImage)}
+                          alt={t("Preview")}
+                          style={{
+                            width: "100px",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: "8px",
+                            border: "1px solid #ddd",
+                            marginTop: "8px",
+                          }}
                         />
-                      }
-                      label={t("Delivery for all cities")}
-                    />
+                      </Box>
+                    )}
                   </Box>
-                  {!editForm.deliveryAllCities && (
-                    <Box sx={{ mt: 2 }}>
-                      <Autocomplete
-                        multiple
-                        disableCloseOnSelect
-                        options={deliveryEditCityOptions.map((o) => o.value)}
-                        value={editForm.deliveryCities || []}
-                        onChange={(_, v) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            deliveryCities: v,
-                          }))
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel shrink>{t("Store Type")}</InputLabel>
+                    <Select
+                      name="storeTypeId"
+                      value={editForm.storeTypeId || ""}
+                      onChange={handleEditFormChange}
+                      label={t("Store Type")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Store Type")}</em>
+                      </MenuItem>
+                      {storeTypes.map((st) => (
+                        <MenuItem key={st._id} value={st._id}>
+                          {st.icon || "🏪"} {t(st.name)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Store City")}</InputLabel>
+                    <Select
+                      name="storecity"
+                      value={editForm.storecity}
+                      onChange={handleEditFormChange}
+                      label={t("Store City")}
+                    >
+                      {editFormCityOptions.map((c) => (
+                        <MenuItem key={c.value} value={c.value}>
+                          {c.flag} {c.label}
+                          {c.inactive
+                            ? ` (${t("Inactive", { defaultValue: "Inactive" })})`
+                            : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Address")}
+                    name="address"
+                    value={editForm.address || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Address (translations)")}
+                    value={{
+                      english: editForm.addressEn || "",
+                      arabic: editForm.addressAr || "",
+                      kurdish: editForm.addressKu || "",
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        addressEn: v.english,
+                        addressAr: v.arabic,
+                        addressKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.address || ""}
+                    aiType="store"
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Phone")}
+                    name="phone"
+                    value={editForm.phone}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("WhatsApp")}
+                    name="whatsapp"
+                    value={editForm.whatsapp || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Facebook")}
+                    name="facebook"
+                    value={editForm.facebook || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Instagram")}
+                    name="instagram"
+                    value={editForm.instagram || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("TikTok")}
+                    name="tiktok"
+                    value={editForm.tiktok || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Snapchat")}
+                    name="snapchat"
+                    value={editForm.snapchat || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <TextField
+                    fullWidth
+                    label={t("Google Maps")}
+                    name="googleMaps"
+                    value={editForm.googleMaps || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label={t("Apple Maps")}
+                    name="appleMaps"
+                    value={editForm.appleMaps || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label={t("Waze")}
+                    name="waze"
+                    value={editForm.waze || ""}
+                    onChange={handleEditFormChange}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Description")}
+                    name="description"
+                    value={editForm.description}
+                    onChange={handleEditFormChange}
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Description (translations)")}
+                    value={{
+                      english: editForm.descriptionEn,
+                      arabic: editForm.descriptionAr,
+                      kurdish: editForm.descriptionKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        descriptionEn: v.english,
+                        descriptionAr: v.arabic,
+                        descriptionKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.description}
+                    aiType="general"
+                    multiline
+                    minRows={2}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Expire date & time")}
+                    name="expireDate"
+                    type="datetime-local"
+                    value={editForm.expireDate || ""}
+                    onChange={handleEditFormChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Last Release Discount Date")}
+                    name="lastReleaseDiscountDate"
+                    type="date"
+                    value={editForm.lastReleaseDiscountDate || ""}
+                    onChange={handleEditFormChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Status All")}</InputLabel>
+                    <Select
+                      name="statusAll"
+                      value={editForm.statusAll || "on"}
+                      onChange={handleEditFormChange}
+                      label={t("Status All")}
+                    >
+                      <MenuItem value="on">{t("on")}</MenuItem>
+                      <MenuItem value="off">{t("off")}</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="isVip"
+                        checked={editForm.isVip || false}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            isVip: e.target.checked,
+                          })
                         }
-                        getOptionLabel={(opt) => {
-                          const row = deliveryEditCityOptions.find(
-                            (o) => o.value === opt,
-                          );
-                          return row ? row.label : String(opt);
-                        }}
-                        isOptionEqualToValue={(a, b) => a === b}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label={t("Delivery cities")}
-                            placeholder={t("Search...")}
+                      />
+                    }
+                    label={t("VIP Store")}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="show"
+                        checked={
+                          editForm.show !== undefined ? editForm.show : true
+                        }
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            show: e.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label={t("Show in Store List")}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="showingOnStoreBranchShowcase"
+                        checked={
+                          editForm.showingOnStoreBranchShowcase !== false
+                        }
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            showingOnStoreBranchShowcase: e.target.checked,
+                          })
+                        }
+                      />
+                    }
+                    label={t("Show in branch showcase")}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="isHasDelivery"
+                        checked={!!editForm.isHasDelivery}
+                        onChange={(e) =>
+                          setEditForm((prev) => {
+                            const on = e.target.checked;
+                            if (!on) {
+                              return {
+                                ...prev,
+                                isHasDelivery: false,
+                                deliveryAllCities: false,
+                                deliveryCities: [],
+                              };
+                            }
+                            return mergeDeliveryCitiesWithStoreCityFirst({
+                              ...prev,
+                              isHasDelivery: true,
+                            });
+                          })
+                        }
+                      />
+                    }
+                    label={t("Has Delivery")}
+                  />
+                </Grid>
+                {editForm.isHasDelivery && (
+                  <Grid xs={12}>
+                    <Box sx={{ mt: 0 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="deliveryAllCities"
+                            checked={!!editForm.deliveryAllCities}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                deliveryAllCities: e.target.checked,
+                                deliveryCities: e.target.checked
+                                  ? []
+                                  : prev.deliveryCities || [],
+                              }))
+                            }
                           />
-                        )}
+                        }
+                        label={t("Delivery for all cities")}
                       />
                     </Box>
-                  )}
-                </>
-              )}
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  {t("Branches")}
-                </Typography>
-                <Autocomplete
-                  multiple
-                  disableCloseOnSelect
-                  options={stores.filter(
-                    (s) => String(s._id) !== String(editDialog.data?._id),
-                  )}
-                  getOptionLabel={(option) => option?.name ?? ""}
-                  isOptionEqualToValue={(a, b) =>
-                    String(a?._id) === String(b?._id)
-                  }
-                  value={(editForm.branches || [])
-                    .map((id) =>
-                      stores.find((s) => String(s._id) === String(id)),
-                    )
-                    .filter(Boolean)}
-                  onChange={(_, newValue) => {
-                    setEditForm({
-                      ...editForm,
-                      branches: newValue.map((s) => String(s._id)),
-                    });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label={t("Branch stores")}
-                      placeholder={t("Search...")}
-                    />
-                  )}
-                  sx={{ mt: 0.5 }}
-                />
-              </Box>
+                    {!editForm.deliveryAllCities && (
+                      <Box sx={{ mt: 1 }}>
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={deliveryEditCityOptions.map((o) => o.value)}
+                          value={editForm.deliveryCities || []}
+                          onChange={(_, v) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              deliveryCities: v,
+                            }))
+                          }
+                          getOptionLabel={(opt) => {
+                            const row = deliveryEditCityOptions.find(
+                              (o) => o.value === opt,
+                            );
+                            return row ? row.label : String(opt);
+                          }}
+                          isOptionEqualToValue={(a, b) => a === b}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Delivery cities")}
+                              placeholder={t("Search...")}
+                            />
+                          )}
+                        />
+                      </Box>
+                    )}
+                  </Grid>
+                )}
+                <Grid xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    {t("Branches")}
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    disableCloseOnSelect
+                    options={stores.filter(
+                      (s) => String(s._id) !== String(editDialog.data?._id),
+                    )}
+                    getOptionLabel={(option) => option?.name ?? ""}
+                    isOptionEqualToValue={(a, b) =>
+                      String(a?._id) === String(b?._id)
+                    }
+                    value={(editForm.branches || [])
+                      .map((id) =>
+                        stores.find((s) => String(s._id) === String(id)),
+                      )
+                      .filter(Boolean)}
+                    onChange={(_, newValue) => {
+                      setEditForm({
+                        ...editForm,
+                        branches: newValue.map((s) => String(s._id)),
+                      });
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t("Branch stores")}
+                        placeholder={t("Search...")}
+                      />
+                    )}
+                    sx={{ mt: 0.5 }}
+                  />
+                </Grid>
+              </Grid>
             </Box>
           ) : editDialog.type === "category" ? (
             <Box component="form" sx={{ mt: 1 }}>
@@ -11279,7 +11988,6 @@ const DataEntryForm = () => {
               </FormControl>
 
               <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Brand")}</InputLabel>
                 <Select
                   name="brandId"
                   value={editForm.brandId}
@@ -11287,7 +11995,7 @@ const DataEntryForm = () => {
                   label={t("Brand")}
                 >
                   <MenuItem value="">
-                    <em>{t("None")}</em>
+                    <em>{t("select brand")}</em>
                   </MenuItem>
                   {brands.map((brand) => (
                     <MenuItem key={brand._id} value={brand._id}>
@@ -11297,7 +12005,6 @@ const DataEntryForm = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Company")}</InputLabel>
                 <Select
                   name="companyId"
                   value={editForm.companyId || ""}
@@ -11305,7 +12012,7 @@ const DataEntryForm = () => {
                   label={t("Company")}
                 >
                   <MenuItem value="">
-                    <em>{t("None")}</em>
+                    <em>{t("select company")}</em>
                   </MenuItem>
                   {companies.map((company) => (
                     <MenuItem key={company._id} value={company._id}>
@@ -11315,7 +12022,6 @@ const DataEntryForm = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Company")}</InputLabel>
                 <Select
                   name="companyId"
                   value={editForm.companyId || ""}
@@ -11323,7 +12029,7 @@ const DataEntryForm = () => {
                   label={t("Company")}
                 >
                   <MenuItem value="">
-                    <em>{t("None")}</em>
+                    <em>{t("select Company")}</em>
                   </MenuItem>
                   {companies.map((company) => (
                     <MenuItem key={company._id} value={company._id}>
@@ -11448,7 +12154,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Brand")}</InputLabel>
                     <Select
                       name="brandId"
                       value={editForm.brandId || ""}
@@ -11457,7 +12162,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select brand")}</em>
                       </MenuItem>
                       {brands.map((brand) => (
                         <MenuItem key={brand._id} value={brand._id}>
@@ -11469,7 +12174,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Store")}</InputLabel>
                     <Select
                       name="storeId"
                       value={editForm.storeId || ""}
@@ -11478,7 +12182,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select store")}</em>
                       </MenuItem>
                       {stores.map((s) => (
                         <MenuItem key={s._id} value={s._id}>
@@ -11490,7 +12194,6 @@ const DataEntryForm = () => {
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
-                    <InputLabel shrink>{t("Gift")}</InputLabel>
                     <Select
                       name="giftId"
                       value={editForm.giftId || ""}
@@ -11499,7 +12202,7 @@ const DataEntryForm = () => {
                       displayEmpty
                     >
                       <MenuItem value="">
-                        <em>{t("None")}</em>
+                        <em>{t("select gift")}</em>
                       </MenuItem>
                       {gifts.map((g) => (
                         <MenuItem key={g._id} value={g._id}>
@@ -11680,300 +12383,353 @@ const DataEntryForm = () => {
             </Box>
           ) : (
             <Box component="form" sx={{ mt: 1 }}>
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Name")}
-                name="name"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Product name (translations)")}
-                value={{
-                  english: editForm.nameEn,
-                  arabic: editForm.nameAr,
-                  kurdish: editForm.nameKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    nameEn: v.english,
-                    nameAr: v.arabic,
-                    nameKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.name}
-                aiType="product"
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Description")}
-                name="description"
-                value={editForm.description || ""}
-                onChange={handleEditFormChange}
-                multiline
-                rows={3}
-              />
-              <MultilingualFieldGroup
-                sectionLabel={t("Description (translations)")}
-                value={{
-                  english: editForm.descriptionEn,
-                  arabic: editForm.descriptionAr,
-                  kurdish: editForm.descriptionKu,
-                }}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({
-                    ...prev,
-                    descriptionEn: v.english,
-                    descriptionAr: v.arabic,
-                    descriptionKu: v.kurdish,
-                  }))
-                }
-                sourceText={editForm.description}
-                aiType="general"
-                multiline
-                minRows={2}
-              />
-
-              {/* Current Image Display */}
-              {editForm.image && (
-                <Box sx={{ mt: 2, mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    {t("Current Image:")}
-                  </Typography>
-                  <img
-                    src={
-                      editForm.image.startsWith("http")
-                        ? editForm.image
-                        : `${API_URL}${editForm.image}`
-                    }
-                    alt={t("Current product")}
-                    style={{
-                      width: "100px",
-                      height: "100px",
-                      objectFit: "cover",
-                      borderRadius: "8px",
-                      border: "1px solid #ddd",
+              <Grid container spacing={2}>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Product Name")}
+                    name="name"
+                    value={editForm.name}
+                    onChange={handleEditFormChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <ShoppingCartIcon />
+                        </InputAdornment>
+                      ),
                     }}
                   />
-                </Box>
-              )}
-
-              {/* Image Upload */}
-              <Box sx={{ mt: 2, mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  {t("Upload New Image:")}
-                </Typography>
-                <input
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  id="edit-product-image-upload"
-                  type="file"
-                  onChange={handleEditImageChange}
-                />
-                <label htmlFor="edit-product-image-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mb: 1 }}
-                  >
-                    {t("Choose Image")}
-                  </Button>
-                </label>
-                {selectedEditImage && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" display="block">
-                      {t("Selected:")} {selectedEditImage.name}
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Product name (translations)")}
+                    value={{
+                      english: editForm.nameEn,
+                      arabic: editForm.nameAr,
+                      kurdish: editForm.nameKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        nameEn: v.english,
+                        nameAr: v.arabic,
+                        nameKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.name}
+                    aiType="product"
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Description")}
+                    name="description"
+                    value={editForm.description || ""}
+                    onChange={handleEditFormChange}
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <MultilingualFieldGroup
+                    sectionLabel={t("Description (translations)")}
+                    value={{
+                      english: editForm.descriptionEn,
+                      arabic: editForm.descriptionAr,
+                      kurdish: editForm.descriptionKu,
+                    }}
+                    onValueChange={(v) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        descriptionEn: v.english,
+                        descriptionAr: v.arabic,
+                        descriptionKu: v.kurdish,
+                      }))
+                    }
+                    sourceText={editForm.description}
+                    aiType="general"
+                    multiline
+                    minRows={2}
+                  />
+                </Grid>
+                <Grid xs={12}>
+                  <TextField
+                    fullWidth
+                    label={t("Barcode")}
+                    name="barcode"
+                    value={editForm.barcode}
+                    onChange={handleEditFormChange}
+                    placeholder="Enter product barcode"
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Previous Price")}
+                    name="previousPrice"
+                    type="number"
+                    value={editForm.previousPrice}
+                    onChange={handleEditFormChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">ID</InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("New Price")}
+                    name="newPrice"
+                    type="number"
+                    value={editForm.newPrice}
+                    onChange={handleEditFormChange}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">ID</InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Weight")}
+                    name="weight"
+                    value={editForm.weight}
+                    onChange={handleEditFormChange}
+                    placeholder="e.g., 500g, 1kg, 2.5kg"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <InventoryIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="isDiscount"
+                          checked={editForm.isDiscount}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              isDiscount: e.target.checked,
+                            })
+                          }
+                        />
+                      }
+                      label={t("Is Discount Product")}
+                    />
+                  </FormControl>
+                </Grid>
+                {editForm.image ? (
+                  <Grid xs={12}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {t("Current Image:")}
                     </Typography>
                     <img
-                      src={URL.createObjectURL(selectedEditImage)}
-                      alt={t("Preview")}
+                      src={
+                        editForm.image.startsWith("http")
+                          ? editForm.image
+                          : `${API_URL}${editForm.image}`
+                      }
+                      alt={t("Current product")}
                       style={{
                         width: "100px",
                         height: "100px",
                         objectFit: "cover",
                         borderRadius: "8px",
                         border: "1px solid #ddd",
-                        marginTop: "8px",
                       }}
                     />
-                  </Box>
-                )}
-
-                <TextField
-                  margin="normal"
-                  fullWidth
-                  label={t("Previous Price")}
-                  name="previousPrice"
-                  type="number"
-                  value={editForm.previousPrice}
-                  onChange={handleEditFormChange}
-                />
-                <TextField
-                  margin="normal"
-                  fullWidth
-                  label={t("New Price")}
-                  name="newPrice"
-                  type="number"
-                  value={editForm.newPrice}
-                  onChange={handleEditFormChange}
-                />
-                <TextField
-                  margin="normal"
-                  fullWidth
-                  label={t("Weight")}
-                  name="weight"
-                  value={editForm.weight}
-                  onChange={handleEditFormChange}
-                  placeholder="e.g., 500g, 1kg, 2.5kg"
-                />
-                <TextField
-                  margin="normal"
-                  fullWidth
-                  label={t("Barcode")}
-                  name="barcode"
-                  value={editForm.barcode}
-                  onChange={handleEditFormChange}
-                  placeholder="Enter product barcode"
-                />
-                <FormControl fullWidth margin="normal">
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="isDiscount"
-                        checked={editForm.isDiscount}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            isDiscount: e.target.checked,
-                          })
-                        }
-                      />
-                    }
-                    label={t("Is Discount Product")}
+                  </Grid>
+                ) : null}
+                <Grid xs={12}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    {t("Upload New Image:")}
+                  </Typography>
+                  <input
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    id="edit-product-image-upload"
+                    type="file"
+                    onChange={handleEditImageChange}
                   />
-                </FormControl>
-              </Box>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Store")}</InputLabel>
-                <Select
-                  name="storeId"
-                  value={editForm.storeId || ""}
-                  onChange={handleEditFormChange}
-                  label={t("Store")}
-                >
-                  <MenuItem value="">
-                    <em>{t("Select Store")}</em>
-                  </MenuItem>
-                  {stores.map((store) => (
-                    <MenuItem key={store._id} value={store._id}>
-                      {store.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Brand")}</InputLabel>
-                <Select
-                  name="brandId"
-                  value={editForm.brandId}
-                  onChange={handleEditFormChange}
-                  label={t("Brand")}
-                >
-                  <MenuItem value="">
-                    <em>{t("None")}</em>
-                  </MenuItem>
-                  {brands.map((brand) => (
-                    <MenuItem key={brand._id} value={brand._id}>
-                      {brand.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Company")}</InputLabel>
-                <Select
-                  name="companyId"
-                  value={editForm.companyId || ""}
-                  onChange={handleEditFormChange}
-                  label={t("Company")}
-                >
-                  <MenuItem value="">
-                    <em>{t("None")}</em>
-                  </MenuItem>
-                  {companies.map((company) => (
-                    <MenuItem key={company._id} value={company._id}>
-                      {company.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Category")}</InputLabel>
-                <Select
-                  name="categoryId"
-                  value={editForm.categoryId}
-                  onChange={handleEditFormChange}
-                  label={t("Category")}
-                >
-                  {categories.map((category) => (
-                    <MenuItem key={category._id} value={category._id}>
-                      {category.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Category Type")}</InputLabel>
-                <Select
-                  name="categoryTypeId"
-                  value={editForm.categoryTypeId ?? ""}
-                  onChange={handleEditFormChange}
-                  label={t("Category Type")}
-                  disabled={!editForm.categoryId}
-                  displayEmpty
-                >
-                  <MenuItem value="">
-                    <em>{t("Select Category Type")}</em>
-                  </MenuItem>
-                  {categoryTypes.map((type, index) => {
-                    const typeValue =
-                      typeof type === "string" ? type : String(type?._id || "");
-                    const typeLabel =
-                      typeof type === "string" ? type : type?.name || "";
-                    return (
-                      <MenuItem key={typeValue || index} value={typeValue}>
-                        {typeLabel}
+                  <label htmlFor="edit-product-image-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mb: 1 }}
+                    >
+                      {t("Choose Image")}
+                    </Button>
+                  </label>
+                  {selectedEditImage ? (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" display="block">
+                        {t("Selected:")} {selectedEditImage.name}
+                      </Typography>
+                      <img
+                        src={URL.createObjectURL(selectedEditImage)}
+                        alt={t("Preview")}
+                        style={{
+                          width: "100px",
+                          height: "100px",
+                          objectFit: "cover",
+                          borderRadius: "8px",
+                          border: "1px solid #ddd",
+                          marginTop: "8px",
+                        }}
+                      />
+                    </Box>
+                  ) : null}
+                </Grid>
+                <Grid xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Store")}</InputLabel>
+                    <Select
+                      name="storeId"
+                      value={editForm.storeId || ""}
+                      onChange={handleEditFormChange}
+                      label={t("Store")}
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Store")}</em>
                       </MenuItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Status")}</InputLabel>
-                <Select
-                  name="status"
-                  value={editForm.status || "published"}
-                  onChange={handleEditFormChange}
-                  label={t("Status")}
-                >
-                  <MenuItem value="published">{t("Published")}</MenuItem>
-                  <MenuItem value="pending">{t("Pending")}</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                margin="normal"
-                fullWidth
-                label={t("Expire date & time")}
-                name="expireDate"
-                type="datetime-local"
-                value={editForm.expireDate}
-                onChange={handleEditFormChange}
-                InputLabelProps={{ shrink: true }}
-              />
+                      {stores.map((store) => (
+                        <MenuItem key={store._id} value={store._id}>
+                          {store.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Brand")}</InputLabel>
+                    <Select
+                      name="brandId"
+                      value={editForm.brandId}
+                      onChange={handleEditFormChange}
+                      label={t("Brand")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("select brand")}</em>
+                      </MenuItem>
+                      {brands.map((brand) => (
+                        <MenuItem key={brand._id} value={brand._id}>
+                          {brand.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <Select
+                      name="companyId"
+                      value={editForm.companyId || ""}
+                      onChange={handleEditFormChange}
+                      label={t("Company")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("select company")}</em>
+                      </MenuItem>
+                      {companies.map((company) => (
+                        <MenuItem key={company._id} value={company._id}>
+                          {company.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Category")}</InputLabel>
+                    <Select
+                      name="categoryId"
+                      value={editForm.categoryId}
+                      onChange={handleEditFormChange}
+                      label={t("Category")}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Category")}</em>
+                      </MenuItem>
+                      {categories.map((category) => (
+                        <MenuItem key={category._id} value={category._id}>
+                          {category.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{t("Category Type")}</InputLabel>
+                    <Select
+                      name="categoryTypeId"
+                      value={editForm.categoryTypeId ?? ""}
+                      onChange={handleEditFormChange}
+                      label={t("Category Type")}
+                      disabled={!editForm.categoryId}
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>{t("Select Category Type")}</em>
+                      </MenuItem>
+                      {categoryTypes.map((type, index) => {
+                        const typeValue =
+                          typeof type === "string"
+                            ? type
+                            : String(type?._id || "");
+                        const typeLabel =
+                          typeof type === "string" ? type : type?.name || "";
+                        return (
+                          <MenuItem key={typeValue || index} value={typeValue}>
+                            {typeLabel}
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel shrink>{t("Status")}</InputLabel>
+                    <Select
+                      name="status"
+                      value={editForm.status || "published"}
+                      onChange={handleEditFormChange}
+                      label={t("Status")}
+                    >
+                      <MenuItem value="published">{t("Published")}</MenuItem>
+                      <MenuItem value="pending">{t("Pending")}</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={t("Expire date & time")}
+                    name="expireDate"
+                    type="datetime-local"
+                    value={editForm.expireDate}
+                    onChange={handleEditFormChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+              </Grid>
             </Box>
           )}
         </DialogContent>

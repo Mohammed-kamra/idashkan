@@ -103,8 +103,7 @@ const ProductDetailDialog = ({
 
   const getProductCityString = useCallback(
     (p) => {
-      const fromPopulated =
-        p?.storeId?.storecity || p?.storeId?.city || "";
+      const fromPopulated = p?.storeId?.storecity || p?.storeId?.city || "";
       if (fromPopulated) return fromPopulated;
       const sid = p?.storeId?._id ?? p?.storeId;
       if (sid != null) {
@@ -152,8 +151,7 @@ const ProductDetailDialog = ({
     const storeId = product.storeId?._id || product.storeId;
     const brandId = product.brandId?._id || product.brandId;
     const companyId = product.companyId?._id || product.companyId;
-    const hasCategory =
-      categoryId != null && String(categoryId).trim() !== "";
+    const hasCategory = categoryId != null && String(categoryId).trim() !== "";
 
     const baseRelatedPredicate = (p) =>
       p._id !== pid &&
@@ -502,9 +500,7 @@ const ProductDetailDialog = ({
                               sx={{ fontSize: "0.9rem !important" }}
                             />
                           }
-                          label={
-                            locName(product.categoryId) || t("Category")
-                          }
+                          label={locName(product.categoryId) || t("Category")}
                           size="small"
                           sx={{
                             borderRadius: 99,
@@ -984,8 +980,7 @@ const ProductDetailDialog = ({
                                       sx={{
                                         fontSize: "0.72rem",
                                         fontWeight: 800,
-                                        color:
-                                          "var(--color-secondary,#0d47a1)",
+                                        color: "var(--color-secondary,#0d47a1)",
                                         lineHeight: 1,
                                       }}
                                     >

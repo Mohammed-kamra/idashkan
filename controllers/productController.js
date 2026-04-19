@@ -41,6 +41,9 @@ function sanitizeProductUpdateBody(body) {
   if (updateDoc.categoryId === "") {
     delete updateDoc.categoryId;
   }
+  if (updateDoc.categoryTypeId === "") {
+    delete updateDoc.categoryTypeId;
+  }
   if (updateDoc.storeTypeId === "") {
     delete updateDoc.storeTypeId;
   }
@@ -201,12 +204,19 @@ const createProduct = async (req, res) => {
     expireDate,
   } = req.body;
 
+  const hasStoreId =
+    storeId != null &&
+    String(storeId).trim() !== "" &&
+    String(storeId).trim() !== "null";
+
   try {
-    // Check if store exists
-    const store = await Store.findById(storeId);
-    if (!store) {
-      console.error("[createProduct] Store not found for storeId:", storeId);
-      return res.status(404).json({ msg: "Store not found" });
+    let store = null;
+    if (hasStoreId) {
+      store = await Store.findById(storeId);
+      if (!store) {
+        console.error("[createProduct] Store not found for storeId:", storeId);
+        return res.status(404).json({ msg: "Store not found" });
+      }
     }
 
     // Check if brand exists (only if brandId is provided)
@@ -228,27 +238,36 @@ const createProduct = async (req, res) => {
       }
     }
 
-    // Check if category exists
-    const category = await Category.findById(categoryId);
-    if (!category) {
-      console.error(
-        "[createProduct] Category not found for categoryId:",
-        categoryId
-      );
-      return res.status(404).json({ msg: "Category not found" });
-    }
+    const hasCategoryId =
+      categoryId != null && String(categoryId).trim() !== "";
+    const hasCategoryTypeId =
+      categoryTypeId != null && String(categoryTypeId).trim() !== "";
 
-    // Check if category type exists
-    if (categoryTypeId) {
-      const categoryType = category.types.find(
-        (type) => type._id.toString() === categoryTypeId
-      );
-      if (!categoryType) {
+    let categoryIdToSave;
+    let categoryTypeIdToSave;
+
+    if (hasCategoryId) {
+      const category = await Category.findById(categoryId);
+      if (!category) {
         console.error(
-          "[createProduct] Category type not found for categoryTypeId:",
-          categoryTypeId
+          "[createProduct] Category not found for categoryId:",
+          categoryId,
         );
-        return res.status(404).json({ msg: "Category type not found" });
+        return res.status(404).json({ msg: "Category not found" });
+      }
+      categoryIdToSave = categoryId;
+      if (hasCategoryTypeId) {
+        const categoryType = category.types.find(
+          (type) => type._id.toString() === categoryTypeId,
+        );
+        if (!categoryType) {
+          console.error(
+            "[createProduct] Category type not found for categoryTypeId:",
+            categoryTypeId,
+          );
+          return res.status(404).json({ msg: "Category type not found" });
+        }
+        categoryTypeIdToSave = categoryTypeId;
       }
     }
 
@@ -263,10 +282,15 @@ const createProduct = async (req, res) => {
       }
       storeTypeIdToUse = st._id;
     }
-    if (!storeTypeIdToUse) {
-      return res.status(400).json({
-        msg: "storeTypeId is required (or provide legacy storeType name)",
-      });
+    if (hasStoreId && store) {
+      if (!storeTypeIdToUse && store.storeTypeId) {
+        storeTypeIdToUse = store.storeTypeId;
+      }
+      if (!storeTypeIdToUse) {
+        return res.status(400).json({
+          msg: "storeTypeId is required when a store is set (assign a store type on the store or send storeTypeId)",
+        });
+      }
     }
 
     const newProduct = new Product({
@@ -275,8 +299,8 @@ const createProduct = async (req, res) => {
       nameAr,
       nameKu,
       type,
-      categoryId,
-      categoryTypeId,
+      categoryId: categoryIdToSave,
+      categoryTypeId: categoryTypeIdToSave,
       description,
       descriptionEn,
       descriptionAr,
@@ -289,15 +313,15 @@ const createProduct = async (req, res) => {
       weight,
       brandId,
       companyId,
-      storeId,
-      storeTypeId: storeTypeIdToUse,
+      storeId: hasStoreId ? storeId : null,
+      ...(storeTypeIdToUse ? { storeTypeId: storeTypeIdToUse } : {}),
       status: status === "pending" ? "pending" : "published",
       expireDate,
     });
 
     const product = await newProduct.save();
 
-    if (storeId) {
+    if (hasStoreId && storeId) {
       await Store.findByIdAndUpdate(storeId, {
         $set: { lastReleaseDiscountDate: new Date() },
       });

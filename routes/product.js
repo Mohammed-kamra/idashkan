@@ -172,15 +172,6 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
               ? [rowStoreId]
               : [];
 
-        if (storesForRow.length === 0) {
-          errors.push(
-            `Row ${
-              i + 2
-            }: Select store(s) in the upload dialog or enter Store ID in column I`,
-          );
-          continue;
-        }
-
         const baseProductData = {
           barcode: row[0] || "",
           name: row[1] || "",
@@ -196,18 +187,31 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
           status: "pending",
         };
 
-        if (
-          !baseProductData.name ||
-          baseProductData.isDiscount === undefined ||
-          !baseProductData.categoryId ||
-          !baseProductData.categoryTypeId
-        ) {
+        if (!baseProductData.name || baseProductData.isDiscount === undefined) {
           errors.push(
             `Row ${
               i + 2
-            }: Missing required fields (name, isDiscount, categoryId, categoryTypeId)`,
+            }: Missing required fields (name, isDiscount)`,
           );
           continue;
+        }
+
+        const cid = baseProductData.categoryId
+          ? String(baseProductData.categoryId).trim()
+          : "";
+        const ctid = baseProductData.categoryTypeId
+          ? String(baseProductData.categoryTypeId).trim()
+          : "";
+        if (!cid) {
+          delete baseProductData.categoryId;
+          delete baseProductData.categoryTypeId;
+        } else {
+          baseProductData.categoryId = cid;
+          if (ctid) {
+            baseProductData.categoryTypeId = ctid;
+          } else {
+            delete baseProductData.categoryTypeId;
+          }
         }
 
         let storeTypeFromColumn = null;
@@ -216,10 +220,13 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
           if (st) storeTypeFromColumn = st._id;
         }
 
-        for (const sid of storesForRow) {
+        const storeTargets =
+          storesForRow.length > 0 ? storesForRow : [null];
+
+        for (const sid of storeTargets) {
           const productData = {
             ...baseProductData,
-            storeId: sid,
+            ...(sid ? { storeId: sid } : { storeId: null }),
           };
 
           if (storeTypeFromColumn) {
@@ -245,9 +252,11 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
 
           const newProduct = new Product(productData);
           await newProduct.save();
-          await Store.findByIdAndUpdate(sid, {
-            $set: { lastReleaseDiscountDate: new Date() },
-          });
+          if (sid) {
+            await Store.findByIdAndUpdate(sid, {
+              $set: { lastReleaseDiscountDate: new Date() },
+            });
+          }
           createdCount++;
         }
       } catch (error) {

@@ -14,16 +14,16 @@ const productSchema = new mongoose.Schema(
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      required: true,
+      required: false,
     },
     storeTypeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "StoreType",
-      required: true,
+      required: false,
     },
     categoryTypeId: {
       type: String, // This will store the type ID within the category
-      required: true,
+      required: false,
     },
     image: { type: String, required: false },
     previousPrice: { type: Number },
