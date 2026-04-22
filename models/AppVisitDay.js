@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const appVisitDaySchema = new mongoose.Schema(
   {
@@ -30,6 +31,8 @@ const appVisitDaySchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+appVisitDaySchema.plugin(auditPlugin);
 
 appVisitDaySchema.index({ day: 1, visitSessionId: 1 }, { unique: true });
 

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const jobSchema = new mongoose.Schema(
   {
@@ -54,6 +55,8 @@ jobSchema.pre("validate", function (next) {
   }
   next();
 });
+
+jobSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Job", jobSchema);
 

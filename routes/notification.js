@@ -6,7 +6,6 @@ const {
   markAllAsRead,
   clearNotifications,
 } = require("../controllers/notificationController");
-const { optionalAuth } = require("../middleware/auth");
 
 // Public - VAPID public key for push subscription
 router.get("/vapid-public", (req, res) => {
@@ -20,9 +19,9 @@ router.get("/vapid-public", (req, res) => {
   res.json({ success: true, vapidPublicKey: key });
 });
 
-router.get("/", optionalAuth, getNotifications);
-router.put("/read-all", optionalAuth, markAllAsRead);
-router.put("/clear", optionalAuth, clearNotifications);
-router.put("/:id/read", optionalAuth, markAsRead);
+router.get("/", getNotifications);
+router.put("/read-all", markAllAsRead);
+router.put("/clear", clearNotifications);
+router.put("/:id/read", markAsRead);
 
 module.exports = router;

@@ -4,7 +4,14 @@ const Store = require("../models/Store");
 const Brand = require("../models/Brand");
 const Company = require("../models/Company");
 const Category = require("../models/Category");
+const User = require("../models/User");
+const {
+  hasOwnerDataEntryScope,
+  assertOwnerDataEntryCanCreateProduct,
+  buildOwnerDataEntryProductFilter,
+} = require("../utils/ownerDataEntryScope");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
+const { parseOptionalNonNegativePrice } = require("../utils/productPriceValidation");
 const {
   categoryList,
   categoryDetail,
@@ -210,6 +217,95 @@ const createProduct = async (req, res) => {
     String(storeId).trim() !== "null";
 
   try {
+    if (req.user?.role === "owner_dataentry") {
+      const user = await User.findById(req.user._id).lean();
+      if (!user) {
+        return res.status(401).json({ msg: "Unauthorized" });
+      }
+      if (!hasOwnerDataEntryScope(user)) {
+        return res
+          .status(403)
+          .json({ msg: "Owner data entry scope not configured" });
+      }
+      const v = await assertOwnerDataEntryCanCreateProduct(user, {
+        storeId,
+        brandId,
+        companyId,
+      });
+      if (!v.ok) {
+        return res.status(400).json({ msg: v.message });
+      }
+
+      const nameTrim = String(name || "").trim();
+      if (!nameTrim) {
+        return res.status(400).json({ msg: "name is required" });
+      }
+
+      let store = null;
+      if (hasStoreId) {
+        store = await Store.findById(storeId);
+        if (!store) {
+          return res.status(404).json({ msg: "Store not found" });
+        }
+      }
+
+      const StoreType = require("../models/StoreType");
+      let storeTypeIdToUse = providedStoreTypeId;
+      if (!storeTypeIdToUse && providedStoreTypeName) {
+        const st = await StoreType.findOne({ name: providedStoreTypeName });
+        if (!st) {
+          return res
+            .status(400)
+            .json({ msg: `Invalid storeType name: ${providedStoreTypeName}` });
+        }
+        storeTypeIdToUse = st._id;
+      }
+      if (hasStoreId && store) {
+        if (!storeTypeIdToUse && store.storeTypeId) {
+          storeTypeIdToUse = store.storeTypeId;
+        }
+        if (!storeTypeIdToUse) {
+          return res.status(400).json({
+            msg:
+              "storeTypeId is required when a store is set (assign a store type on the store or send storeTypeId)",
+          });
+        }
+      }
+
+      const prevODE = parseOptionalNonNegativePrice(
+        previousPrice,
+        "previousPrice",
+      );
+      if (!prevODE.ok) return res.status(400).json({ msg: prevODE.msg });
+      const newODE = parseOptionalNonNegativePrice(newPrice, "newPrice");
+      if (!newODE.ok) return res.status(400).json({ msg: newODE.msg });
+
+      const newProduct = new Product({
+        name: nameTrim,
+        barcode: barcode || undefined,
+        image: image || undefined,
+        previousPrice: prevODE.value,
+        newPrice: newODE.value,
+        isDiscount: !!isDiscount,
+        expireDate: expireDate ? normalizeExpiryDate(expireDate) : undefined,
+        brandId: brandId || null,
+        companyId: companyId || null,
+        storeId: hasStoreId ? storeId : null,
+        ...(storeTypeIdToUse ? { storeTypeId: storeTypeIdToUse } : {}),
+        status: "published",
+      });
+
+      const product = await newProduct.save();
+
+      if (hasStoreId && storeId) {
+        await Store.findByIdAndUpdate(storeId, {
+          $set: { lastReleaseDiscountDate: new Date() },
+        });
+      }
+
+      return res.json(product);
+    }
+
     let store = null;
     if (hasStoreId) {
       store = await Store.findById(storeId);
@@ -293,6 +389,14 @@ const createProduct = async (req, res) => {
       }
     }
 
+    const prevParsed = parseOptionalNonNegativePrice(
+      previousPrice,
+      "previousPrice",
+    );
+    if (!prevParsed.ok) return res.status(400).json({ msg: prevParsed.msg });
+    const newParsed = parseOptionalNonNegativePrice(newPrice, "newPrice");
+    if (!newParsed.ok) return res.status(400).json({ msg: newParsed.msg });
+
     const newProduct = new Product({
       name,
       nameEn,
@@ -307,8 +411,8 @@ const createProduct = async (req, res) => {
       descriptionKu,
       barcode,
       image,
-      previousPrice,
-      newPrice,
+      previousPrice: prevParsed.value,
+      newPrice: newParsed.value,
       isDiscount,
       weight,
       brandId,
@@ -456,11 +560,51 @@ const getCategories = async (req, res) => {
   }
 };
 
+// @desc    List products for Owner Data Entry role (scoped)
+// @route   GET /api/products/owner-data-entry
+// @access  Private
+const getOwnerDataEntryProducts = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "owner_dataentry") {
+      return res.status(403).json({
+        success: false,
+        message: "Owner Data Entry role required",
+      });
+    }
+    const user = await User.findById(req.user._id).lean();
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!hasOwnerDataEntryScope(user)) {
+      return res.json([]);
+    }
+    const filter = await buildOwnerDataEntryProductFilter(user);
+    const products = await Product.find(filter)
+      .populate("brandId", brandList)
+      .populate("companyId", companyList)
+      .populate("storeId", storeList)
+      .populate("categoryId", categoryList)
+      .populate("storeTypeId", storeTypeList)
+      .sort({ createdAt: -1 })
+      .limit(1000)
+      .lean();
+    res.json(products);
+  } catch (err) {
+    console.error("[getOwnerDataEntryProducts]", err.message);
+    res.status(500).send("Server Error");
+  }
+};
+
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private (Admin)
 const updateProduct = async (req, res) => {
   try {
+    if (req.user?.role === "owner_dataentry") {
+      return res.status(403).json({
+        msg: "Not allowed to update products for this account",
+      });
+    }
     const paramId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(paramId)) {
       return res.status(400).json({ msg: "Invalid product id" });
@@ -479,6 +623,14 @@ const updateProduct = async (req, res) => {
       updateDoc.storeTypeId = st._id;
     } else if (storeTypeId) {
       updateDoc.storeTypeId = storeTypeId;
+    }
+
+    for (const key of ["previousPrice", "newPrice"]) {
+      if (updateDoc[key] === undefined) continue;
+      const r = parseOptionalNonNegativePrice(updateDoc[key], key);
+      if (!r.ok) return res.status(400).json({ msg: r.msg });
+      if (r.value === undefined) delete updateDoc[key];
+      else updateDoc[key] = r.value;
     }
 
     const product = await Product.findByIdAndUpdate(paramId, updateDoc, {
@@ -508,6 +660,11 @@ const updateProduct = async (req, res) => {
 // @access  Private (Admin)
 const deleteProduct = async (req, res) => {
   try {
+    if (req.user?.role === "owner_dataentry") {
+      return res.status(403).json({
+        msg: "Not allowed to delete products for this account",
+      });
+    }
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {
       return res.status(404).json({ msg: "Product not found" });
@@ -528,6 +685,7 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  getOwnerDataEntryProducts,
   getProductsByBrand,
   getProductsByCompany,
   getProductsByStore,

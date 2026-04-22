@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const videoSchema = new mongoose.Schema(
   {
@@ -32,6 +33,8 @@ const videoSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+videoSchema.plugin(auditPlugin);
 
 videoSchema.index({ createdAt: -1 });
 

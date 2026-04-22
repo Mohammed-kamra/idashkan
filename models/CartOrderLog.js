@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const cartOrderItemSchema = new mongoose.Schema(
   {
@@ -35,6 +36,8 @@ const cartOrderLogSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+cartOrderLogSchema.plugin(auditPlugin);
 
 cartOrderLogSchema.index({ createdAt: -1 });
 cartOrderLogSchema.index({ storeId: 1, createdAt: -1 });

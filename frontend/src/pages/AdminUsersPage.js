@@ -27,6 +27,8 @@ import {
   Autocomplete,
   IconButton,
   Stack,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -106,7 +108,12 @@ const AdminUsersPage = () => {
   }, [isAuthenticated, isAdmin, fetchUsers]);
 
   useEffect(() => {
-    if (!editDialogOpen || !editingUser || editingUser.role !== "owner") {
+    if (
+      !editDialogOpen ||
+      !editingUser ||
+      (editingUser.role !== "owner" &&
+        editingUser.role !== "owner_dataentry")
+    ) {
       setOwnerEntityLists({ stores: [], brands: [], companies: [] });
       return;
     }
@@ -139,6 +146,11 @@ const AdminUsersPage = () => {
       cancelled = true;
     };
   }, [editDialogOpen, editingUser?.role]);
+
+  const getSelectedEntities = (ids, list) => {
+    const set = new Set((ids || []).map(String));
+    return (list || []).filter((x) => set.has(String(x._id)));
+  };
 
   const getOwnerOptionsForType = (typ) => {
     if (typ === "store") return ownerEntityLists.stores;
@@ -188,6 +200,12 @@ const AdminUsersPage = () => {
       isActive: true,
       role: "user",
       ownerEntities: [],
+      ownerDataEntryAllStores: false,
+      ownerDataEntryAllBrands: false,
+      ownerDataEntryAllCompanies: false,
+      ownerDataEntryStoreIds: [],
+      ownerDataEntryBrandIds: [],
+      ownerDataEntryCompanyIds: [],
     });
     setEditDialogOpen(true);
   };
@@ -201,6 +219,12 @@ const AdminUsersPage = () => {
         normalized.length > 0
           ? normalized
           : [{ entityType: "store", entityId: "" }],
+      ownerDataEntryAllStores: !!row.ownerDataEntryAllStores,
+      ownerDataEntryAllBrands: !!row.ownerDataEntryAllBrands,
+      ownerDataEntryAllCompanies: !!row.ownerDataEntryAllCompanies,
+      ownerDataEntryStoreIds: row.ownerDataEntryStoreIds || [],
+      ownerDataEntryBrandIds: row.ownerDataEntryBrandIds || [],
+      ownerDataEntryCompanyIds: row.ownerDataEntryCompanyIds || [],
     });
     setEditDialogOpen(true);
   };
@@ -225,7 +249,43 @@ const AdminUsersPage = () => {
           ? "support"
           : editingUser.role === "owner"
             ? "owner"
-            : "user";
+            : editingUser.role === "owner_dataentry"
+              ? "owner_dataentry"
+              : "user";
+
+      const appendOwnerDataEntry = (payload) => {
+        if (roleNorm !== "owner_dataentry") return;
+        const anyAll =
+          editingUser.ownerDataEntryAllStores ||
+          editingUser.ownerDataEntryAllBrands ||
+          editingUser.ownerDataEntryAllCompanies;
+        const anyIds =
+          (editingUser.ownerDataEntryStoreIds || []).length +
+          (editingUser.ownerDataEntryBrandIds || []).length +
+          (editingUser.ownerDataEntryCompanyIds || []).length;
+        if (!anyAll && !anyIds) {
+          setError(
+            t(
+              "Select All and/or specific stores, brands, and companies for Owner Data Entry.",
+              {
+                defaultValue:
+                  "Select All and/or specific stores, brands, and companies for Owner Data Entry.",
+              },
+            ),
+          );
+          throw new Error("scope");
+        }
+        payload.ownerDataEntryAllStores = !!editingUser.ownerDataEntryAllStores;
+        payload.ownerDataEntryAllBrands = !!editingUser.ownerDataEntryAllBrands;
+        payload.ownerDataEntryAllCompanies =
+          !!editingUser.ownerDataEntryAllCompanies;
+        payload.ownerDataEntryStoreIds =
+          editingUser.ownerDataEntryStoreIds || [];
+        payload.ownerDataEntryBrandIds =
+          editingUser.ownerDataEntryBrandIds || [];
+        payload.ownerDataEntryCompanyIds =
+          editingUser.ownerDataEntryCompanyIds || [];
+      };
 
       if (editingUser._id) {
         const updatePayload = {
@@ -259,6 +319,15 @@ const AdminUsersPage = () => {
             entityId: String(e.entityId).trim(),
           }));
         }
+        try {
+          appendOwnerDataEntry(updatePayload);
+        } catch (e) {
+          if (e.message === "scope") {
+            setSaving(false);
+            return;
+          }
+          throw e;
+        }
         res = await adminAPI.updateUser(editingUser._id, updatePayload);
       } else {
         const createPayload = {
@@ -288,6 +357,15 @@ const AdminUsersPage = () => {
             entityType: e.entityType,
             entityId: String(e.entityId).trim(),
           }));
+        }
+        try {
+          appendOwnerDataEntry(createPayload);
+        } catch (e) {
+          if (e.message === "scope") {
+            setSaving(false);
+            return;
+          }
+          throw e;
         }
         res = await adminAPI.createUser(createPayload);
       }
@@ -418,6 +496,14 @@ const AdminUsersPage = () => {
                           color="warning"
                           label={t("Owner", { defaultValue: "Owner" })}
                         />
+                      ) : role === "owner_dataentry" ? (
+                        <Chip
+                          size="small"
+                          color="info"
+                          label={t("Owner (Data Entry)", {
+                            defaultValue: "Owner (Data Entry)",
+                          })}
+                        />
                       ) : (
                         <Chip size="small" label={t("Normal user")} />
                       )}
@@ -538,7 +624,9 @@ const AdminUsersPage = () => {
                       ? "support"
                       : editingUser.role === "owner"
                         ? "owner"
-                        : "user"
+                        : editingUser.role === "owner_dataentry"
+                          ? "owner_dataentry"
+                          : "user"
                   }
                   onChange={(e) => {
                     const v = e.target.value;
@@ -551,6 +639,24 @@ const AdminUsersPage = () => {
                           prev.ownerEntities.length > 0
                             ? prev.ownerEntities
                             : [{ entityType: "store", entityId: "" }],
+                      }));
+                    } else if (v === "owner_dataentry") {
+                      setEditingUser((prev) => ({
+                        ...prev,
+                        role: v,
+                        ownerEntities: [],
+                        ownerDataEntryAllStores:
+                          prev.ownerDataEntryAllStores || false,
+                        ownerDataEntryAllBrands:
+                          prev.ownerDataEntryAllBrands || false,
+                        ownerDataEntryAllCompanies:
+                          prev.ownerDataEntryAllCompanies || false,
+                        ownerDataEntryStoreIds:
+                          prev.ownerDataEntryStoreIds || [],
+                        ownerDataEntryBrandIds:
+                          prev.ownerDataEntryBrandIds || [],
+                        ownerDataEntryCompanyIds:
+                          prev.ownerDataEntryCompanyIds || [],
                       }));
                     } else {
                       setEditingUser((prev) => ({
@@ -567,6 +673,11 @@ const AdminUsersPage = () => {
                   </MenuItem>
                   <MenuItem value="owner">
                     {t("Owner", { defaultValue: "Owner" })}
+                  </MenuItem>
+                  <MenuItem value="owner_dataentry">
+                    {t("Owner (Data Entry)", {
+                      defaultValue: "Owner (Data Entry)",
+                    })}
                   </MenuItem>
                 </Select>
               </FormControl>
@@ -704,6 +815,170 @@ const AdminUsersPage = () => {
                       >
                         {t("Add business", { defaultValue: "Add business" })}
                       </Button>
+                    </>
+                  )}
+                </>
+              )}
+              {editingUser.role === "owner_dataentry" && (
+                <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1, mb: 0.5 }}
+                  >
+                    {t(
+                      "Where this user may add products (choose All and/or specific items)",
+                      {
+                        defaultValue:
+                          "Where this user may add products (choose All and/or specific items)",
+                      },
+                    )}
+                  </Typography>
+                  {loadingOwnerEntities ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        py: 2,
+                      }}
+                    >
+                      <CircularProgress size={28} />
+                    </Box>
+                  ) : (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!editingUser.ownerDataEntryAllStores}
+                            onChange={(e) =>
+                              handleEditFieldChange(
+                                "ownerDataEntryAllStores",
+                                e.target.checked,
+                              )
+                            }
+                          />
+                        }
+                        label={t("All stores", { defaultValue: "All stores" })}
+                      />
+                      {!editingUser.ownerDataEntryAllStores && (
+                        <Autocomplete
+                          multiple
+                          sx={{ mb: 1.5 }}
+                          options={ownerEntityLists.stores}
+                          value={getSelectedEntities(
+                            editingUser.ownerDataEntryStoreIds,
+                            ownerEntityLists.stores,
+                          )}
+                          onChange={(_, value) =>
+                            handleEditFieldChange(
+                              "ownerDataEntryStoreIds",
+                              value.map((x) => String(x._id)),
+                            )
+                          }
+                          getOptionLabel={(o) =>
+                            o?.nameEn || o?.name || o?.nameKu || ""
+                          }
+                          isOptionEqualToValue={(a, b) =>
+                            !!a && !!b && String(a._id) === String(b._id)
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Stores", { defaultValue: "Stores" })}
+                            />
+                          )}
+                        />
+                      )}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!editingUser.ownerDataEntryAllBrands}
+                            onChange={(e) =>
+                              handleEditFieldChange(
+                                "ownerDataEntryAllBrands",
+                                e.target.checked,
+                              )
+                            }
+                          />
+                        }
+                        label={t("All brands", { defaultValue: "All brands" })}
+                      />
+                      {!editingUser.ownerDataEntryAllBrands && (
+                        <Autocomplete
+                          multiple
+                          sx={{ mb: 1.5 }}
+                          options={ownerEntityLists.brands}
+                          value={getSelectedEntities(
+                            editingUser.ownerDataEntryBrandIds,
+                            ownerEntityLists.brands,
+                          )}
+                          onChange={(_, value) =>
+                            handleEditFieldChange(
+                              "ownerDataEntryBrandIds",
+                              value.map((x) => String(x._id)),
+                            )
+                          }
+                          getOptionLabel={(o) =>
+                            o?.nameEn || o?.name || o?.nameKu || ""
+                          }
+                          isOptionEqualToValue={(a, b) =>
+                            !!a && !!b && String(a._id) === String(b._id)
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Brands", { defaultValue: "Brands" })}
+                            />
+                          )}
+                        />
+                      )}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!editingUser.ownerDataEntryAllCompanies}
+                            onChange={(e) =>
+                              handleEditFieldChange(
+                                "ownerDataEntryAllCompanies",
+                                e.target.checked,
+                              )
+                            }
+                          />
+                        }
+                        label={t("All companies", {
+                          defaultValue: "All companies",
+                        })}
+                      />
+                      {!editingUser.ownerDataEntryAllCompanies && (
+                        <Autocomplete
+                          multiple
+                          sx={{ mb: 1 }}
+                          options={ownerEntityLists.companies}
+                          value={getSelectedEntities(
+                            editingUser.ownerDataEntryCompanyIds,
+                            ownerEntityLists.companies,
+                          )}
+                          onChange={(_, value) =>
+                            handleEditFieldChange(
+                              "ownerDataEntryCompanyIds",
+                              value.map((x) => String(x._id)),
+                            )
+                          }
+                          getOptionLabel={(o) =>
+                            o?.nameEn || o?.name || o?.nameKu || ""
+                          }
+                          isOptionEqualToValue={(a, b) =>
+                            !!a && !!b && String(a._id) === String(b._id)
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label={t("Companies", {
+                                defaultValue: "Companies",
+                              })}
+                            />
+                          )}
+                        />
+                      )}
                     </>
                   )}
                 </>

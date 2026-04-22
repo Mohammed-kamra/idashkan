@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const settingsSchema = new mongoose.Schema(
   {
@@ -52,6 +53,8 @@ const settingsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+settingsSchema.plugin(auditPlugin);
 
 // Single document - use "app" as the only settings doc id
 module.exports = mongoose.model("Settings", settingsSchema);

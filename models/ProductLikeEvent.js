@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 /** One row per like action (for owner dashboard period rankings). */
 const productLikeEventSchema = new mongoose.Schema(
@@ -17,6 +18,8 @@ const productLikeEventSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+productLikeEventSchema.plugin(auditPlugin);
 
 productLikeEventSchema.index({ productId: 1, createdAt: -1 });
 productLikeEventSchema.index({ createdAt: -1 });

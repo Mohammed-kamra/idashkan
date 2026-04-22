@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const filtersSchema = new mongoose.Schema(
   {
@@ -47,6 +48,8 @@ const searchLogSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+searchLogSchema.plugin(auditPlugin);
 
 searchLogSchema.index({ normalizedSearchText: 1, searchedAt: -1 });
 searchLogSchema.index({ searchedAt: -1 });

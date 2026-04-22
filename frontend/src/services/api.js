@@ -131,6 +131,8 @@ export const productAPI = {
   getByStore: (storeId) => api.get(`/products/store/${storeId}`),
   getByCategory: (category) => api.get(`/products/category/${category}`),
   getCategories: () => api.get("/products/categories"),
+  /** Owner Data Entry: scoped product list (Bearer required). */
+  getOwnerDataEntryList: () => api.get("/products/owner-data-entry"),
   bulkUpload: (data) => api.post("/products/bulk-upload", data),
 };
 

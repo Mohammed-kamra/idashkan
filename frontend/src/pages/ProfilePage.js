@@ -98,6 +98,7 @@ import {
   isAdminEmail,
   canAccessDataEntry,
   canAccessOwnerDashboard,
+  canAccessOwnerDataEntryPage,
 } from "../utils/adminAccess";
 import { normalizeOwnerEntities } from "../utils/ownerEntities";
 import { storeAPI, brandAPI, companyAPI } from "../services/api";
@@ -423,6 +424,22 @@ const ProfilePage = () => {
                 <ListItemText
                   primary={t("Owner dashboard", {
                     defaultValue: "Owner dashboard",
+                  })}
+                />
+              </ListItemButton>
+            </>
+          )}
+
+          {user && canAccessOwnerDataEntryPage(user) && (
+            <>
+              <Divider />
+              <ListItemButton component={Link} to="/owner-data-entry">
+                <ListItemIcon>
+                  <AddIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={t("Owner Data Entry", {
+                    defaultValue: "Owner Data Entry",
                   })}
                 />
               </ListItemButton>

@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { syncAuditUserFromRequest } = require("../utils/auditContext");
 
 // Middleware to protect routes (require authentication)
 const protect = async (req, res, next) => {
@@ -49,6 +50,7 @@ const protect = async (req, res, next) => {
       // Add user to request object
       req.user = user;
       req.userId = user._id;
+      syncAuditUserFromRequest(req);
       next();
     } catch (error) {
       return res.status(401).json({
@@ -100,6 +102,7 @@ const optionalAuth = async (req, res, next) => {
       }
     }
 
+    syncAuditUserFromRequest(req);
     next();
   } catch (error) {
     console.error("Optional auth middleware error:", error);

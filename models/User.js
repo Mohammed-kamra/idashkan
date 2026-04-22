@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const userSchema = new mongoose.Schema({
   // Authentication fields (required for registered users, optional for anonymous)
@@ -117,10 +118,10 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
-  /** Application role: `support` = Data Entry; `owner` = linked store/brand/company dashboard. */
+  /** Application role: `support` = Data Entry; `owner` = linked store/brand/company dashboard; `owner_dataentry` = add-only products for scoped entities. */
   role: {
     type: String,
-    enum: ["user", "support", "owner"],
+    enum: ["user", "support", "owner", "owner_dataentry"],
     default: "user",
   },
   /** Legacy single link — kept in sync with first entry of `ownerEntities`. */
@@ -148,6 +149,20 @@ const userSchema = new mongoose.Schema({
     },
   ],
 
+  /** Owner Data Entry: shortcut “all” per entity type, or explicit id lists. */
+  ownerDataEntryAllStores: { type: Boolean, default: false },
+  ownerDataEntryAllBrands: { type: Boolean, default: false },
+  ownerDataEntryAllCompanies: { type: Boolean, default: false },
+  ownerDataEntryStoreIds: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Store" },
+  ],
+  ownerDataEntryBrandIds: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
+  ],
+  ownerDataEntryCompanyIds: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Company" },
+  ],
+
   // Timestamps
   createdAt: {
     type: Date,
@@ -160,7 +175,10 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
   },
-});
+},
+{ timestamps: { createdAt: false, updatedAt: true } });
+
+userSchema.plugin(auditPlugin);
 
 // Hash password before saving (only for registered users with passwords)
 userSchema.pre("save", async function (next) {
@@ -229,6 +247,18 @@ userSchema.methods.getPublicProfile = function () {
       })),
       ownerEntityType: (first?.entityType ?? this.ownerEntityType) || null,
       ownerEntityId: (first?.entityId ?? this.ownerEntityId) || null,
+      ownerDataEntryAllStores: !!this.ownerDataEntryAllStores,
+      ownerDataEntryAllBrands: !!this.ownerDataEntryAllBrands,
+      ownerDataEntryAllCompanies: !!this.ownerDataEntryAllCompanies,
+      ownerDataEntryStoreIds: (this.ownerDataEntryStoreIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryBrandIds: (this.ownerDataEntryBrandIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryCompanyIds: (this.ownerDataEntryCompanyIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
       likedProducts: this.likedProducts,
       likedVideos: this.likedVideos,
       viewedProducts: this.viewedProducts,

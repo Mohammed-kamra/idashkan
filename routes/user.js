@@ -12,20 +12,20 @@ const {
   updateDeviceProfile,
 } = require("../controllers/userController");
 const { pushSubscribe } = require("../controllers/pushController");
-const { protect, optionalAuth } = require("../middleware/auth");
+// optionalAuth is applied globally in server.js (Bearer → req.user + audit fields)
 
 // Public routes (for anonymous users)
 router.get("/device/:deviceId", getUserByDevice);
-router.post("/view-product", optionalAuth, recordProductView);
-router.post("/push-subscribe", optionalAuth, pushSubscribe);
+router.post("/view-product", recordProductView);
+router.post("/push-subscribe", pushSubscribe);
 
 // Like/product routes - work with auth OR deviceId (anonymous)
-router.post("/like-product", optionalAuth, toggleProductLike);
-router.post("/like-video", optionalAuth, toggleVideoLike);
-router.post("/follow-store", optionalAuth, toggleFollowStore);
-router.get("/liked-products", optionalAuth, getLikedProducts);
-router.get("/followed-stores", optionalAuth, getFollowedStores);
-router.get("/viewed-products", optionalAuth, getViewedProducts);
-router.put("/device-profile", optionalAuth, updateDeviceProfile);
+router.post("/like-product", toggleProductLike);
+router.post("/like-video", toggleVideoLike);
+router.post("/follow-store", toggleFollowStore);
+router.get("/liked-products", getLikedProducts);
+router.get("/followed-stores", getFollowedStores);
+router.get("/viewed-products", getViewedProducts);
+router.put("/device-profile", updateDeviceProfile);
 
 module.exports = router;

@@ -35,6 +35,7 @@ import {
   normalizeExpiryInputForApi,
   toDatetimeLocalValue,
 } from "../utils/expiryDate";
+import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
@@ -208,6 +209,22 @@ export default function AdminProductEditDialog({
 
   const handleSave = async () => {
     if (!product?._id || !editForm) return;
+    const prevP = parseOptionalNonNegativePrice(
+      editForm.previousPrice,
+      t("Previous price", { defaultValue: "Previous price" }),
+    );
+    if (!prevP.ok) {
+      setSaveError(prevP.msg);
+      return;
+    }
+    const newP = parseOptionalNonNegativePrice(
+      editForm.newPrice,
+      t("New price", { defaultValue: "New price" }),
+    );
+    if (!newP.ok) {
+      setSaveError(newP.msg);
+      return;
+    }
     try {
       setSaving(true);
       setSaveError("");
@@ -222,8 +239,8 @@ export default function AdminProductEditDialog({
       const productUpdateData = {
         ...editForm,
         image: imageUrl,
-        previousPrice: parseFloat(editForm.previousPrice) || null,
-        newPrice: parseFloat(editForm.newPrice) || null,
+        previousPrice: prevP.value ?? null,
+        newPrice: newP.value ?? null,
         isDiscount: editForm.isDiscount,
         description: editForm.description,
         barcode: editForm.barcode,
@@ -357,6 +374,7 @@ export default function AdminProductEditDialog({
                   label={t("Previous Price")}
                   name="previousPrice"
                   type="number"
+                  inputProps={{ min: 0, step: "any" }}
                   value={editForm.previousPrice}
                   onChange={handleEditFormChange}
                   InputProps={{
@@ -372,6 +390,7 @@ export default function AdminProductEditDialog({
                   label={t("New Price")}
                   name="newPrice"
                   type="number"
+                  inputProps={{ min: 0, step: "any" }}
                   value={editForm.newPrice}
                   onChange={handleEditFormChange}
                   InputProps={{

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const userNotificationStateSchema = new mongoose.Schema(
   {
@@ -20,6 +21,8 @@ const userNotificationStateSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userNotificationStateSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model(
   "UserNotificationState",

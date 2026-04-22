@@ -4,6 +4,9 @@ const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 require("dotenv").config();
 
+const { runWithAuditContext } = require("./utils/auditContext");
+const { optionalAuth } = require("./middleware/auth");
+
 const User = require("./models/User");
 
 const app = express();
@@ -68,6 +71,9 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(runWithAuditContext);
+// Parse Bearer JWT on every request so create/update APIs can record createdBy/updatedBy
+app.use(optionalAuth);
 
 // Serve static files from uploads directory
 app.use("/uploads", express.static("uploads"));

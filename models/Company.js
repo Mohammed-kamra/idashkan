@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
-const companySchema = new mongoose.Schema({
+const companySchema = new mongoose.Schema(
+  {
   name: { type: String, required: true },
   nameEn: { type: String, required: false },
   nameAr: { type: String, required: false },
@@ -45,6 +47,10 @@ const companySchema = new mongoose.Schema({
   deliveryAllCities: { type: Boolean, default: false },
   deliveryCities: [{ type: String, trim: true }],
   followerCount: { type: Number, default: 0, min: 0 },
-});
+  },
+  { timestamps: true },
+);
+
+companySchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Company", companySchema);

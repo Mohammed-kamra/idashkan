@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
-const storeSchema = new mongoose.Schema({
+const storeSchema = new mongoose.Schema(
+  {
   name: { type: String, required: true },
   nameEn: { type: String, required: false },
   nameAr: { type: String, required: false },
@@ -66,6 +68,10 @@ const storeSchema = new mongoose.Schema({
   deliveryAllCities: { type: Boolean, default: false },
   /** City names (same as `storecity` values) where this store delivers when not all cities. */
   deliveryCities: [{ type: String, trim: true }],
-});
+  },
+  { timestamps: true },
+);
+
+storeSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Store", storeSchema);

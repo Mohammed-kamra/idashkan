@@ -2692,11 +2692,22 @@ const MainPage = () => {
               computeItemKey={(_, item) => item.key}
               itemContent={(_, item) => {
                 if (item.type === "showcase") {
-                  return (
-                    <Box sx={{ mb: 0 }}>
-                      {renderRotatingShowcase(item.blockIndex)}
-                    </Box>
-                  );
+                  const showcase = renderRotatingShowcase(item.blockIndex);
+                  // Virtuoso requires every row to have non-zero size; showcases return null when empty.
+                  if (!showcase) {
+                    return (
+                      <Box
+                        aria-hidden
+                        sx={{
+                          height: "1px",
+                          overflow: "hidden",
+                          margin: 0,
+                          padding: 0,
+                        }}
+                      />
+                    );
+                  }
+                  return <Box sx={{ mb: 0 }}>{showcase}</Box>;
                 }
                 const productsForCard =
                   productsByStoreId.get(String(getID(item.store._id))) ?? [];

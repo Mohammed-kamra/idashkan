@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const pushSubscriptionSchema = new mongoose.Schema(
   {
@@ -18,13 +19,11 @@ const pushSubscriptionSchema = new mongoose.Schema(
       auth: { type: String, required: true },
     },
     userAgent: { type: String },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
   { timestamps: true }
 );
+
+pushSubscriptionSchema.plugin(auditPlugin);
 
 // One subscription per endpoint (browser can resubscribe with same endpoint)
 pushSubscriptionSchema.index({ userId: 1 });

@@ -57,11 +57,13 @@ import LoginPage from "./pages/LoginPage";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProfilePage from "./pages/ProfilePage";
 import OwnerDashboardPage from "./pages/OwnerDashboardPage";
+import OwnerDataEntryPage from "./pages/OwnerDataEntryPage";
 import FindJob from "./pages/FindJob";
 import ShoppingPage from "./pages/ShoppingPage";
 import ProtectedRoute, {
   ProtectedAdminOnlyRoute,
   ProtectedOwnerRoute,
+  ProtectedOwnerDataEntryRoute,
 } from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -435,6 +437,14 @@ function AppContent() {
                     <ProtectedOwnerRoute>
                       <OwnerDashboardPage />
                     </ProtectedOwnerRoute>
+                  }
+                />
+                <Route
+                  path="/owner-data-entry"
+                  element={
+                    <ProtectedOwnerDataEntryRoute>
+                      <OwnerDataEntryPage />
+                    </ProtectedOwnerDataEntryRoute>
                   }
                 />
                 <Route path="/findjob" element={<FindJob />} />

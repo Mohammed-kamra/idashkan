@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const translationEntrySchema = new mongoose.Schema(
   {
@@ -15,5 +16,7 @@ const translationEntrySchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+translationEntrySchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("TranslationEntry", translationEntrySchema);

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const broadcastNotificationSchema = new mongoose.Schema(
   {
@@ -58,14 +59,11 @@ const broadcastNotificationSchema = new mongoose.Schema(
       required: false,
       index: true,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      index: true,
-    },
   },
   { timestamps: true }
 );
+
+broadcastNotificationSchema.plugin(auditPlugin);
 
 broadcastNotificationSchema.index({ createdAt: -1 });
 

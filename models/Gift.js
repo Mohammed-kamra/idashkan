@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const giftSchema = new mongoose.Schema(
   {
@@ -43,5 +44,7 @@ const giftSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+giftSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Gift", giftSchema);

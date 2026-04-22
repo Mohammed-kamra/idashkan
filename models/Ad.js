@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const adSchema = new mongoose.Schema(
   {
@@ -44,5 +45,7 @@ const adSchema = new mongoose.Schema(
 
 // Helpful compound index for common querying/sorting patterns
 adSchema.index({ active: 1, pages: 1, startDate: 1, endDate: 1, priority: -1 });
+
+adSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Ad", adSchema);

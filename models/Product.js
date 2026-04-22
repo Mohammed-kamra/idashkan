@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const productSchema = new mongoose.Schema(
   {
@@ -26,8 +27,8 @@ const productSchema = new mongoose.Schema(
       required: false,
     },
     image: { type: String, required: false },
-    previousPrice: { type: Number },
-    newPrice: { type: Number },
+    previousPrice: { type: Number, min: 0 },
+    newPrice: { type: Number, min: 0 },
     isDiscount: { type: Boolean, default: false },
     weight: { type: String },
     brandId: {
@@ -60,5 +61,7 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+productSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Product", productSchema);

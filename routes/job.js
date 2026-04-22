@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/upload");
-const { protect, optionalAuth } = require("../middleware/auth");
+const { protect } = require("../middleware/auth");
 const {
   getJobs,
   getJobsAdmin,
@@ -12,7 +12,7 @@ const {
 const { uploadImage } = require("../utils/imageUpload");
 
 // Public list — active + non-expired only (same payload for all clients)
-router.get("/", optionalAuth, getJobs);
+router.get("/", getJobs);
 
 // Full job list for admin data entry (requires auth + admin email)
 router.get("/admin", protect, getJobsAdmin);

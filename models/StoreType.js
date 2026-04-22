@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const storeTypeSchema = new mongoose.Schema(
   {
@@ -10,5 +11,7 @@ const storeTypeSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+storeTypeSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("StoreType", storeTypeSchema);

@@ -1,7 +1,10 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { canAccessOwnerDashboard } from "../utils/adminAccess";
+import {
+  canAccessOwnerDashboard,
+  canAccessOwnerDataEntryPage,
+} from "../utils/adminAccess";
 
 /**
  * @param {string[] | null} allowedEmails - If set, user email must be in list OR (if allowSupportRole) role === support.
@@ -57,6 +60,21 @@ export const ProtectedOwnerRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   if (!canAccessOwnerDashboard(user)) {
+    return <Navigate to="/profile" replace />;
+  }
+
+  return children;
+};
+
+/** Owner Data Entry — add-only products for scoped stores/brands/companies. */
+export const ProtectedOwnerDataEntryRoute = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  if (!canAccessOwnerDataEntryPage(user)) {
     return <Navigate to="/profile" replace />;
   }
 

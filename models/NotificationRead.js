@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const notificationReadSchema = new mongoose.Schema(
   {
@@ -21,6 +22,8 @@ const notificationReadSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+notificationReadSchema.plugin(auditPlugin);
 
 notificationReadSchema.index(
   { userId: 1, notificationId: 1 },

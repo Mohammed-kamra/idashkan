@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
-const brandSchema = new mongoose.Schema({
+const brandSchema = new mongoose.Schema(
+  {
   name: { type: String, required: true },
   nameEn: { type: String, required: false },
   nameAr: { type: String, required: false },
@@ -47,6 +49,10 @@ const brandSchema = new mongoose.Schema({
   deliveryCities: [{ type: String, trim: true }],
   /** Denormalized follower count (store parity; increment when brand-follow exists). */
   followerCount: { type: Number, default: 0, min: 0 },
-});
+  },
+  { timestamps: true },
+);
+
+brandSchema.plugin(auditPlugin);
 
 module.exports = mongoose.model("Brand", brandSchema);

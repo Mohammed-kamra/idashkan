@@ -4,18 +4,21 @@ const upload = require("../middleware/upload");
 const XLSX = require("xlsx");
 const Store = require("../models/Store");
 const { uploadImage } = require("../utils/imageUpload");
+const { protect } = require("../middleware/auth");
 const {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  getOwnerDataEntryProducts,
   getProductsByBrand,
   getProductsByCompany,
   getProductsByStore,
   getProductsByCategory,
   getCategories,
 } = require("../controllers/productController");
+const { parseOptionalNonNegativePrice } = require("../utils/productPriceValidation");
 
 // @route   GET /api/products
 // @desc    Get all products (with optional filters)
@@ -38,6 +41,10 @@ router.get("/store/:storeId", getProductsByStore);
 // @route   GET /api/products/category/:category
 // @desc    Get products by category
 router.get("/category/:category", getProductsByCategory);
+
+// @route   GET /api/products/owner-data-entry
+// @desc    Products visible to Owner Data Entry user (scoped)
+router.get("/owner-data-entry", protect, getOwnerDataEntryProducts);
 
 // @route   GET /api/products/:id
 // @desc    Get product by ID
@@ -172,13 +179,24 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
               ? [rowStoreId]
               : [];
 
+        const ppBulk = parseOptionalNonNegativePrice(row[4], "previousPrice");
+        if (!ppBulk.ok) {
+          errors.push(`Row ${i + 2}: ${ppBulk.msg}`);
+          continue;
+        }
+        const npBulk = parseOptionalNonNegativePrice(row[5], "newPrice");
+        if (!npBulk.ok) {
+          errors.push(`Row ${i + 2}: ${npBulk.msg}`);
+          continue;
+        }
+
         const baseProductData = {
           barcode: row[0] || "",
           name: row[1] || "",
           categoryId: row[2] || "",
           categoryTypeId: row[3] || "",
-          previousPrice: row[4] ? parseFloat(row[4]) : null,
-          newPrice: row[5] ? parseFloat(row[5]) : null,
+          previousPrice: ppBulk.value ?? null,
+          newPrice: npBulk.value ?? null,
           isDiscount: row[6] === "true" || row[6] === "1" || row[6] === true,
           brandId: row[7] || "",
           description: row[9] || "",

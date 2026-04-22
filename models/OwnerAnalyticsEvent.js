@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 const ownerAnalyticsEventSchema = new mongoose.Schema(
   {
@@ -33,6 +34,8 @@ const ownerAnalyticsEventSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+ownerAnalyticsEventSchema.plugin(auditPlugin);
 
 ownerAnalyticsEventSchema.index({
   entityType: 1,

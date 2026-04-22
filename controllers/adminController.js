@@ -15,6 +15,10 @@ const {
   validateAndNormalizeOwnerEntitiesInput,
   normalizeOwnerEntitiesList,
 } = require("../utils/ownerEntities");
+const {
+  normalizeOwnerDataEntryPayload,
+  validateOwnerDataEntryScopePayload,
+} = require("../utils/ownerDataEntryScope");
 
 // Simple admin check helper (by email)
 const isAdminUser = (user) => {
@@ -113,7 +117,7 @@ const getUsers = async (req, res) => {
 
     const users = await User.find({})
       .select(
-        "username email displayName deviceId isActive createdAt role ownerEntityType ownerEntityId ownerEntities",
+        "username email displayName deviceId isActive createdAt role ownerEntityType ownerEntityId ownerEntities ownerDataEntryAllStores ownerDataEntryAllBrands ownerDataEntryAllCompanies ownerDataEntryStoreIds ownerDataEntryBrandIds ownerDataEntryCompanyIds",
       )
       .sort({ createdAt: -1 })
       .skip(safeSkip)
@@ -156,6 +160,7 @@ const createUser = async (req, res) => {
     let role = "user";
     if (roleIn === "support") role = "support";
     else if (roleIn === "owner") role = "owner";
+    else if (roleIn === "owner_dataentry") role = "owner_dataentry";
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -221,6 +226,20 @@ const createUser = async (req, res) => {
       }
     }
 
+    if (role === "owner_dataentry") {
+      const p = normalizeOwnerDataEntryPayload(req.body);
+      const v = validateOwnerDataEntryScopePayload(p);
+      if (!v.ok) {
+        return res.status(400).json({ success: false, message: v.message });
+      }
+      user.ownerDataEntryAllStores = p.ownerDataEntryAllStores;
+      user.ownerDataEntryAllBrands = p.ownerDataEntryAllBrands;
+      user.ownerDataEntryAllCompanies = p.ownerDataEntryAllCompanies;
+      user.ownerDataEntryStoreIds = p.ownerDataEntryStoreIds;
+      user.ownerDataEntryBrandIds = p.ownerDataEntryBrandIds;
+      user.ownerDataEntryCompanyIds = p.ownerDataEntryCompanyIds;
+    }
+
     await user.save();
 
     const safeUser = {
@@ -237,6 +256,18 @@ const createUser = async (req, res) => {
         entityType: e.entityType,
         entityId: e.entityId,
       })),
+      ownerDataEntryAllStores: !!user.ownerDataEntryAllStores,
+      ownerDataEntryAllBrands: !!user.ownerDataEntryAllBrands,
+      ownerDataEntryAllCompanies: !!user.ownerDataEntryAllCompanies,
+      ownerDataEntryStoreIds: (user.ownerDataEntryStoreIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryBrandIds: (user.ownerDataEntryBrandIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryCompanyIds: (user.ownerDataEntryCompanyIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
       createdAt: user.createdAt,
     };
 
@@ -287,6 +318,7 @@ const updateUser = async (req, res) => {
     if (roleIn !== undefined) {
       if (roleIn === "support") user.role = "support";
       else if (roleIn === "owner") user.role = "owner";
+      else if (roleIn === "owner_dataentry") user.role = "owner_dataentry";
       else user.role = "user";
     }
     if (bodyOwnerEntities !== undefined) {
@@ -361,6 +393,27 @@ const updateUser = async (req, res) => {
       user.ownerEntities = [];
     }
 
+    if (user.role === "owner_dataentry") {
+      const p = normalizeOwnerDataEntryPayload(req.body);
+      const v = validateOwnerDataEntryScopePayload(p);
+      if (!v.ok) {
+        return res.status(400).json({ success: false, message: v.message });
+      }
+      user.ownerDataEntryAllStores = p.ownerDataEntryAllStores;
+      user.ownerDataEntryAllBrands = p.ownerDataEntryAllBrands;
+      user.ownerDataEntryAllCompanies = p.ownerDataEntryAllCompanies;
+      user.ownerDataEntryStoreIds = p.ownerDataEntryStoreIds;
+      user.ownerDataEntryBrandIds = p.ownerDataEntryBrandIds;
+      user.ownerDataEntryCompanyIds = p.ownerDataEntryCompanyIds;
+    } else {
+      user.ownerDataEntryAllStores = false;
+      user.ownerDataEntryAllBrands = false;
+      user.ownerDataEntryAllCompanies = false;
+      user.ownerDataEntryStoreIds = [];
+      user.ownerDataEntryBrandIds = [];
+      user.ownerDataEntryCompanyIds = [];
+    }
+
     await user.save();
 
     const safeUser = {
@@ -377,6 +430,18 @@ const updateUser = async (req, res) => {
         entityType: e.entityType,
         entityId: e.entityId,
       })),
+      ownerDataEntryAllStores: !!user.ownerDataEntryAllStores,
+      ownerDataEntryAllBrands: !!user.ownerDataEntryAllBrands,
+      ownerDataEntryAllCompanies: !!user.ownerDataEntryAllCompanies,
+      ownerDataEntryStoreIds: (user.ownerDataEntryStoreIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryBrandIds: (user.ownerDataEntryBrandIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
+      ownerDataEntryCompanyIds: (user.ownerDataEntryCompanyIds || []).map((id) =>
+        id != null ? String(id) : id,
+      ),
       createdAt: user.createdAt,
     };
 

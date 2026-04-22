@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const auditPlugin = require("./plugins/auditPlugin");
 
 /** One row per product view (for owner dashboard period trends). */
 const productViewEventSchema = new mongoose.Schema(
@@ -18,6 +19,8 @@ const productViewEventSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+productViewEventSchema.plugin(auditPlugin);
 
 productViewEventSchema.index({ productId: 1, createdAt: -1 });
 productViewEventSchema.index({ createdAt: -1 });

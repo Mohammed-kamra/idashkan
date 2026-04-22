@@ -100,6 +100,15 @@ import {
   getOwnerAnalyticsSessionId,
 } from "../utils/ownerAnalyticsTrack";
 
+function parseProductPrice(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 /** Cart/localStorage snapshot: include name* so `locName` respects data language. */
 function cartProductSnapshot(p) {
   if (!p?._id) return null;
@@ -952,12 +961,21 @@ const StoreProfile = () => {
   };
 
   // Render product card — modern premium card
-  const renderProductCard = (product, index, showPrice = true) => {
+  /** @param {boolean|'ifPresent'} showPriceMode */
+  const renderProductCard = (product, index, showPriceMode = true) => {
+    const prevNum = parseProductPrice(product.previousPrice);
+    const newNum = parseProductPrice(product.newPrice);
+    const showPriceBlock =
+      showPriceMode === false
+        ? false
+        : showPriceMode === "ifPresent"
+          ? prevNum != null || newNum != null
+          : true;
     const discount = calculateDiscount(product.previousPrice, product.newPrice);
     const hasPreviousPrice =
-      product.previousPrice &&
-      product.newPrice &&
-      product.previousPrice > product.newPrice;
+      prevNum != null &&
+      newNum != null &&
+      prevNum > newNum;
     const isDark = theme.palette.mode === "dark";
     const expInfo = getExpiryRemainingInfo(product.expireDate);
 
@@ -1224,7 +1242,7 @@ const StoreProfile = () => {
                 {locName(product)}
               </Typography>
 
-              {showPrice && (
+              {showPriceBlock && (
                 <Box sx={{ mt: "auto", pt: 0.5 }}>
                   {hasPreviousPrice && (
                     <Typography
@@ -1237,20 +1255,37 @@ const StoreProfile = () => {
                         lineHeight: 1,
                       }}
                     >
-                      {formatPrice(product.previousPrice)}
+                      {formatPrice(prevNum)}
                     </Typography>
                   )}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 800,
-                      fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                      color: "var(--color-secondary, #1E6FD9)",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {formatPrice(product.newPrice)}
-                  </Typography>
+                  {newNum != null && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                        color: "var(--color-secondary, #1E6FD9)",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {formatPrice(newNum)}
+                    </Typography>
+                  )}
+                  {newNum == null &&
+                    prevNum != null &&
+                    !hasPreviousPrice && (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                          color: "var(--color-secondary, #1E6FD9)",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {formatPrice(prevNum)}
+                      </Typography>
+                    )}
                 </Box>
               )}
 
@@ -1289,7 +1324,8 @@ const StoreProfile = () => {
   };
 
   // Render products grouped by type — horizontal scroll per category
-  const renderProductsByType = (productList, showPrice = true) => {
+  /** @param {boolean|'ifPresent'} showPriceMode */
+  const renderProductsByType = (productList, showPriceMode = true) => {
     const groupedProducts = groupProductsByType(productList);
     const isDark = theme.palette.mode === "dark";
 
@@ -1399,7 +1435,7 @@ const StoreProfile = () => {
             }}
           >
             {displayProducts.map((product, index) =>
-              renderProductCard(product, index, showPrice),
+              renderProductCard(product, index, showPriceMode),
             )}
             {hasMore && (
               <Box
@@ -2238,7 +2274,7 @@ const StoreProfile = () => {
           <Box>{renderProductsByType(discountedProducts)}</Box>
         )}
         {activeTabKey === "all" && (
-          <Box>{renderProductsByType(nonDiscountedProducts, false)}</Box>
+          <Box>{renderProductsByType(nonDiscountedProducts, "ifPresent")}</Box>
         )}
         {activeTabKey === "gifts" && (
           <Box>

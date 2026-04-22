@@ -98,6 +98,7 @@ import {
 import { useCityFilter } from "../context/CityFilterContext";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 
@@ -2309,6 +2310,25 @@ const DataEntryForm = () => {
         }
       }
 
+      const prevPriceCreate = parseOptionalNonNegativePrice(
+        productForm.previousPrice,
+        "previousPrice",
+      );
+      if (!prevPriceCreate.ok) {
+        setMessage({ type: "error", text: prevPriceCreate.msg });
+        setLoading(false);
+        return;
+      }
+      const newPriceCreate = parseOptionalNonNegativePrice(
+        productForm.newPrice,
+        "newPrice",
+      );
+      if (!newPriceCreate.ok) {
+        setMessage({ type: "error", text: newPriceCreate.msg });
+        setLoading(false);
+        return;
+      }
+
       let imageUrl = "";
       if (selectedProductImage) {
         setUploadLoading(true);
@@ -2329,8 +2349,8 @@ const DataEntryForm = () => {
         descriptionAr: productForm.descriptionAr,
         descriptionKu: productForm.descriptionKu,
         ...(imageUrl ? { image: imageUrl } : {}),
-        previousPrice: parseFloat(productForm.previousPrice) || null,
-        newPrice: parseFloat(productForm.newPrice) || null,
+        previousPrice: prevPriceCreate.value ?? null,
+        newPrice: newPriceCreate.value ?? null,
         isDiscount: productForm.isDiscount,
         barcode: productForm.barcode || null,
         weight: productForm.weight || null,
@@ -2483,6 +2503,24 @@ const DataEntryForm = () => {
       });
       return;
     }
+    for (const row of toCreate) {
+      const pp = parseOptionalNonNegativePrice(row.previousPrice, "previousPrice");
+      if (!pp.ok) {
+        setMessage({
+          type: "error",
+          text: `${String(row.name).trim()}: ${pp.msg}`,
+        });
+        return;
+      }
+      const np = parseOptionalNonNegativePrice(row.newPrice, "newPrice");
+      if (!np.ok) {
+        setMessage({
+          type: "error",
+          text: `${String(row.name).trim()}: ${np.msg}`,
+        });
+        return;
+      }
+    }
     setGroupAddLoading(true);
     let created = 0;
     try {
@@ -2499,10 +2537,15 @@ const DataEntryForm = () => {
             ? storeTargets
             : [{ storeId: undefined, storeTypeId: undefined }];
         for (const { storeId, storeTypeId } of targets) {
+          const ppRow = parseOptionalNonNegativePrice(
+            row.previousPrice,
+            "previousPrice",
+          );
+          const npRow = parseOptionalNonNegativePrice(row.newPrice, "newPrice");
           const productData = {
             name: String(row.name).trim(),
-            previousPrice: parseFloat(row.previousPrice) || null,
-            newPrice: parseFloat(row.newPrice) || null,
+            previousPrice: ppRow.value ?? null,
+            newPrice: npRow.value ?? null,
             isDiscount: !!row.isDiscount,
             expireDate: normalizeExpiryInputForApi(groupAddExpireDate),
             brandId: row.brandId || null,
@@ -2638,6 +2681,27 @@ const DataEntryForm = () => {
     let updated = 0;
     try {
       for (const row of toSave) {
+        const ppEdit = parseOptionalNonNegativePrice(
+          row.previousPrice,
+          "previousPrice",
+        );
+        if (!ppEdit.ok) {
+          setMessage({
+            type: "error",
+            text: `${String(row.name).trim()}: ${ppEdit.msg}`,
+          });
+          setEditGroupLoading(false);
+          return;
+        }
+        const npEdit = parseOptionalNonNegativePrice(row.newPrice, "newPrice");
+        if (!npEdit.ok) {
+          setMessage({
+            type: "error",
+            text: `${String(row.name).trim()}: ${npEdit.msg}`,
+          });
+          setEditGroupLoading(false);
+          return;
+        }
         const effectiveStoreId = row.storeId || "";
         const storeDoc = effectiveStoreId
           ? stores.find((s) => String(s._id) === String(effectiveStoreId))
@@ -2676,8 +2740,8 @@ const DataEntryForm = () => {
           : { categoryId: "", categoryTypeId: "" };
         const payload = {
           name: String(row.name).trim(),
-          previousPrice: parseFloat(row.previousPrice) || null,
-          newPrice: parseFloat(row.newPrice) || null,
+          previousPrice: ppEdit.value ?? null,
+          newPrice: npEdit.value ?? null,
           isDiscount: !!row.isDiscount,
           expireDate: normalizeExpiryInputForApi(row.expireDate),
           brandId: row.brandId || null,
@@ -3295,6 +3359,24 @@ const DataEntryForm = () => {
           text: t("Brand Type updated successfully!"),
         });
       } else if (editDialog.type === "product") {
+        const prevP = parseOptionalNonNegativePrice(
+          editForm.previousPrice,
+          "previousPrice",
+        );
+        if (!prevP.ok) {
+          setMessage({ type: "error", text: prevP.msg });
+          setEditLoading(false);
+          return;
+        }
+        const newP = parseOptionalNonNegativePrice(
+          editForm.newPrice,
+          "newPrice",
+        );
+        if (!newP.ok) {
+          setMessage({ type: "error", text: newP.msg });
+          setEditLoading(false);
+          return;
+        }
         let imageUrl = editForm.image;
         if (selectedEditImage) {
           imageUrl = await uploadProductImage(
@@ -3306,8 +3388,8 @@ const DataEntryForm = () => {
         const productUpdateData = {
           ...editForm,
           image: imageUrl,
-          previousPrice: parseFloat(editForm.previousPrice) || null,
-          newPrice: parseFloat(editForm.newPrice) || null,
+          previousPrice: prevP.value ?? null,
+          newPrice: newP.value ?? null,
           isDiscount: editForm.isDiscount,
           description: editForm.description,
           barcode: editForm.barcode,
@@ -5916,6 +5998,7 @@ const DataEntryForm = () => {
                             size="small"
                             label={t("Previous Price")}
                             type="number"
+                            inputProps={{ min: 0, step: "any" }}
                             value={row.previousPrice}
                             onChange={(e) =>
                               handleProductGroupRowFieldChange(
@@ -5930,6 +6013,7 @@ const DataEntryForm = () => {
                             size="small"
                             label={t("New Price")}
                             type="number"
+                            inputProps={{ min: 0, step: "any" }}
                             value={row.newPrice}
                             onChange={(e) =>
                               handleProductGroupRowFieldChange(
@@ -5958,7 +6042,6 @@ const DataEntryForm = () => {
                             label={t("Is Discount Product")}
                           />
                           <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <InputLabel>{t("Brand")}</InputLabel>
                             <Select
                               label={t("Brand")}
                               value={row.brandId}
@@ -6200,6 +6283,7 @@ const DataEntryForm = () => {
                             size="small"
                             label={t("Previous Price")}
                             type="number"
+                            inputProps={{ min: 0, step: "any" }}
                             value={row.previousPrice}
                             onChange={(e) =>
                               handleEditGroupRowFieldChange(
@@ -6214,6 +6298,7 @@ const DataEntryForm = () => {
                             size="small"
                             label={t("New Price")}
                             type="number"
+                            inputProps={{ min: 0, step: "any" }}
                             value={row.newPrice}
                             onChange={(e) =>
                               handleEditGroupRowFieldChange(
@@ -8929,6 +9014,7 @@ const DataEntryForm = () => {
                     label={t("Previous Price")}
                     name="previousPrice"
                     type="number"
+                    inputProps={{ min: 0, step: "any" }}
                     value={productForm.previousPrice}
                     onChange={handleProductFormChange}
                     InputProps={{
@@ -8944,6 +9030,7 @@ const DataEntryForm = () => {
                     label={t("New Price")}
                     name="newPrice"
                     type="number"
+                    inputProps={{ min: 0, step: "any" }}
                     value={productForm.newPrice}
                     onChange={handleProductFormChange}
                     InputProps={{
@@ -12469,6 +12556,7 @@ const DataEntryForm = () => {
                     label={t("Previous Price")}
                     name="previousPrice"
                     type="number"
+                    inputProps={{ min: 0, step: "any" }}
                     value={editForm.previousPrice}
                     onChange={handleEditFormChange}
                     InputProps={{
@@ -12484,6 +12572,7 @@ const DataEntryForm = () => {
                     label={t("New Price")}
                     name="newPrice"
                     type="number"
+                    inputProps={{ min: 0, step: "any" }}
                     value={editForm.newPrice}
                     onChange={handleEditFormChange}
                     InputProps={{
