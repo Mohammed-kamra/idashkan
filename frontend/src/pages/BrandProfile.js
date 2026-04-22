@@ -80,6 +80,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { useCityFilter } from "../context/CityFilterContext";
 import { cityStringsMatch, productStoreMatchesCity } from "../utils/cityMatch";
 import JobCardRow from "../components/JobCardRow";
+import ProductLayoutToggle from "../components/ProductLayoutToggle";
 import ProductViewTracker from "../components/ProductViewTracker";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import {
@@ -101,6 +102,8 @@ import {
   trackOwnerProfileView,
   trackOwnerContactClick,
 } from "../utils/ownerAnalyticsTrack";
+const PROFILE_GRID_PAGE_SIZE = 8;
+
 function parseProductPrice(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
@@ -199,6 +202,8 @@ const BrandProfile = () => {
   });
   const [selectedGift, setSelectedGift] = useState(null);
   const [displayCounts, setDisplayCounts] = useState({});
+  const [productLayout, setProductLayout] = useState("row");
+  const [gridCategoryVisible, setGridCategoryVisible] = useState({});
 
   // Like functionality states
   const [likeCounts, setLikeCounts] = useState({});
@@ -233,6 +238,7 @@ const BrandProfile = () => {
 
   useEffect(() => {
     setDisplayCounts({});
+    setGridCategoryVisible({});
   }, [
     id,
     activeTabKey,
@@ -242,6 +248,10 @@ const BrandProfile = () => {
     filters.barcode,
     filters.type,
   ]);
+
+  useEffect(() => {
+    setGridCategoryVisible({});
+  }, [productLayout]);
 
   const handleProductBecameVisible = useCallback(
     async (productId) => {
@@ -481,6 +491,14 @@ const BrandProfile = () => {
     }));
   };
 
+  const loadMoreGridForType = (type) => {
+    setGridCategoryVisible((prev) => ({
+      ...prev,
+      [type]:
+        (prev[type] ?? PROFILE_GRID_PAGE_SIZE) + PROFILE_GRID_PAGE_SIZE,
+    }));
+  };
+
   // Handle like button click (works for both logged-in and guest/device users)
   const handleLikeClick = async (productId, e) => {
     e.preventDefault();
@@ -671,8 +689,14 @@ const BrandProfile = () => {
   };
 
   // Render product card — modern premium style
-  /** @param {boolean|'ifPresent'} showPriceMode */
-  const renderProductCard = (product, index, showPriceMode = true) => {
+  /** @param {boolean|'ifPresent'} showPriceMode @param {'row'|'grid2'} layoutMode */
+  const renderProductCard = (
+    product,
+    index,
+    showPriceMode = true,
+    layoutMode = "row",
+  ) => {
+    const isGrid = layoutMode === "grid2";
     const prevNum = parseProductPrice(product.previousPrice);
     const newNum = parseProductPrice(product.newPrice);
     const showPriceBlock =
@@ -702,14 +726,23 @@ const BrandProfile = () => {
               setProductDialogOpen(true);
             }}
             sx={{
-              width: { xs: 155, sm: 190, md: 230 },
-              minWidth: { xs: 155, sm: 190, md: 230 },
-              maxWidth: { xs: 155, sm: 190, md: 230 },
+              ...(isGrid
+                ? {
+                    width: "100%",
+                    minWidth: 0,
+                    maxWidth: "100%",
+                    flexShrink: 1,
+                  }
+                : {
+                    width: { xs: 155, sm: 190, md: 230 },
+                    minWidth: { xs: 155, sm: 190, md: 230 },
+                    maxWidth: { xs: 155, sm: 190, md: 230 },
+                    flexShrink: 0,
+                  }),
               borderRadius: "16px",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              flexShrink: 0,
               cursor: "pointer",
               textDecoration: "none",
               background: isDark
@@ -995,7 +1028,7 @@ const BrandProfile = () => {
     );
   };
 
-  // Render products grouped by type — horizontal scroll per category
+  // Render products grouped by type — row scroll or 2-column grid (MainPage-style)
   /** @param {boolean|'ifPresent'} showPriceMode */
   const renderProductsByType = (productList, showPriceMode = true) => {
     const groupedProducts = groupProductsByType(productList);
@@ -1003,8 +1036,17 @@ const BrandProfile = () => {
 
     return Object.entries(groupedProducts).map(([type, typeProducts]) => {
       const currentDisplayCount = displayCounts[type] || 20;
-      const displayProducts = typeProducts.slice(0, currentDisplayCount);
-      const hasMore = typeProducts.length > currentDisplayCount;
+      const rowDisplayProducts = typeProducts.slice(0, currentDisplayCount);
+      const rowHasMore = typeProducts.length > currentDisplayCount;
+
+      const gridVisible =
+        gridCategoryVisible[type] ?? PROFILE_GRID_PAGE_SIZE;
+      const gridDisplayProducts = typeProducts.slice(0, gridVisible);
+      const gridHasMore = typeProducts.length > gridVisible;
+
+      const displayProducts =
+        productLayout === "grid2" ? gridDisplayProducts : rowDisplayProducts;
+      const hasMore = productLayout === "grid2" ? gridHasMore : rowHasMore;
 
       return (
         <Box
@@ -1081,75 +1123,121 @@ const BrandProfile = () => {
             </Box>
           </Box>
 
-          {/* Products horizontal scroll */}
-          <Box
-            sx={{
-              px: { xs: 1, sm: 1.5 },
-              py: { xs: 1.2, sm: 1.5 },
-              display: "flex",
-              gap: { xs: 1, sm: 1.2 },
-              overflowX: "auto",
-              overflowY: "hidden",
-              scrollbarWidth: "thin",
-              scrollbarColor: isDark
-                ? "#4a5568 transparent"
-                : "#d1d5db transparent",
-              "&::-webkit-scrollbar": { height: 4 },
-              "&::-webkit-scrollbar-track": { background: "transparent" },
-              "&::-webkit-scrollbar-thumb": {
-                background: isDark ? "#4a5568" : "#d1d5db",
-                borderRadius: 4,
-              },
-            }}
-          >
-            {displayProducts.map((product, index) =>
-              renderProductCard(product, index, showPriceMode),
-            )}
-            {hasMore && (
+          {productLayout === "grid2" ? (
+            <>
               <Box
-                onClick={() => loadMoreProducts(type)}
                 sx={{
-                  flexShrink: 0,
-                  width: { xs: 80, sm: 100 },
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 1,
-                  borderRadius: "16px",
-                  cursor: "pointer",
-                  border: isDark
-                    ? "1px dashed rgba(255,255,255,0.15)"
-                    : "1px dashed #d1d5db",
-                  color: isDark ? "rgba(255,255,255,0.5)" : "#6b7280",
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    borderColor: "var(--brand-accent-orange,#ff8c00)",
-                    color: "var(--brand-accent-orange,#ff8c00)",
-                    background: "rgba(255,140,0,0.05)",
-                  },
+                  px: { xs: 1, sm: 1.5 },
+                  pt: { xs: 1.2, sm: 1.5 },
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: { xs: 1, sm: 1.2 },
                 }}
               >
-                <Typography
-                  variant="caption"
+                {displayProducts.map((product, index) =>
+                  renderProductCard(product, index, showPriceMode, "grid2"),
+                )}
+              </Box>
+              {hasMore && (
+                <Box sx={{ px: { xs: 1, sm: 1.5 }, py: 1.5 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => loadMoreGridForType(type)}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 700,
+                      borderRadius: "12px",
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.2)"
+                        : "rgba(30,111,217,0.35)",
+                      color: isDark
+                        ? "rgba(255,255,255,0.85)"
+                        : "var(--brand-primary-blue, #1E6FD9)",
+                      "&:hover": {
+                        borderColor: "var(--brand-accent-orange,#ff8c00)",
+                        backgroundColor: "rgba(255,140,0,0.06)",
+                      },
+                    }}
+                  >
+                    {t("Show more")}
+                  </Button>
+                </Box>
+              )}
+            </>
+          ) : (
+            <Box
+              sx={{
+                px: { xs: 1, sm: 1.5 },
+                py: { xs: 1.2, sm: 1.5 },
+                display: "flex",
+                gap: { xs: 1, sm: 1.2 },
+                overflowX: "auto",
+                overflowY: "hidden",
+                scrollbarWidth: "thin",
+                scrollbarColor: isDark
+                  ? "#4a5568 transparent"
+                  : "#d1d5db transparent",
+                "&::-webkit-scrollbar": { height: 4 },
+                "&::-webkit-scrollbar-track": { background: "transparent" },
+                "&::-webkit-scrollbar-thumb": {
+                  background: isDark ? "#4a5568" : "#d1d5db",
+                  borderRadius: 4,
+                },
+              }}
+            >
+              {displayProducts.map((product, index) =>
+                renderProductCard(product, index, showPriceMode, "row"),
+              )}
+              {hasMore && (
+                <Box
+                  onClick={() => loadMoreProducts(type)}
                   sx={{
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    textAlign: "center",
-                    lineHeight: 1.3,
+                    flexShrink: 0,
+                    width: { xs: 80, sm: 100 },
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    borderRadius: "16px",
+                    cursor: "pointer",
+                    border: isDark
+                      ? "1px dashed rgba(255,255,255,0.15)"
+                      : "1px dashed #d1d5db",
+                    color: isDark ? "rgba(255,255,255,0.5)" : "#6b7280",
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      borderColor: "var(--brand-accent-orange,#ff8c00)",
+                      color: "var(--brand-accent-orange,#ff8c00)",
+                      background: "rgba(255,140,0,0.05)",
+                    },
                   }}
                 >
-                  +{typeProducts.length - displayProducts.length} {t("more")}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                      textAlign: "center",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    +{typeProducts.length - displayProducts.length}{" "}
+                    {t("more")}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
 
-          <ProductTypeLoadSentinel
-            typeKey={type}
-            hasMore={hasMore}
-            onLoadMore={() => loadMoreProducts(type)}
-          />
+          {productLayout === "row" && (
+            <ProductTypeLoadSentinel
+              typeKey={type}
+              hasMore={hasMore}
+              onLoadMore={() => loadMoreProducts(type)}
+            />
+          )}
         </Box>
       );
     });
@@ -1812,6 +1900,22 @@ const BrandProfile = () => {
                 />
               );
             })}
+          </Box>
+        )}
+
+        {(activeTabKey === "discounts" || activeTabKey === "all") && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              mb: 1.5,
+            }}
+          >
+            <ProductLayoutToggle
+              value={productLayout}
+              onChange={setProductLayout}
+            />
           </Box>
         )}
 
