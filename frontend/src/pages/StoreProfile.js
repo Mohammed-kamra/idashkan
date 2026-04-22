@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  getSavedProductLayout,
+  saveProductLayout,
+} from "../utils/productLayoutPreference";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -170,7 +174,13 @@ const StoreProfile = () => {
   });
   const [expandedTypes, setExpandedTypes] = useState({});
   const [displayCounts, setDisplayCounts] = useState({});
-  const [productLayout, setProductLayout] = useState("row");
+  const [productLayout, setProductLayoutState] = useState(() =>
+    getSavedProductLayout(),
+  );
+  const setProductLayout = useCallback((layout) => {
+    setProductLayoutState(layout);
+    saveProductLayout(layout);
+  }, []);
   const [gridCategoryVisible, setGridCategoryVisible] = useState({});
 
   const [dialogOpen, setDialogOpen] = useState(false);

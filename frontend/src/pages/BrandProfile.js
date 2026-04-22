@@ -102,6 +102,10 @@ import {
   trackOwnerProfileView,
   trackOwnerContactClick,
 } from "../utils/ownerAnalyticsTrack";
+import {
+  getSavedProductLayout,
+  saveProductLayout,
+} from "../utils/productLayoutPreference";
 const PROFILE_GRID_PAGE_SIZE = 8;
 
 function parseProductPrice(value) {
@@ -202,7 +206,13 @@ const BrandProfile = () => {
   });
   const [selectedGift, setSelectedGift] = useState(null);
   const [displayCounts, setDisplayCounts] = useState({});
-  const [productLayout, setProductLayout] = useState("row");
+  const [productLayout, setProductLayoutState] = useState(() =>
+    getSavedProductLayout(),
+  );
+  const setProductLayout = useCallback((layout) => {
+    setProductLayoutState(layout);
+    saveProductLayout(layout);
+  }, []);
   const [gridCategoryVisible, setGridCategoryVisible] = useState({});
 
   // Like functionality states

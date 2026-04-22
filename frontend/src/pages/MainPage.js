@@ -91,6 +91,10 @@ import {
   MAIN_PAGE_SCROLL_STATE_KEY,
   resetMainPageScrollPositionInSession,
 } from "../utils/mainPageScrollSession";
+import {
+  getSavedProductLayout,
+  saveProductLayout,
+} from "../utils/productLayoutPreference";
 
 /** Restore For You / Following tab from session before first paint (must not run in scroll restore effect — that aborted async scroll). */
 function getInitialMainPageTabFromSession() {
@@ -236,7 +240,13 @@ const MainPage = () => {
   const [sortByNearMe, setSortByNearMe] = useState(false);
   const [userCoords, setUserCoords] = useState(null);
   const [geoLoading, setGeoLoading] = useState(false);
-  const [productLayout, setProductLayout] = useState("row");
+  const [productLayout, setProductLayoutState] = useState(() =>
+    getSavedProductLayout(),
+  );
+  const setProductLayout = useCallback((layout) => {
+    setProductLayoutState(layout);
+    saveProductLayout(layout);
+  }, []);
 
   // Cache random store selections for rotating showcases (stable during renders).
   const randomShowcaseStoresRef = useRef({});
