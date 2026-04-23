@@ -19,13 +19,11 @@ import {
   Button,
   Skeleton,
 } from "@mui/material";
-import {  Store, Business } from "@mui/icons-material";
+import { Store, Business } from "@mui/icons-material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { giftAPI, storeAPI, brandAPI, adAPI } from "../services/api";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import BannerCarousel from "../components/BannerCarousel";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useCityFilter } from "../context/CityFilterContext";
@@ -54,7 +52,7 @@ const Gifts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
-  
+
   const [, setStores] = useState([]);
   const [, setBrands] = useState([]);
   const [bannerAds, setBannerAds] = useState([]);
@@ -119,23 +117,6 @@ const Gifts = () => {
       setLoading(false);
     }
   }
-
-  const bannerSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      { breakpoint: 1024, settings: { dots: true, arrows: false } },
-      {
-        breakpoint: 600,
-        settings: { dots: true, arrows: false, autoplaySpeed: 4000 },
-      },
-    ],
-  };
 
   const bannerAdsWithImages = useMemo(
     () =>
@@ -209,7 +190,8 @@ const Gifts = () => {
     });
 
     setFilteredGifts(filtered);
-  };  const handleTabChange = (event, newValue) => {
+  };
+  const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
   const renderGiftCard = (gift) => {
@@ -555,7 +537,13 @@ const Gifts = () => {
       <Box sx={{ py: { xs: 5, md: 10 }, px: { xs: 0.5, sm: 1.5, md: 3 } }}>
         <Skeleton
           variant="rounded"
-          sx={{ width: "100%", height: { xs: 150, md: 250 }, mb: 3 }}
+          sx={{
+            width: "100%",
+            height: { xs: "160px", sm: "220px", md: "280px" },
+            mt: 2,
+            mb: 2,
+            borderRadius: 3,
+          }}
         />
         <Box sx={{ mb: 2, display: "flex", justifyContent: "center" }}>
           <Skeleton variant="rounded" width={260} height={42} />
@@ -598,7 +586,6 @@ const Gifts = () => {
     );
   }
 
-  
   const storeGifts = Array.isArray(filteredGifts)
     ? filteredGifts.filter(
         (gift) =>
@@ -613,54 +600,16 @@ const Gifts = () => {
 
   return (
     <Box sx={{ py: { xs: 5, md: 10 }, px: { xs: 0.5, sm: 1.5, md: 3 } }}>
-      {/* Banner Slider Section (from Ads: pages includes gifts/all) */}
-      <Box
-        sx={{
-          mb: 2,
-          // position: { xs: "sticky", md: "static" },
-          top: { xs: 100, md: "auto" },
-          zIndex: { xs: 1000, md: "auto" },
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            height: { xs: "150px", sm: "150px", md: "250px" },
-            borderRadius: { xs: 2, md: 3 },
-            overflow: "hidden",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-            mb: 4,
-            mt: { xs: 0, md: 5 },
+      {/* Ads banner — same as MainPage `BannerCarousel` */}
+      <Box sx={{ mt: { xs: 2, md: 5 } }}>
+        <BannerCarousel
+          banners={bannerAdsWithImages}
+          onBannerClick={(ad) => {
+            if (ad.brandId) navigate(`/brands/${ad.brandId}`);
+            else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
+            else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
           }}
-        >
-          {bannerAdsWithImages.length > 0 && (
-            <Slider {...bannerSettings}>
-              {bannerAdsWithImages.map((ad, index) => (
-                <div key={ad._id || index}>
-                  <img
-                    onClick={() =>
-                      ad.brandId
-                        ? navigate(`/brands/${ad.brandId}`)
-                        : ad.storeId
-                          ? navigate(`/stores/${ad.storeId}`)
-                          : ad.giftId
-                            ? navigate(`/gifts/${ad.giftId}`)
-                            : null
-                    }
-                    src={ad.src}
-                    alt={`Banner ${index + 1}`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      cursor: ad.brandId ? "pointer" : "default",
-                    }}
-                  />
-                </div>
-              ))}
-            </Slider>
-          )}
-        </Box>
+        />
       </Box>
       {/* Header */}
       {/* <Box display="flex" alignItems="center" mb={4}>
@@ -1017,6 +966,3 @@ const Gifts = () => {
 };
 
 export default Gifts;
-
-
-

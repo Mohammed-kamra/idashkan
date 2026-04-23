@@ -24,6 +24,198 @@ function pctDelta(current, previous) {
   return ((current - previous) / previous) * 100;
 }
 
+function parseGranularity(q) {
+  const g = String(q || "day").toLowerCase();
+  if (g === "week" || g === "month") return g;
+  return "day";
+}
+
+function parseUtcYmd(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function fmtUtcYmd(dt) {
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Monday UTC of the week containing ymd (YYYY-MM-DD). */
+function weekStartMondayUtc(ymd) {
+  const dt = parseUtcYmd(ymd);
+  const dow = dt.getUTCDay();
+  const diff = (dow + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - diff);
+  return fmtUtcYmd(dt);
+}
+
+function monthStartUtc(ymd) {
+  const [y, m] = ymd.split("-").map(Number);
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
+function addUtcMonthsYmd(ymd, delta) {
+  const [y, m] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return fmtUtcYmd(dt);
+}
+
+async function buildDailyFilledSeries(from, to) {
+  const startDay = addUtcDays(from, -1);
+  const rows = await AppVisitDay.aggregate([
+    { $match: { day: { $gte: startDay, $lte: to } } },
+    {
+      $group: {
+        _id: "$day",
+        visits: { $sum: 1 },
+        uniqueKeys: { $addToSet: "$visitorKey" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        day: "$_id",
+        visits: 1,
+        uniqueVisitors: { $size: "$uniqueKeys" },
+      },
+    },
+  ]);
+
+  const map = new Map(rows.map((r) => [r.day, r]));
+  const series = [];
+  let d = from;
+  while (d <= to) {
+    const cur = map.get(d) || { visits: 0, uniqueVisitors: 0 };
+    const prevDay = addUtcDays(d, -1);
+    const prev = map.get(prevDay) || { visits: 0, uniqueVisitors: 0 };
+    series.push({
+      day: d,
+      visits: cur.visits,
+      uniqueVisitors: cur.uniqueVisitors,
+      prevDayVisits: prev.visits,
+      prevDayUnique: prev.uniqueVisitors,
+      visitsDeltaPct: pctDelta(cur.visits, prev.visits),
+      uniqueDeltaPct: pctDelta(cur.uniqueVisitors, prev.uniqueVisitors),
+    });
+    d = addUtcDays(d, 1);
+  }
+  return series;
+}
+
+function summaryFromDailySeries(dailySeries) {
+  return {
+    totalVisits: dailySeries.reduce((s, x) => s + x.visits, 0),
+    sumDailyUniqueVisitors: dailySeries.reduce(
+      (s, x) => s + x.uniqueVisitors,
+      0,
+    ),
+    dayCount: dailySeries.length,
+  };
+}
+
+async function aggregateBuckets(from, to, granularity) {
+  const unit = granularity === "week" ? "week" : "month";
+  const groupId =
+    unit === "week"
+      ? {
+          $dateTrunc: {
+            date: "$d",
+            unit: "week",
+            timezone: "UTC",
+            startOfWeek: "monday",
+          },
+        }
+      : { $dateTrunc: { date: "$d", unit: "month", timezone: "UTC" } };
+
+  return AppVisitDay.aggregate([
+    { $match: { day: { $gte: from, $lte: to } } },
+    {
+      $addFields: {
+        d: {
+          $dateFromString: {
+            dateString: "$day",
+            format: "%Y-%m-%d",
+            timezone: "UTC",
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: groupId,
+        visits: { $sum: 1 },
+        uniqueKeys: { $addToSet: "$visitorKey" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        bucketStart: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$_id",
+            timezone: "UTC",
+          },
+        },
+        visits: 1,
+        uniqueVisitors: { $size: "$uniqueKeys" },
+      },
+    },
+    { $sort: { bucketStart: 1 } },
+  ]);
+}
+
+function buildWeekBucketSeries(from, to, rowMap) {
+  const series = [];
+  let cur = weekStartMondayUtc(from);
+  const endWeek = weekStartMondayUtc(to);
+  while (cur <= endWeek) {
+    const row = rowMap.get(cur) || { visits: 0, uniqueVisitors: 0 };
+    series.push({
+      day: cur,
+      visits: row.visits,
+      uniqueVisitors: row.uniqueVisitors,
+    });
+    cur = addUtcDays(cur, 7);
+  }
+  for (let i = 0; i < series.length; i++) {
+    const prev = i > 0 ? series[i - 1] : { visits: 0, uniqueVisitors: 0 };
+    series[i].prevDayVisits = prev.visits;
+    series[i].prevDayUnique = prev.uniqueVisitors;
+    series[i].visitsDeltaPct = pctDelta(series[i].visits, prev.visits);
+    series[i].uniqueDeltaPct = pctDelta(
+      series[i].uniqueVisitors,
+      prev.uniqueVisitors,
+    );
+  }
+  return series;
+}
+
+function buildMonthBucketSeries(from, to, rowMap) {
+  const series = [];
+  let cur = monthStartUtc(from);
+  const endMonth = monthStartUtc(to);
+  while (cur <= endMonth) {
+    const row = rowMap.get(cur) || { visits: 0, uniqueVisitors: 0 };
+    series.push({
+      day: cur,
+      visits: row.visits,
+      uniqueVisitors: row.uniqueVisitors,
+    });
+    cur = addUtcMonthsYmd(cur, 1);
+  }
+  for (let i = 0; i < series.length; i++) {
+    const prev = i > 0 ? series[i - 1] : { visits: 0, uniqueVisitors: 0 };
+    series[i].prevDayVisits = prev.visits;
+    series[i].prevDayUnique = prev.uniqueVisitors;
+    series[i].visitsDeltaPct = pctDelta(series[i].visits, prev.visits);
+    series[i].uniqueDeltaPct = pctDelta(
+      series[i].uniqueVisitors,
+      prev.uniqueVisitors,
+    );
+  }
+  return series;
+}
+
 /**
  * POST /api/app-visits/ping
  * At most one document per (day UTC, visitSessionId).
@@ -80,12 +272,14 @@ exports.pingAppVisit = async (req, res) => {
 };
 
 /**
- * GET /api/admin/visitors-report/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * GET /api/admin/visitors-report/daily?from=YYYY-MM-DD&to=YYYY-MM-DD&granularity=day|week|month
+ * Summary KPIs always use per-calendar-day stats for the range. Chart/table series follow granularity.
  */
 exports.getVisitorsReportDaily = async (req, res) => {
   try {
     const from = parseYmd(req.query.from);
     const to = parseYmd(req.query.to);
+    const granularity = parseGranularity(req.query.granularity);
     if (!from || !to || from > to) {
       return res.status(400).json({
         success: false,
@@ -93,62 +287,28 @@ exports.getVisitorsReportDaily = async (req, res) => {
       });
     }
 
-    const startDay = addUtcDays(from, -1);
-    const rows = await AppVisitDay.aggregate([
-      {
-        $match: {
-          day: { $gte: startDay, $lte: to },
-        },
-      },
-      {
-        $group: {
-          _id: "$day",
-          visits: { $sum: 1 },
-          uniqueKeys: { $addToSet: "$visitorKey" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          day: "$_id",
-          visits: 1,
-          uniqueVisitors: { $size: "$uniqueKeys" },
-        },
-      },
-    ]);
+    const dailySeries = await buildDailyFilledSeries(from, to);
+    const summary = summaryFromDailySeries(dailySeries);
 
-    const map = new Map(rows.map((r) => [r.day, r]));
-
-    const series = [];
-    let d = from;
-    while (d <= to) {
-      const cur = map.get(d) || { visits: 0, uniqueVisitors: 0 };
-      const prevDay = addUtcDays(d, -1);
-      const prev = map.get(prevDay) || { visits: 0, uniqueVisitors: 0 };
-      series.push({
-        day: d,
-        visits: cur.visits,
-        uniqueVisitors: cur.uniqueVisitors,
-        prevDayVisits: prev.visits,
-        prevDayUnique: prev.uniqueVisitors,
-        visitsDeltaPct: pctDelta(cur.visits, prev.visits),
-        uniqueDeltaPct: pctDelta(cur.uniqueVisitors, prev.uniqueVisitors),
-      });
-      d = addUtcDays(d, 1);
+    let series;
+    if (granularity === "day") {
+      series = dailySeries;
+    } else if (granularity === "week") {
+      const rows = await aggregateBuckets(from, to, "week");
+      const rowMap = new Map(rows.map((r) => [r.bucketStart, r]));
+      series = buildWeekBucketSeries(from, to, rowMap);
+    } else {
+      const rows = await aggregateBuckets(from, to, "month");
+      const rowMap = new Map(rows.map((r) => [r.bucketStart, r]));
+      series = buildMonthBucketSeries(from, to, rowMap);
     }
-
-    const totalVisits = series.reduce((s, x) => s + x.visits, 0);
-    const sumDailyUnique = series.reduce((s, x) => s + x.uniqueVisitors, 0);
 
     return res.json({
       success: true,
       data: {
         series,
-        summary: {
-          totalVisits,
-          sumDailyUniqueVisitors: sumDailyUnique,
-          dayCount: series.length,
-        },
+        summary,
+        granularity,
       },
     });
   } catch (e) {

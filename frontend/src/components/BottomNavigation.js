@@ -20,6 +20,7 @@ import {
   Store,
   Gift,
   ShoppingBag,
+  ShoppingCart,
   User,
   Building2,
   Landmark,
@@ -49,11 +50,13 @@ import {
   resetMainPageScrollPositionInSession,
   scrollWindowToTop,
 } from "../utils/mainPageScrollSession";
+import { useDraftCartDrawer } from "../hooks/useDraftCartDrawer";
 
 const NAV_PATH_CITY = "__nav_city__";
 const NAV_PATH_LANG = "__nav_language__";
 const NAV_PATH_REFRESH = "__nav_refresh__";
 const NAV_PATH_NOTIFICATIONS = "__nav_notifications__";
+const NAV_PATH_DRAFT_CART = "__nav_draft_cart__";
 
 /** Same dark glass as `NavigationBar.js` (`NAV_BAR_GRADIENT_DARK_GLASS`). */
 const NAV_BAR_GRADIENT_DARK_GLASS =
@@ -95,6 +98,7 @@ const BottomNavigationBar = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobileLayout();
   const { navConfig } = useActiveTheme();
+  const { openDraftCart } = useDraftCartDrawer();
   const { triggerRefresh } = useContentRefresh();
   const handleBottomNavRefresh = useCallback(() => {
     if (location.pathname === "/") {
@@ -193,6 +197,12 @@ const BottomNavigationBar = () => {
         path: "/shopping",
         Icon: ShoppingBag,
       },
+      draftCart: {
+        kind: "draftCart",
+        name: t("Draft cart"),
+        path: NAV_PATH_DRAFT_CART,
+        Icon: ShoppingCart,
+      },
       profile: { name: t("Account"), path: "/profile", Icon: User },
       brands: { name: t("Brands"), path: "/brands", Icon: Building2 },
       companies: {
@@ -237,7 +247,7 @@ const BottomNavigationBar = () => {
             actionMap.favourites,
             actionMap.profile,
           ]
-        : template === "custom"
+        : template === "custom" || template === "custom2"
           ? [
               actionMap[navConfig?.bottomSlots?.bottomleft1] || null,
               actionMap[navConfig?.bottomSlots?.bottomleft2] || null,
@@ -530,6 +540,30 @@ const BottomNavigationBar = () => {
                           strokeWidth={NAV_ICON_STROKE.idle}
                         />
                       </Badge>
+                    </MotionBox>
+                  );
+                }
+
+                if (item.kind === "draftCart") {
+                  return (
+                    <MotionBox
+                      key={`${item.path}-${idx}`}
+                      component="button"
+                      type="button"
+                      aria-label={item.name}
+                      onClick={() => openDraftCart()}
+                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      sx={{
+                        ...tabBtnBaseSx,
+                        color: inactiveIconColor,
+                      }}
+                    >
+                      <Icon
+                        size={NAV_ICON_SIZE}
+                        color="currentColor"
+                        strokeWidth={NAV_ICON_STROKE.idle}
+                      />
                     </MotionBox>
                   );
                 }

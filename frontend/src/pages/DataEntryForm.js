@@ -111,6 +111,98 @@ function getStoreTypeIdFromStore(store) {
   return "";
 }
 
+function dataEntryEntityLabel(entity) {
+  if (!entity) return "";
+  return (
+    entity.nameEn ||
+    entity.name ||
+    entity.nameAr ||
+    entity.nameKu ||
+    (entity._id != null ? String(entity._id) : "")
+  );
+}
+
+function DataEntryEntityAutocomplete({
+  label,
+  options = [],
+  valueId,
+  onChangeId,
+  disabled = false,
+  required = false,
+  placeholder,
+  textFieldProps = {},
+  sx,
+}) {
+  const idStr =
+    valueId !== undefined && valueId !== null && valueId !== ""
+      ? String(valueId)
+      : "";
+  const selected =
+    idStr !== ""
+      ? options.find((o) => String(o._id) === idStr) ?? null
+      : null;
+  return (
+    <Autocomplete
+      sx={sx}
+      options={options}
+      value={selected}
+      onChange={(_, v) => onChangeId(v ? String(v._id) : "")}
+      getOptionLabel={(o) => dataEntryEntityLabel(o)}
+      isOptionEqualToValue={(o, v) => String(o._id) === String(v._id)}
+      disabled={disabled}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          required={required}
+          placeholder={placeholder}
+          {...textFieldProps}
+        />
+      )}
+      ListboxProps={{ style: { maxHeight: 280 } }}
+    />
+  );
+}
+
+function DataEntryEntityIdsAutocomplete({
+  label,
+  options = [],
+  valueIds,
+  onChangeIds,
+  disabled = false,
+  required = false,
+  placeholder,
+  textFieldProps = {},
+  sx,
+}) {
+  const ids = Array.isArray(valueIds)
+    ? valueIds.map((id) => String(id))
+    : [];
+  const selected = options.filter((o) => ids.includes(String(o._id)));
+  return (
+    <Autocomplete
+      multiple
+      sx={sx}
+      options={options}
+      value={selected}
+      onChange={(_, v) => onChangeIds(v.map((o) => String(o._id)))}
+      getOptionLabel={(o) => dataEntryEntityLabel(o)}
+      isOptionEqualToValue={(o, v) => String(o._id) === String(v._id)}
+      disabled={disabled}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          required={required}
+          placeholder={placeholder}
+          {...textFieldProps}
+        />
+      )}
+      ListboxProps={{ style: { maxHeight: 280 } }}
+    />
+  );
+}
+
 function makeProductGroupRow() {
   return {
     id: `pgr-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -1203,10 +1295,6 @@ const DataEntryForm = () => {
     });
   };
 
-  const handleFilterChange = (e) => {
-    setSelectedStoreFilter(e.target.value);
-  };
-
   const handleProductFormChange = (e) => {
     const { name, value } = e.target;
     setProductForm({
@@ -1231,15 +1319,6 @@ const DataEntryForm = () => {
       ...giftForm,
       [name]: value,
     });
-  };
-
-  // Handle gift form change for multi-select fields
-  const handleGiftFormMultiChange = (e) => {
-    const { name, value } = e.target;
-    setGiftForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   // Handle file selection for brand logo
@@ -3801,10 +3880,14 @@ const DataEntryForm = () => {
       sx={{
         width: "100%",
         maxWidth: "100%",
-        minHeight: "100%",
+        minHeight: "100vh",
         boxSizing: "border-box",
         py: { xs: 8, sm: 9, md: 10 },
         px: { xs: 1, sm: 2, md: 3 },
+        bgcolor:
+          theme.palette.mode === "dark"
+            ? "rgba(13,17,28,1)"
+            : "rgba(248,249,252,1)",
       }}
     >
       <Snackbar
@@ -3919,16 +4002,58 @@ const DataEntryForm = () => {
       {/* Enhanced Tabs */}
 
       {/* NEW: Tabbed section for lists */}
-      <Card sx={{ mt: 5 }}>
+      <Card
+        elevation={0}
+        sx={{
+          mt: 5,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+          boxShadow:
+            theme.palette.mode === "dark"
+              ? "0 4px 28px rgba(0,0,0,0.5)"
+              : "0 2px 14px rgba(0,0,0,0.08)",
+          "& .MuiTableContainer-root": {
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+            overflow: "hidden",
+            bgcolor:
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.03)"
+                : undefined,
+          },
+          "& .MuiTableBody .MuiTableRow-root:nth-of-type(even)": {
+            bgcolor:
+              theme.palette.mode === "dark"
+                ? "rgba(255,255,255,0.03)"
+                : "rgba(0,0,0,0.02)",
+          },
+        }}
+      >
         <CardContent>
           <Typography
             variant="h5"
             gutterBottom
             sx={{
-              color:
-                theme.palette.mode === "dark"
-                  ? "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)"
-                  : "linear-gradient(135deg, #FFA94D 0%, #FF7A1A 100%)",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              ...(theme.palette.mode === "dark"
+                ? {
+                    background:
+                      "linear-gradient(135deg, #b8d9ff 0%, #6ba8f5 45%, #4A90E2 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }
+                : {
+                    background:
+                      "linear-gradient(135deg, #FFA94D 0%, #FF7A1A 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }),
             }}
           >
             {t("Data Lists")}
@@ -3945,10 +4070,13 @@ const DataEntryForm = () => {
               px: { xs: 1, sm: 1.5 },
               borderRadius: 2,
               border: "1px solid",
-              borderColor: "divider",
+              borderColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.1)"
+                  : "divider",
               bgcolor:
                 theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.05)"
+                  ? "rgba(255,255,255,0.07)"
                   : "action.hover",
             }}
           >
@@ -4031,11 +4159,35 @@ const DataEntryForm = () => {
             allowScrollButtonsMobile
             sx={{
               mb: 2,
+              borderBottom: 1,
+              borderColor: "divider",
               "& .MuiTabs-scroller": {
                 overflowX: "auto !important",
               },
               "& .MuiTabs-flexContainer": {
                 flexWrap: "nowrap",
+              },
+              "& .MuiTab-root": {
+                minHeight: 48,
+                color:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.58)"
+                    : "text.secondary",
+                "&.Mui-selected": {
+                  color:
+                    theme.palette.mode === "dark"
+                      ? theme.palette.primary.light
+                      : theme.palette.primary.main,
+                  fontWeight: 700,
+                },
+              },
+              "& .MuiTabScrollButton-root": {
+                color: "text.secondary",
+                ...(theme.palette.mode === "dark" && {
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  borderRadius: 1,
+                  "&.Mui-disabled": { opacity: 0.35 },
+                }),
               },
             }}
           >
@@ -4188,8 +4340,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -4197,8 +4355,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Name")}
@@ -4206,8 +4370,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Logo")}
@@ -4215,8 +4385,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Phone")}
@@ -4224,8 +4400,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Store Type")}
@@ -4233,8 +4415,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("City")}
@@ -4242,8 +4430,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Description")}
@@ -4251,8 +4445,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         VIP
@@ -4260,8 +4460,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Status")}
@@ -4269,8 +4475,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Status All")}
@@ -4278,8 +4490,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Contact")}
@@ -4287,8 +4505,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -4904,42 +5128,24 @@ const DataEntryForm = () => {
                       </Select>
                     </FormControl>
                     {notificationLinkType === "store" && (
-                      <FormControl fullWidth sx={{ mb: 2 }}>
-                        <InputLabel>{t("Select Store")}</InputLabel>
-                        <Select
-                          value={notificationLinkId}
-                          onChange={(e) =>
-                            setNotificationLinkId(e.target.value)
-                          }
-                          label={t("Select Store")}
-                        >
-                          <MenuItem value="">{t("Select Store")}</MenuItem>
-                          {stores.map((s) => (
-                            <MenuItem key={s._id} value={s._id}>
-                              {s.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <DataEntryEntityAutocomplete
+                        sx={{ mb: 2 }}
+                        label={t("Select Store")}
+                        options={stores}
+                        valueId={notificationLinkId}
+                        onChangeId={setNotificationLinkId}
+                        placeholder={t("Select Store")}
+                      />
                     )}
                     {notificationLinkType === "brand" && (
-                      <FormControl fullWidth sx={{ mb: 2 }}>
-                        <InputLabel>{t("Select Brand")}</InputLabel>
-                        <Select
-                          value={notificationLinkId}
-                          onChange={(e) =>
-                            setNotificationLinkId(e.target.value)
-                          }
-                          label={t("Select Brand")}
-                        >
-                          <MenuItem value="">{t("Select Brand")}</MenuItem>
-                          {brands.map((b) => (
-                            <MenuItem key={b._id} value={b._id}>
-                              {b.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <DataEntryEntityAutocomplete
+                        sx={{ mb: 2 }}
+                        label={t("Select Brand")}
+                        options={brands}
+                        valueId={notificationLinkId}
+                        onChangeId={setNotificationLinkId}
+                        placeholder={t("Select Brand")}
+                      />
                     )}
                     <Button
                       variant="contained"
@@ -5087,8 +5293,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -5096,8 +5308,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Name")}
@@ -5105,8 +5323,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Logo")}
@@ -5114,8 +5338,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Phone")}
@@ -5123,8 +5353,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Type")}
@@ -5132,8 +5368,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Description")}
@@ -5141,8 +5383,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         VIP
@@ -5150,8 +5398,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Status All")}
@@ -5159,8 +5413,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Contact")}
@@ -5168,8 +5428,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -5339,8 +5605,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -5348,8 +5620,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Name")}
@@ -5357,8 +5635,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Logo")}
@@ -5366,8 +5650,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Phone")}
@@ -5375,8 +5665,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Type")}
@@ -5384,8 +5680,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Description")}
@@ -5393,8 +5695,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         VIP
@@ -5402,8 +5710,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Status All")}
@@ -5411,8 +5725,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Contact")}
@@ -5420,8 +5740,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -5696,73 +6022,47 @@ const DataEntryForm = () => {
                     flex: { sm: "1 1 180px" },
                   }}
                 />
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel>{t("Search by Store")}</InputLabel>
-                  <Select
-                    value={selectedStoreFilter}
-                    onChange={handleFilterChange}
-                    label={t("Search by Store")}
-                  >
-                    <MenuItem value="">
-                      <em>{t("All Stores")}</em>
-                    </MenuItem>
-                    {stores.map((store) => (
-                      <MenuItem key={store._id} value={store._id}>
-                        {store.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel>{t("Brand")}</InputLabel>
-                  <Select
-                    value={productListFilterBrandId}
-                    label={t("Brand")}
-                    onChange={(e) =>
-                      setProductListFilterBrandId(e.target.value)
-                    }
-                  >
-                    <MenuItem value="">
-                      <em>{t("All brands", { defaultValue: "All brands" })}</em>
-                    </MenuItem>
-                    {brands.map((b) => (
-                      <MenuItem key={b._id} value={String(b._id)}>
-                        {b.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel>{t("Company")}</InputLabel>
-                  <Select
-                    value={productListFilterCompanyId}
-                    label={t("Company")}
-                    onChange={(e) =>
-                      setProductListFilterCompanyId(e.target.value)
-                    }
-                  >
-                    <MenuItem value="">
-                      <em>
-                        {t("All companies", { defaultValue: "All companies" })}
-                      </em>
-                    </MenuItem>
-                    {companies.map((c) => (
-                      <MenuItem key={c._id} value={String(c._id)}>
-                        {c.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <DataEntryEntityAutocomplete
+                  sx={{ minWidth: 200, flex: { sm: "1 1 180px" } }}
+                  label={t("Search by Store")}
+                  options={stores}
+                  valueId={selectedStoreFilter}
+                  onChangeId={setSelectedStoreFilter}
+                  placeholder={t("All Stores")}
+                  textFieldProps={{ size: "small" }}
+                />
+                <DataEntryEntityAutocomplete
+                  sx={{ minWidth: 160 }}
+                  label={t("Brand")}
+                  options={brands}
+                  valueId={productListFilterBrandId}
+                  onChangeId={setProductListFilterBrandId}
+                  placeholder={t("All brands", { defaultValue: "All brands" })}
+                  textFieldProps={{ size: "small" }}
+                />
+                <DataEntryEntityAutocomplete
+                  sx={{ minWidth: 160 }}
+                  label={t("Company")}
+                  options={companies}
+                  valueId={productListFilterCompanyId}
+                  onChangeId={setProductListFilterCompanyId}
+                  placeholder={t("All companies", {
+                    defaultValue: "All companies",
+                  })}
+                  textFieldProps={{ size: "small" }}
+                />
                 <Button
                   size="small"
                   variant="text"
                   onClick={() => {
                     setProductListSearchQuery("");
+                    setSelectedStoreFilter("");
                     setProductListFilterBrandId("");
                     setProductListFilterCompanyId("");
                   }}
                   disabled={
                     !productListSearchQuery &&
+                    !selectedStoreFilter &&
                     !productListFilterBrandId &&
                     !productListFilterCompanyId
                   }
@@ -5797,44 +6097,17 @@ const DataEntryForm = () => {
                     alignItems="center"
                     sx={{ mb: 2 }}
                   >
-                    <FormControl size="small" sx={{ minWidth: 240 }}>
-                      <InputLabel id="group-add-store-label">
-                        {t("Stores")}
-                      </InputLabel>
-                      <Select
-                        labelId="group-add-store-label"
-                        label={t("Stores")}
-                        multiple
-                        value={groupAddStoreIds}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setGroupAddStoreIds(
-                            typeof v === "string" ? v.split(",") : v,
-                          );
-                        }}
-                        renderValue={(selected) =>
-                          selected.length === 0
-                            ? t("Select stores", {
-                                defaultValue: "Select stores",
-                              })
-                            : selected
-                                .map(
-                                  (id) =>
-                                    stores.find(
-                                      (s) => String(s._id) === String(id),
-                                    )?.name,
-                                )
-                                .filter(Boolean)
-                                .join(", ")
-                        }
-                      >
-                        {stores.map((store) => (
-                          <MenuItem key={store._id} value={store._id}>
-                            {store.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <DataEntryEntityIdsAutocomplete
+                      sx={{ minWidth: 240 }}
+                      label={t("Stores")}
+                      options={stores}
+                      valueIds={groupAddStoreIds}
+                      onChangeIds={setGroupAddStoreIds}
+                      placeholder={t("Select stores", {
+                        defaultValue: "Select stores",
+                      })}
+                      textFieldProps={{ size: "small" }}
+                    />
                     {groupAddStoreIds.length > 0 ? (
                       <Typography
                         variant="body2"
@@ -6041,46 +6314,34 @@ const DataEntryForm = () => {
                             }
                             label={t("Is Discount Product")}
                           />
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <Select
-                              label={t("Brand")}
-                              value={row.brandId}
-                              onChange={(e) =>
-                                handleProductGroupRowFieldChange(
-                                  row.id,
-                                  "brandId",
-                                  e.target.value,
-                                )
-                              }
-                              displayEmpty
-                            >
-                              {brands.map((b) => (
-                                <MenuItem key={b._id} value={b._id}>
-                                  {b.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <Select
-                              label={t("Company")}
-                              value={row.companyId || ""}
-                              onChange={(e) =>
-                                handleProductGroupRowFieldChange(
-                                  row.id,
-                                  "companyId",
-                                  e.target.value,
-                                )
-                              }
-                              displayEmpty
-                            >
-                              {companies.map((c) => (
-                                <MenuItem key={c._id} value={c._id}>
-                                  {c.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
+                          <DataEntryEntityAutocomplete
+                            sx={{ minWidth: 140, flexShrink: 0 }}
+                            label={t("Brand")}
+                            options={brands}
+                            valueId={row.brandId}
+                            onChangeId={(id) =>
+                              handleProductGroupRowFieldChange(
+                                row.id,
+                                "brandId",
+                                id,
+                              )
+                            }
+                            textFieldProps={{ size: "small" }}
+                          />
+                          <DataEntryEntityAutocomplete
+                            sx={{ minWidth: 140, flexShrink: 0 }}
+                            label={t("Company")}
+                            options={companies}
+                            valueId={row.companyId || ""}
+                            onChangeId={(id) =>
+                              handleProductGroupRowFieldChange(
+                                row.id,
+                                "companyId",
+                                id,
+                              )
+                            }
+                            textFieldProps={{ size: "small" }}
+                          />
                           <Button
                             variant="outlined"
                             component="label"
@@ -6326,52 +6587,36 @@ const DataEntryForm = () => {
                             }
                             label={t("Is Discount Product")}
                           />
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <Select
-                              label={t("Brand")}
-                              value={row.brandId || ""}
-                              onChange={(e) =>
-                                handleEditGroupRowFieldChange(
-                                  row.id,
-                                  "brandId",
-                                  e.target.value,
-                                )
-                              }
-                              displayEmpty
-                            >
-                              <MenuItem value="">
-                                <em>{t("select brand")}</em>
-                              </MenuItem>
-                              {brands.map((b) => (
-                                <MenuItem key={b._id} value={b._id}>
-                                  {b.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <Select
-                              label={t("Company")}
-                              value={row.companyId || ""}
-                              onChange={(e) =>
-                                handleEditGroupRowFieldChange(
-                                  row.id,
-                                  "companyId",
-                                  e.target.value,
-                                )
-                              }
-                              displayEmpty
-                            >
-                              <MenuItem value="">
-                                <em>{t("select company")}</em>
-                              </MenuItem>
-                              {companies.map((c) => (
-                                <MenuItem key={c._id} value={c._id}>
-                                  {c.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
+                          <DataEntryEntityAutocomplete
+                            sx={{ minWidth: 140, flexShrink: 0 }}
+                            label={t("Brand")}
+                            options={brands}
+                            valueId={row.brandId || ""}
+                            onChangeId={(id) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "brandId",
+                                id,
+                              )
+                            }
+                            placeholder={t("select brand")}
+                            textFieldProps={{ size: "small" }}
+                          />
+                          <DataEntryEntityAutocomplete
+                            sx={{ minWidth: 140, flexShrink: 0 }}
+                            label={t("Company")}
+                            options={companies}
+                            valueId={row.companyId || ""}
+                            onChangeId={(id) =>
+                              handleEditGroupRowFieldChange(
+                                row.id,
+                                "companyId",
+                                id,
+                              )
+                            }
+                            placeholder={t("select company")}
+                            textFieldProps={{ size: "small" }}
+                          />
                           <TextField
                             size="small"
                             label={t("Expire date & time")}
@@ -6478,8 +6723,14 @@ const DataEntryForm = () => {
                         padding="checkbox"
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         <Checkbox
@@ -6499,8 +6750,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -6508,8 +6765,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Name")}
@@ -6517,8 +6780,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Image")}
@@ -6527,8 +6796,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Category")}
@@ -6536,8 +6811,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Category Type")}
@@ -6545,8 +6826,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Previous Price")}
@@ -6554,8 +6841,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("New Price")}
@@ -6563,8 +6856,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Weight")}
@@ -6572,8 +6871,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Barcode")}
@@ -6581,8 +6886,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Discount")}
@@ -6590,8 +6901,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Store")}
@@ -6599,8 +6916,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Status")}
@@ -6608,8 +6931,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Date")}
@@ -6617,8 +6946,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -6850,8 +7185,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -6859,8 +7200,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Name")}
@@ -6868,8 +7215,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Store Type")}
@@ -6877,8 +7230,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Image")}
@@ -6886,8 +7245,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Change Image")}
@@ -6895,8 +7260,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -7036,8 +7407,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -7045,8 +7422,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Image")}
@@ -7054,8 +7437,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Description")}
@@ -7063,8 +7452,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Stores")}
@@ -7072,8 +7467,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Brand")}
@@ -7081,8 +7482,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Product ID")}
@@ -7090,8 +7497,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Date")}
@@ -7099,8 +7512,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -7281,8 +7700,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -7290,8 +7715,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Image")}
@@ -7299,8 +7730,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Page")}
@@ -7308,8 +7745,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Link URL")}
@@ -7317,8 +7760,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Active")}
@@ -7326,8 +7775,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Priority")}
@@ -7335,8 +7790,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Brand")}
@@ -7344,8 +7805,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Store")}
@@ -7353,8 +7820,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Gift")}
@@ -7362,8 +7835,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Start")}
@@ -7371,8 +7850,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("End")}
@@ -7380,8 +7865,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -7541,8 +8032,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("No.")}
@@ -7550,8 +8047,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Title")}
@@ -7559,8 +8062,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Owner")}
@@ -7568,8 +8077,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Gender")}
@@ -7577,8 +8092,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("City")}
@@ -7586,8 +8107,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expire Date")}
@@ -7595,8 +8122,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Expiry status")}
@@ -7604,8 +8137,14 @@ const DataEntryForm = () => {
                       <TableCell
                         sx={{
                           fontWeight: "bold",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "rgba(30, 111, 217, 0.38)"
+                              : theme.palette.primary.light,
+                          color:
+                            theme.palette.mode === "dark"
+                              ? "#e8f4ff"
+                              : theme.palette.primary.contrastText,
                         }}
                       >
                         {t("Actions")}
@@ -9077,46 +9616,18 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel id="dialog-add-product-store-label" shrink>
-                      {t("Stores")}
-                    </InputLabel>
-                    <Select
-                      labelId="dialog-add-product-store-label"
-                      name="storeIds"
-                      multiple
-                      value={productForm.storeIds || []}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setProductForm((prev) => ({
-                          ...prev,
-                          storeIds: typeof v === "string" ? v.split(",") : v,
-                        }));
-                      }}
-                      label={t("Stores")}
-                      renderValue={(selected) =>
-                        selected.length === 0
-                          ? t("Select stores", {
-                              defaultValue: "Select stores",
-                            })
-                          : selected
-                              .map(
-                                (id) =>
-                                  stores.find(
-                                    (s) => String(s._id) === String(id),
-                                  )?.name,
-                              )
-                              .filter(Boolean)
-                              .join(", ")
-                      }
-                    >
-                      {stores.map((store) => (
-                        <MenuItem key={store._id} value={store._id}>
-                          {store.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityIdsAutocomplete
+                    sx={{ width: "100%" }}
+                    label={t("Stores")}
+                    options={stores}
+                    valueIds={productForm.storeIds || []}
+                    onChangeIds={(ids) =>
+                      setProductForm((prev) => ({ ...prev, storeIds: ids }))
+                    }
+                    placeholder={t("Select stores", {
+                      defaultValue: "Select stores",
+                    })}
+                  />
                 </Grid>
                 {(productForm.storeIds || []).length > 0 ? (
                   <Grid xs={12}>
@@ -9158,44 +9669,26 @@ const DataEntryForm = () => {
                   </FormControl>
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="brandId"
-                      value={productForm.brandId}
-                      onChange={handleProductFormChange}
-                      label={t("Brand")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("Select Brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={productForm.brandId}
+                    onChangeId={(id) =>
+                      setProductForm((p) => ({ ...p, brandId: id }))
+                    }
+                    placeholder={t("Select Brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="companyId"
-                      value={productForm.companyId || ""}
-                      onChange={handleProductFormChange}
-                      label={t("Company")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("Select Company")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Company")}
+                    options={companies}
+                    valueId={productForm.companyId || ""}
+                    onChangeId={(id) =>
+                      setProductForm((p) => ({ ...p, companyId: id }))
+                    }
+                    placeholder={t("Select Company")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
@@ -9357,75 +9850,36 @@ const DataEntryForm = () => {
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      multiple
-                      name="storeId"
-                      value={giftForm.storeId}
-                      onChange={handleGiftFormMultiChange}
-                      label={t("Stores")}
-                      renderValue={(selected) => (
-                        <Box
-                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
-                        >
-                          {selected.map((value) => {
-                            const store = stores.find((m) => m._id === value);
-                            return (
-                              <Chip
-                                key={value}
-                                label={store ? store.name : value}
-                                size="small"
-                              />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    >
-                      {stores.map((store) => (
-                        <MenuItem key={store._id} value={store._id}>
-                          {store.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityIdsAutocomplete
+                    label={t("Stores")}
+                    options={stores}
+                    valueIds={giftForm.storeId}
+                    onChangeIds={(ids) =>
+                      setGiftForm((p) => ({ ...p, storeId: ids }))
+                    }
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="brandId"
-                      value={giftForm.brandId}
-                      onChange={handleGiftFormChange}
-                      label={t("Brand")}
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={giftForm.brandId}
+                    onChangeId={(id) =>
+                      setGiftForm((p) => ({ ...p, brandId: id }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="companyId"
-                      value={giftForm.companyId || ""}
-                      onChange={handleGiftFormChange}
-                      label={t("Company")}
-                    >
-                      <MenuItem value="">
-                        <em>{t("select company")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Company")}
+                    options={companies}
+                    valueId={giftForm.companyId || ""}
+                    onChangeId={(id) =>
+                      setGiftForm((p) => ({ ...p, companyId: id }))
+                    }
+                    placeholder={t("select company")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <TextField
@@ -9777,48 +10231,26 @@ const DataEntryForm = () => {
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="brandId"
-                      value={adForm.brandId}
-                      onChange={(e) =>
-                        setAdForm({ ...adForm, brandId: e.target.value })
-                      }
-                      label={t("Brand")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={adForm.brandId}
+                    onChangeId={(id) =>
+                      setAdForm((p) => ({ ...p, brandId: id }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="storeId"
-                      value={adForm.storeId}
-                      onChange={(e) =>
-                        setAdForm({ ...adForm, storeId: e.target.value })
-                      }
-                      label={t("Store")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select store")}</em>
-                      </MenuItem>
-                      {stores.map((s) => (
-                        <MenuItem key={s._id} value={s._id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Store")}
+                    options={stores}
+                    valueId={adForm.storeId}
+                    onChangeId={(id) =>
+                      setAdForm((p) => ({ ...p, storeId: id }))
+                    }
+                    placeholder={t("select store")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
@@ -10011,87 +10443,57 @@ const DataEntryForm = () => {
                 </Grid>
 
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={jobForm.storeId || ""}
-                      label={t("Store")}
-                      displayEmpty
-                      disabled={Boolean(jobForm.brandId || jobForm.companyId)}
-                      onChange={(e) =>
-                        setJobForm((p) => ({
-                          ...p,
-                          storeId: e.target.value,
-                          brandId: "",
-                          companyId: "",
-                        }))
-                      }
-                    >
-                      <MenuItem value="">
-                        <em>{t("select store")}</em>
-                      </MenuItem>
-                      {stores.map((s) => (
-                        <MenuItem key={s._id} value={s._id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Store")}
+                    options={stores}
+                    valueId={jobForm.storeId || ""}
+                    disabled={Boolean(jobForm.brandId || jobForm.companyId)}
+                    onChangeId={(id) =>
+                      setJobForm((p) => ({
+                        ...p,
+                        storeId: id,
+                        brandId: "",
+                        companyId: "",
+                      }))
+                    }
+                    placeholder={t("select store")}
+                  />
                 </Grid>
 
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={jobForm.brandId || ""}
-                      label={t("Brand")}
-                      displayEmpty
-                      disabled={Boolean(jobForm.storeId)}
-                      onChange={(e) =>
-                        setJobForm((p) => ({
-                          ...p,
-                          brandId: e.target.value,
-                          storeId: "",
-                          companyId: "",
-                        }))
-                      }
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((b) => (
-                        <MenuItem key={b._id} value={b._id}>
-                          {b.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={jobForm.brandId || ""}
+                    disabled={Boolean(jobForm.storeId)}
+                    onChangeId={(id) =>
+                      setJobForm((p) => ({
+                        ...p,
+                        brandId: id,
+                        storeId: "",
+                        companyId: "",
+                      }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
 
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={jobForm.companyId || ""}
-                      label={t("Company")}
-                      displayEmpty
-                      disabled={Boolean(jobForm.storeId || jobForm.brandId)}
-                      onChange={(e) =>
-                        setJobForm((p) => ({
-                          ...p,
-                          companyId: e.target.value,
-                          storeId: "",
-                          brandId: "",
-                        }))
-                      }
-                    >
-                      <MenuItem value="">
-                        <em>{t("select company")}</em>
-                      </MenuItem>
-                      {companies.map((c) => (
-                        <MenuItem key={c._id} value={c._id}>
-                          {c.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Company")}
+                    options={companies}
+                    valueId={jobForm.companyId || ""}
+                    disabled={Boolean(jobForm.storeId || jobForm.brandId)}
+                    onChangeId={(id) =>
+                      setJobForm((p) => ({
+                        ...p,
+                        companyId: id,
+                        storeId: "",
+                        brandId: "",
+                      }))
+                    }
+                    placeholder={t("select company")}
+                  />
                 </Grid>
 
                 <Grid xs={12} sm={6}>
@@ -10271,88 +10673,58 @@ const DataEntryForm = () => {
                   </label>
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={videoForm.storeId}
-                      onChange={(e) =>
-                        setVideoForm({
-                          ...videoForm,
-                          storeId: e.target.value,
-                          brandId: e.target.value ? "" : videoForm.brandId,
-                        })
-                      }
-                      label={t("Store")}
-                      displayEmpty
-                      disabled={Boolean(
-                        videoForm.brandId || videoForm.companyId,
-                      )}
-                    >
-                      <MenuItem value="">
-                        <em>{t("select store")}</em>
-                      </MenuItem>
-                      {stores.map((store) => (
-                        <MenuItem key={store._id} value={store._id}>
-                          {store.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Store")}
+                    options={stores}
+                    valueId={videoForm.storeId}
+                    disabled={Boolean(
+                      videoForm.brandId || videoForm.companyId,
+                    )}
+                    onChangeId={(id) =>
+                      setVideoForm((vf) => ({
+                        ...vf,
+                        storeId: id,
+                        brandId: id ? "" : vf.brandId,
+                      }))
+                    }
+                    placeholder={t("select store")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={videoForm.brandId}
-                      onChange={(e) =>
-                        setVideoForm({
-                          ...videoForm,
-                          brandId: e.target.value,
-                          companyId: "",
-                          storeId: e.target.value ? "" : videoForm.storeId,
-                        })
-                      }
-                      label={t("Brand")}
-                      displayEmpty
-                      disabled={Boolean(
-                        videoForm.storeId || videoForm.companyId,
-                      )}
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={videoForm.brandId}
+                    disabled={Boolean(
+                      videoForm.storeId || videoForm.companyId,
+                    )}
+                    onChangeId={(id) =>
+                      setVideoForm((vf) => ({
+                        ...vf,
+                        brandId: id,
+                        companyId: "",
+                        storeId: id ? "" : vf.storeId,
+                      }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      value={videoForm.companyId || ""}
-                      onChange={(e) =>
-                        setVideoForm({
-                          ...videoForm,
-                          companyId: e.target.value,
-                          brandId: "",
-                          storeId: e.target.value ? "" : videoForm.storeId,
-                        })
-                      }
-                      label={t("Company")}
-                      displayEmpty
-                      disabled={Boolean(videoForm.storeId || videoForm.brandId)}
-                    >
-                      <MenuItem value="">
-                        <em>{t("select company")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Company")}
+                    options={companies}
+                    valueId={videoForm.companyId || ""}
+                    disabled={Boolean(videoForm.storeId || videoForm.brandId)}
+                    onChangeId={(id) =>
+                      setVideoForm((vf) => ({
+                        ...vf,
+                        companyId: id,
+                        brandId: "",
+                        storeId: id ? "" : vf.storeId,
+                      }))
+                    }
+                    placeholder={t("select company")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <TextField
@@ -10660,45 +11032,18 @@ const DataEntryForm = () => {
             <Box sx={{ p: 1 }}>
               <Grid container spacing={2}>
                 <Grid xs={12}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="bulk-product-stores-label">
-                      {t("Stores")}
-                    </InputLabel>
-                    <Select
-                      labelId="bulk-product-stores-label"
-                      label={t("Stores")}
-                      multiple
-                      value={bulkProductStoreIds}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setBulkProductStoreIds(
-                          typeof v === "string" ? v.split(",") : v,
-                        );
-                      }}
-                      renderValue={(selected) =>
-                        selected.length === 0
-                          ? t("Use Store ID from Excel column I only", {
-                              defaultValue:
-                                "Use Store ID from Excel column I only",
-                            })
-                          : selected
-                              .map(
-                                (id) =>
-                                  stores.find(
-                                    (s) => String(s._id) === String(id),
-                                  )?.name,
-                              )
-                              .filter(Boolean)
-                              .join(", ")
-                      }
-                    >
-                      {stores.map((store) => (
-                        <MenuItem key={store._id} value={store._id}>
-                          {store.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityIdsAutocomplete
+                    sx={{ width: "100%" }}
+                    label={t("Stores")}
+                    options={stores}
+                    valueIds={bulkProductStoreIds}
+                    onChangeIds={setBulkProductStoreIds}
+                    placeholder={t("Use Store ID from Excel column I only", {
+                      defaultValue:
+                        "Use Store ID from Excel column I only",
+                    })}
+                    textFieldProps={{ size: "small" }}
+                  />
                   <Typography
                     variant="caption"
                     sx={{ display: "block", mt: 0.5 }}
@@ -12041,90 +12386,38 @@ const DataEntryForm = () => {
                 )}
               </Box>
 
-              <FormControl fullWidth margin="normal">
-                <InputLabel>{t("Stores")}</InputLabel>
-                <Select
-                  multiple
-                  name="storeId"
-                  value={
-                    Array.isArray(editForm.storeId) ? editForm.storeId : []
-                  }
-                  onChange={handleEditFormChange}
-                  label={t("Stores")}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const store = stores.find((m) => m._id === value);
-                        return (
-                          <Chip
-                            key={value}
-                            label={store ? store.name : value}
-                            size="small"
-                          />
-                        );
-                      })}
-                    </Box>
-                  )}
-                >
-                  {stores.map((store) => (
-                    <MenuItem key={store._id} value={store._id}>
-                      {store.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <DataEntryEntityIdsAutocomplete
+                sx={{ mt: 2, mb: 1 }}
+                label={t("Stores")}
+                options={stores}
+                valueIds={
+                  Array.isArray(editForm.storeId) ? editForm.storeId : []
+                }
+                onChangeIds={(ids) =>
+                  setEditForm((p) => ({ ...p, storeId: ids }))
+                }
+              />
 
-              <FormControl fullWidth margin="normal">
-                <Select
-                  name="brandId"
-                  value={editForm.brandId}
-                  onChange={handleEditFormChange}
-                  label={t("Brand")}
-                >
-                  <MenuItem value="">
-                    <em>{t("select brand")}</em>
-                  </MenuItem>
-                  {brands.map((brand) => (
-                    <MenuItem key={brand._id} value={brand._id}>
-                      {brand.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <Select
-                  name="companyId"
-                  value={editForm.companyId || ""}
-                  onChange={handleEditFormChange}
-                  label={t("Company")}
-                >
-                  <MenuItem value="">
-                    <em>{t("select company")}</em>
-                  </MenuItem>
-                  {companies.map((company) => (
-                    <MenuItem key={company._id} value={company._id}>
-                      {company.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth margin="normal">
-                <Select
-                  name="companyId"
-                  value={editForm.companyId || ""}
-                  onChange={handleEditFormChange}
-                  label={t("Company")}
-                >
-                  <MenuItem value="">
-                    <em>{t("select Company")}</em>
-                  </MenuItem>
-                  {companies.map((company) => (
-                    <MenuItem key={company._id} value={company._id}>
-                      {company.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <DataEntryEntityAutocomplete
+                sx={{ mt: 1, mb: 1 }}
+                label={t("Brand")}
+                options={brands}
+                valueId={editForm.brandId}
+                onChangeId={(id) =>
+                  setEditForm((p) => ({ ...p, brandId: id }))
+                }
+                placeholder={t("select brand")}
+              />
+              <DataEntryEntityAutocomplete
+                sx={{ mt: 1, mb: 1 }}
+                label={t("Company")}
+                options={companies}
+                valueId={editForm.companyId || ""}
+                onChangeId={(id) =>
+                  setEditForm((p) => ({ ...p, companyId: id }))
+                }
+                placeholder={t("select company")}
+              />
 
               <TextField
                 margin="normal"
@@ -12240,44 +12533,26 @@ const DataEntryForm = () => {
                   />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="brandId"
-                      value={editForm.brandId || ""}
-                      onChange={handleEditFormChange}
-                      label={t("Brand")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={editForm.brandId || ""}
+                    onChangeId={(id) =>
+                      setEditForm((p) => ({ ...p, brandId: id }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="storeId"
-                      value={editForm.storeId || ""}
-                      onChange={handleEditFormChange}
-                      label={t("Store")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select store")}</em>
-                      </MenuItem>
-                      {stores.map((s) => (
-                        <MenuItem key={s._id} value={s._id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Store")}
+                    options={stores}
+                    valueId={editForm.storeId || ""}
+                    onChangeId={(id) =>
+                      setEditForm((p) => ({ ...p, storeId: id }))
+                    }
+                    placeholder={t("select store")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>
@@ -12682,65 +12957,37 @@ const DataEntryForm = () => {
                   ) : null}
                 </Grid>
                 <Grid xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>{t("Store")}</InputLabel>
-                    <Select
-                      name="storeId"
-                      value={editForm.storeId || ""}
-                      onChange={handleEditFormChange}
-                      label={t("Store")}
-                    >
-                      <MenuItem value="">
-                        <em>{t("Select Store")}</em>
-                      </MenuItem>
-                      {stores.map((store) => (
-                        <MenuItem key={store._id} value={store._id}>
-                          {store.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Store")}
+                    options={stores}
+                    valueId={editForm.storeId || ""}
+                    onChangeId={(id) =>
+                      setEditForm((p) => ({ ...p, storeId: id }))
+                    }
+                    placeholder={t("Select Store")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>{t("Brand")}</InputLabel>
-                    <Select
-                      name="brandId"
-                      value={editForm.brandId}
-                      onChange={handleEditFormChange}
-                      label={t("Brand")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select brand")}</em>
-                      </MenuItem>
-                      {brands.map((brand) => (
-                        <MenuItem key={brand._id} value={brand._id}>
-                          {brand.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Brand")}
+                    options={brands}
+                    valueId={editForm.brandId}
+                    onChangeId={(id) =>
+                      setEditForm((p) => ({ ...p, brandId: id }))
+                    }
+                    placeholder={t("select brand")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <Select
-                      name="companyId"
-                      value={editForm.companyId || ""}
-                      onChange={handleEditFormChange}
-                      label={t("Company")}
-                      displayEmpty
-                    >
-                      <MenuItem value="">
-                        <em>{t("select company")}</em>
-                      </MenuItem>
-                      {companies.map((company) => (
-                        <MenuItem key={company._id} value={company._id}>
-                          {company.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <DataEntryEntityAutocomplete
+                    label={t("Company")}
+                    options={companies}
+                    valueId={editForm.companyId || ""}
+                    onChangeId={(id) =>
+                      setEditForm((p) => ({ ...p, companyId: id }))
+                    }
+                    placeholder={t("select company")}
+                  />
                 </Grid>
                 <Grid xs={12} sm={6}>
                   <FormControl fullWidth>

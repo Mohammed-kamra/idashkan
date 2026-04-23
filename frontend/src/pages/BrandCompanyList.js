@@ -24,9 +24,7 @@ import {
 } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { brandAPI, companyAPI, adAPI, brandTypeAPI } from "../services/api";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import BannerCarousel from "../components/BannerCarousel";
 import BusinessIcon from "@mui/icons-material/Business";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SearchIcon from "@mui/icons-material/Search";
@@ -351,23 +349,6 @@ const BrandCompanyList = ({ variant }) => {
     };
   }, [updateBrandTypeScrollHints, brandTypes, loading]);
 
-  const bannerSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      { breakpoint: 1024, settings: { dots: true, arrows: false } },
-      {
-        breakpoint: 600,
-        settings: { dots: true, arrows: false, autoplaySpeed: 4000 },
-      },
-    ],
-  };
-
   const bannerAdsWithImages = useMemo(
     () =>
       (bannerAds || [])
@@ -501,8 +482,9 @@ const BrandCompanyList = ({ variant }) => {
             variant="rounded"
             sx={{
               width: "100%",
-              height: { xs: 150, md: 220 },
-              mb: 3,
+              height: { xs: "160px", sm: "220px", md: "280px" },
+              mt: 2,
+              mb: 2,
               borderRadius: 3,
             }}
           />
@@ -562,53 +544,15 @@ const BrandCompanyList = ({ variant }) => {
         maxWidth="lg"
         sx={{ px: { xs: 1.5, sm: 2 }, mt: { xs: 4, md: 5 } }}
       >
-        <Box sx={{ mb: 3 }}>
-          <Box
-            sx={{
-              width: "100%",
-              height: { xs: 150, md: 220 },
-              borderRadius: { xs: 3, md: 4 },
-              overflow: "hidden",
-              boxShadow: isDark
-                ? "0 12px 40px rgba(0,0,0,0.45)"
-                : "0 12px 40px rgba(0,0,0,0.08)",
-              bgcolor: isDark ? "#1a2235" : alpha(accent, 0.06),
-            }}
-          >
-            {bannerAdsWithImages.length > 0 ? (
-              <Slider {...bannerSettings}>
-                {bannerAdsWithImages.map((ad, index) => (
-                  <div key={ad._id || index}>
-                    <img
-                      onClick={() =>
-                        ad.brandId
-                          ? navigate(`/brands/${ad.brandId}`)
-                          : ad.storeId
-                            ? navigate(`/stores/${ad.storeId}`)
-                            : ad.giftId
-                              ? navigate(`/gifts/${ad.giftId}`)
-                              : undefined
-                      }
-                      src={ad.src}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain",
-                        cursor:
-                          ad.brandId || ad.storeId || ad.giftId
-                            ? "pointer"
-                            : "default",
-                      }}
-                    />
-                  </div>
-                ))}
-              </Slider>
-            ) : (
-              <Skeleton variant="rectangular" width="100%" height="100%" />
-            )}
-          </Box>
-        </Box>
+        {/* Ads banner — same as MainPage `BannerCarousel` */}
+        <BannerCarousel
+          banners={bannerAdsWithImages}
+          onBannerClick={(ad) => {
+            if (ad.brandId) navigate(`/brands/${ad.brandId}`);
+            else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
+            else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
+          }}
+        />
 
         <Box
           sx={{

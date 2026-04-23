@@ -48,6 +48,7 @@ import {
   logSearchEvent,
   recordSearchClick,
 } from "../utils/searchAnalyticsTrack";
+import { useDraftCartDrawer } from "../hooks/useDraftCartDrawer";
 
 /** Opens Shopping draft cart drawer (EN/KU/AR-friendly keywords). */
 function isCartSearchIntent(raw) {
@@ -70,6 +71,7 @@ const SearchPage = () => {
   const { t } = useTranslation();
   const { dataLanguage } = useDataLanguage();
   const navigate = useNavigate();
+  const { openDraftCart } = useDraftCartDrawer();
   const { user } = useAuth();
   const { selectedCity } = useCityFilter();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -128,7 +130,7 @@ const SearchPage = () => {
           categories: [],
           categoryTypes: [],
         });
-        navigate("/shopping", { state: { openDraftCart: true } });
+        openDraftCart();
         setSearched(true);
         setLoading(false);
         return;
@@ -201,7 +203,14 @@ const SearchPage = () => {
         setLoading(false);
       }
     },
-    [userId, deviceId, refreshRecentSearches, selectedCity, navigate, isOnline],
+    [
+      userId,
+      deviceId,
+      refreshRecentSearches,
+      selectedCity,
+      openDraftCart,
+      isOnline,
+    ],
   );
 
   useEffect(() => {

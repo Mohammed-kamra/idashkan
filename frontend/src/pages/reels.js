@@ -75,8 +75,9 @@ const ReelCard = memo(function ReelCard({
   const textBottom = isMobile
     ? "calc(120px + env(safe-area-inset-bottom))"
     : 72;
+  /** Above fixed BottomNavigation (~64px bar + padding + safe area). */
   const progressBottom = isMobile
-    ? "calc(72px + env(safe-area-inset-bottom))"
+    ? "calc(80px + env(safe-area-inset-bottom))"
     : 10;
   const progressRef = useRef(null);
   const isDraggingSeekRef = useRef(false);
@@ -1147,9 +1148,7 @@ const ReelsPage = () => {
       <Box
         sx={{
           position: "absolute",
-          top: isMobile
-            ? "calc(72px + env(safe-area-inset-top))"
-            : "calc(82px + env(safe-area-inset-top))",
+          top: "calc(10px + env(safe-area-inset-top))",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 20,
@@ -1198,7 +1197,7 @@ const ReelsPage = () => {
           <Box
             sx={{
               position: "absolute",
-              top: isMobile ? 56 : 70,
+              top: "calc(58px + env(safe-area-inset-top))",
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: 22,
@@ -1280,5 +1279,3 @@ const ReelsPage = () => {
 };
 
 export default ReelsPage;
-
-

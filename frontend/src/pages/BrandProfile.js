@@ -504,8 +504,7 @@ const BrandProfile = () => {
   const loadMoreGridForType = (type) => {
     setGridCategoryVisible((prev) => ({
       ...prev,
-      [type]:
-        (prev[type] ?? PROFILE_GRID_PAGE_SIZE) + PROFILE_GRID_PAGE_SIZE,
+      [type]: (prev[type] ?? PROFILE_GRID_PAGE_SIZE) + PROFILE_GRID_PAGE_SIZE,
     }));
   };
 
@@ -717,9 +716,7 @@ const BrandProfile = () => {
           : true;
     const discount = calculateDiscount(product.previousPrice, product.newPrice);
     const hasPreviousPrice =
-      prevNum != null &&
-      newNum != null &&
-      prevNum > newNum;
+      prevNum != null && newNum != null && prevNum > newNum;
     const isDark = theme.palette.mode === "dark";
 
     return (
@@ -918,7 +915,7 @@ const BrandProfile = () => {
               </Box>
 
               {/* View count */}
-              {product.viewCount > 0 && (
+              {/* {product.viewCount > 0 && (
                 <Box
                   sx={{
                     position: "absolute",
@@ -939,7 +936,7 @@ const BrandProfile = () => {
                   <VisibilityIcon sx={{ fontSize: "0.75rem" }} />
                   {product.viewCount}
                 </Box>
-              )}
+              )} */}
             </Box>
 
             {/* Content */}
@@ -1014,21 +1011,19 @@ const BrandProfile = () => {
                       {formatPrice(newNum)}
                     </Typography>
                   )}
-                  {newNum == null &&
-                    prevNum != null &&
-                    !hasPreviousPrice && (
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 800,
-                          fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                          color: "var(--color-secondary, #1E6FD9)",
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {formatPrice(prevNum)}
-                      </Typography>
-                    )}
+                  {newNum == null && prevNum != null && !hasPreviousPrice && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                        color: "var(--color-secondary, #1E6FD9)",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {formatPrice(prevNum)}
+                    </Typography>
+                  )}
                 </Box>
               )}
             </CardContent>
@@ -1049,8 +1044,7 @@ const BrandProfile = () => {
       const rowDisplayProducts = typeProducts.slice(0, currentDisplayCount);
       const rowHasMore = typeProducts.length > currentDisplayCount;
 
-      const gridVisible =
-        gridCategoryVisible[type] ?? PROFILE_GRID_PAGE_SIZE;
+      const gridVisible = gridCategoryVisible[type] ?? PROFILE_GRID_PAGE_SIZE;
       const gridDisplayProducts = typeProducts.slice(0, gridVisible);
       const gridHasMore = typeProducts.length > gridVisible;
 
@@ -1233,8 +1227,7 @@ const BrandProfile = () => {
                       lineHeight: 1.3,
                     }}
                   >
-                    +{typeProducts.length - displayProducts.length}{" "}
-                    {t("more")}
+                    +{typeProducts.length - displayProducts.length} {t("more")}
                   </Typography>
                 </Box>
               )}

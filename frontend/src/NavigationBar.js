@@ -20,6 +20,15 @@ import {
   ListItemText,
   Badge,
   ListItemButton,
+  Divider,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  Select,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import {
   Home as HomeIcon,
@@ -41,10 +50,28 @@ import {
   Refresh as RefreshIcon,
   VideoLibrary as VideoLibraryIcon,
   ShoppingBag as ShoppingBagIcon,
+  ShoppingCart as ShoppingCartIcon,
   WorkOutline as WorkOutlineIcon,
   CorporateFare as CorporateFareIcon,
+  BarChart as BarChartIcon,
+  Palette as PaletteIcon,
+  LightModeOutlined,
+  DarkModeOutlined,
+  BrightnessAutoRounded,
+  PrivacyTip as PrivacyTipIcon,
+  Block as BlockIcon,
+  Login as LoginIcon,
+  Logout as LogoutIcon,
+  WhatsApp as WhatsAppIcon,
+  Facebook as FacebookIcon,
+  Instagram as InstagramIcon,
+  CameraAlt as SnapchatIcon,
+  AlternateEmail as GmailIcon,
+  MusicNote as TikTokIcon,
+  Call as ViberIcon,
+  Telegram as TelegramIcon,
 } from "@mui/icons-material";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./context/AuthContext";
 import { useUserTracking } from "./hooks/useUserTracking";
@@ -68,6 +95,12 @@ import {
   resetMainPageScrollPositionInSession,
   scrollWindowToTop,
 } from "./utils/mainPageScrollSession";
+import { useDraftCartDrawer } from "./hooks/useDraftCartDrawer";
+import { useDarkMode } from "./context/DarkModeContext";
+import {
+  normalizeWhatsAppUrl,
+  openWhatsAppLink,
+} from "./utils/openWhatsAppLink";
 
 // Enable notification center (bell + menu)
 const NOTIFICATIONS_CENTER_ENABLED = true;
@@ -91,9 +124,12 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const theme = useTheme();
   const isDarkNav = theme.palette.mode === "dark";
   const { t, i18n } = useTranslation();
-  const { user, logout, deactivate } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout, deactivate, updateProfile } = useAuth();
   const { user: guestUser, updateGuestName } = useUserTracking();
   const { selectedCity, changeCity, cities } = useCityFilter();
+  const { contactInfo } = useAppSettings();
+  const { colorMode, setColorMode } = useDarkMode();
 
   const {
     notifications,
@@ -115,7 +151,11 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const { triggerRefresh } = useContentRefresh();
   const { navConfig } = useActiveTheme();
   const { dataLanguage } = useDataLanguage();
+  const { openDraftCart } = useDraftCartDrawer();
   const location = useLocation();
+  /** Full-screen reels on mobile: keep top bar off (also /reels/:videoId). */
+  const hideMobileNavOnReels =
+    !isSmUp && /^\/reels(\/|$)/.test(location.pathname);
   /** Toolbar refresh: scroll home to top + clear saved scroll, then bump refreshKey (all routes). */
   const handleNavRefresh = useCallback(() => {
     if (location.pathname === "/") {
@@ -138,11 +178,8 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   // Admin dropdown state
   const [adminAnchorEl, setAdminAnchorEl] = useState(null);
 
-  // Stores dropdown state
-  const [storesAnchorEl, setStoresAnchorEl] = useState(null);
-
-  // City submenu state (desktop profile)
-  const [cityAnchorEl, setCityAnchorEl] = useState(null);
+  const [placesAnchorEl, setPlacesAnchorEl] = useState(null);
+  const [servicesAnchorEl, setServicesAnchorEl] = useState(null);
 
   const [mobileNavCityAnchor, setMobileNavCityAnchor] = useState(null);
   const [mobileNavLangAnchor, setMobileNavLangAnchor] = useState(null);
@@ -150,14 +187,10 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
   const [guestNameDialogOpen, setGuestNameDialogOpen] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState("");
+  const [userNameDialogOpen, setUserNameDialogOpen] = useState(false);
+  const [userNameInput, setUserNameInput] = useState("");
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
-  const [deactivateSnackbar, setDeactivateSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info",
-  });
-  const [confirmPushOpen, setConfirmPushOpen] = useState(false);
 
   const pickNotificationText = useCallback(
     (n, field) => {
@@ -329,14 +362,6 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     setProfileAnchorEl(null);
   };
 
-  const handleStoresMenuOpen = (event) => {
-    setStoresAnchorEl(event.currentTarget);
-  };
-
-  const handleStoresMenuClose = () => {
-    setStoresAnchorEl(null);
-  };
-
   const handleAdminMenuOpen = (event) => {
     setAdminAnchorEl(event.currentTarget);
   };
@@ -359,27 +384,156 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     handleProfileMenuClose();
   };
 
-  const handleDeactivateClick = () => {
-    handleProfileMenuClose();
-    setDeactivateDialogOpen(true);
+  const handlePlacesMenuOpen = (event) => {
+    setPlacesAnchorEl(event.currentTarget);
   };
 
-  const handleDeactivateConfirm = async () => {
-    setDeactivating(true);
-    const result = await deactivate();
-    setDeactivating(false);
-    setDeactivateDialogOpen(false);
-    setDeactivateSnackbar({
-      open: true,
-      message: result.success
-        ? result.message ||
-          t(
-            "Account deactivated. You have 30 days to log in again to reactivate.",
-          )
-        : result.message,
-      severity: result.success ? "success" : "error",
-    });
+  const handlePlacesMenuClose = () => {
+    setPlacesAnchorEl(null);
   };
+
+  const handleServicesMenuOpen = (event) => {
+    setServicesAnchorEl(event.currentTarget);
+  };
+
+  const handleServicesMenuClose = () => {
+    setServicesAnchorEl(null);
+  };
+
+  const displayName =
+    user?.displayName ||
+    user?.username ||
+    guestUser?.displayName ||
+    t("Guest User");
+  const profileEmail = user?.email || "";
+
+  const contactStr = (v) => {
+    if (v == null) return undefined;
+    const s = String(v).trim();
+    return s === "" ? undefined : s;
+  };
+
+  const normalizeUrl = (url, type) => {
+    if (!url || typeof url !== "string") return null;
+    const trimmed = url.trim();
+    if (type === "whatsapp" || type === "viber" || type === "telegram") {
+      if (
+        /^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|viber\.com|t\.me|telegram\.me)\//i.test(
+          trimmed,
+        )
+      ) {
+        const withProto = /^https?:\/\//i.test(trimmed)
+          ? trimmed
+          : `https://${trimmed}`;
+        if (type === "whatsapp") {
+          return normalizeWhatsAppUrl(withProto);
+        }
+        return withProto;
+      }
+      const digits = trimmed.replace(/[^\d]/g, "");
+      if (type === "whatsapp") {
+        return digits ? `https://api.whatsapp.com/send?phone=${digits}` : null;
+      }
+      if (type === "viber")
+        return digits ? `viber://chat?number=${digits}` : null;
+      if (type === "telegram") return digits ? `https://t.me/+${digits}` : null;
+    }
+    if (type === "gmail") {
+      return `mailto:${trimmed}`;
+    }
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const contactItems = useMemo(
+    () =>
+      [
+        {
+          key: "whatsapp",
+          value: contactStr(contactInfo?.whatsapp),
+          icon: <WhatsAppIcon />,
+        },
+        {
+          key: "facebook",
+          value: contactStr(contactInfo?.facebook),
+          icon: <FacebookIcon />,
+        },
+        {
+          key: "instagram",
+          value: contactStr(contactInfo?.instagram),
+          icon: <InstagramIcon />,
+        },
+        {
+          key: "snapchat",
+          value: contactStr(contactInfo?.snapchat),
+          icon: <SnapchatIcon />,
+        },
+        {
+          key: "gmail",
+          value: contactStr(contactInfo?.gmail),
+          icon: <GmailIcon />,
+        },
+        {
+          key: "tiktok",
+          value: contactStr(contactInfo?.tiktok),
+          icon: <TikTokIcon />,
+        },
+        {
+          key: "viber",
+          value: contactStr(contactInfo?.viber),
+          icon: <ViberIcon />,
+        },
+        {
+          key: "telegram",
+          value: contactStr(contactInfo?.telegram),
+          icon: <TelegramIcon />,
+        },
+      ].filter((item) => Boolean(item.value)),
+    [contactInfo],
+  );
+
+  const placesMenuActive =
+    ["/stores", "/brands", "/companies"].some((p) =>
+      location.pathname.startsWith(p),
+    ) || false;
+
+  const servicesMenuActive =
+    ["/findjob", "/shopping", "/gifts"].some((p) =>
+      location.pathname.startsWith(p),
+    ) || false;
+
+  const desktopNavButtonSx = (active) => ({
+    color: "white",
+    textTransform: "none",
+    fontSize: { md: "1rem", lg: "1.15rem" },
+    px: { md: 1, lg: 1.5 },
+    py: 1,
+    borderRadius: 2,
+    minWidth: "auto",
+    flexShrink: 0,
+    position: "relative",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    backdropFilter: active ? "blur(10px)" : "none",
+    border: active
+      ? "1px solid rgba(255,255,255,0.3)"
+      : "1px solid transparent",
+    "&:hover": {
+      backgroundColor: "rgba(255,255,255,0.15)",
+      backdropFilter: "blur(10px)",
+      transform: "translateY(-2px)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+    },
+    "&::after": {
+      content: '""',
+      position: "absolute",
+      bottom: -2,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: active ? "80%" : "0%",
+      height: 2,
+      borderRadius: 1,
+      transition: "width 0.3s ease",
+    },
+  });
 
   const giftsIconWithBadge = (
     <Badge
@@ -392,29 +546,20 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     </Badge>
   );
 
-  const navItems = [
-    { name: t("Main Page"), path: "/", icon: <HomeIcon /> },
-    { name: t("Search"), path: "/search", icon: <SearchIcon /> },
-    { name: t("Products"), path: "/categories", icon: <CategoryIcon /> },
-    { name: t("Favourites"), path: "/favourites", icon: <FavoriteIcon /> },
-    { name: t("Brands"), path: "/brands", icon: <BusinessIcon /> },
-    { name: t("Gifts"), path: "/gifts", icon: giftsIconWithBadge },
-    // Data Entry is now admin-only via Admin dropdown; no extra nav item for non-admins
-    // Only show Admin link for specific admin email
-    // ...(user && user.email === "mshexani45@gmail.com"
-    //   ? [
-    //       {
-    //         name: t("Admin"),
-    //         path: "/admin/specific",
-    //         icon: <AdminPanelSettingsIcon />,
-    //       },
-    //     ]
-    //   : []),
-  ];
+  useEffect(() => {
+    if (isSmUp) return;
+    if (!/^\/reels(\/|$)/.test(location.pathname)) {
+      setShowMobileNavbar(true);
+    }
+  }, [isSmUp, location.pathname]);
 
   useEffect(() => {
     if (isSmUp) {
       setShowMobileNavbar(true);
+      return undefined;
+    }
+
+    if (/^\/reels(\/|$)/.test(location.pathname)) {
       return undefined;
     }
 
@@ -447,7 +592,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [isSmUp]);
+  }, [isSmUp, location.pathname]);
 
   const navAppBarStyle = useMemo(
     () => ({
@@ -526,16 +671,21 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
             : "0 8px 32px rgba(0,0,0,0.1)",
           transform: isSmUp
             ? "translateY(0)"
-            : showMobileNavbar
-              ? "translateY(0)"
-              : "translateY(-110%)",
+            : hideMobileNavOnReels
+              ? "translateY(-110%)"
+              : showMobileNavbar
+                ? "translateY(0)"
+                : "translateY(-110%)",
           transition: "transform 260ms ease",
           willChange: "transform",
         }}
       >
         <Toolbar
           sx={{
-            justifyContent: isSmUp ? "space-between" : "flex-start",
+            justifyContent: isSmUp ? "flex-start" : "flex-start",
+            flexWrap: isSmUp ? "wrap" : "nowrap",
+            gap: isSmUp ? 1 : 0,
+            rowGap: isSmUp ? 1 : 0,
             px: { xs: 1, sm: 2, md: 4 },
             borderBottomLeftRadius: isDarkNav ? 22 : "50%",
             borderBottomRightRadius: isDarkNav ? 22 : "50%",
@@ -676,567 +826,693 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
             </Box>
           )}
 
-          {!isSmUp && (navConfig?.template || "template1") === "custom" && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                width: "100%",
-                justifyContent: "space-between",
-                gap: 0.5,
-              }}
-            >
-              {(() => {
-                const top = navConfig?.topSlots || {};
-                const sxBtn = navIconBtnSx;
+          {!isSmUp &&
+            ((navConfig?.template || "template1") === "custom" ||
+              (navConfig?.template || "template1") === "custom2") && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  width: "100%",
+                  justifyContent: "space-between",
+                  gap: 0.5,
+                }}
+              >
+                {(() => {
+                  const top = navConfig?.topSlots || {};
+                  const sxBtn = navIconBtnSx;
+                  const tpl = navConfig?.template || "template1";
 
-                const map = {
-                  home: { to: "/", icon: <HomeIcon /> },
-                  search: { to: "/search", icon: <SearchIcon /> },
-                  categories: { to: "/categories", icon: <CategoryIcon /> },
-                  reels: { to: "/reels", icon: <VideoLibraryIcon /> },
-                  favourites: { to: "/favourites", icon: <FavoriteIcon /> },
-                  stores: { to: "/stores", icon: <StoreIcon /> },
-                  gifts: { to: "/gifts", icon: giftsIconWithBadge },
+                  const map = {
+                    home: { to: "/", icon: <HomeIcon /> },
+                    search: { to: "/search", icon: <SearchIcon /> },
+                    categories: { to: "/categories", icon: <CategoryIcon /> },
+                    reels: { to: "/reels", icon: <VideoLibraryIcon /> },
+                    favourites: { to: "/favourites", icon: <FavoriteIcon /> },
+                    stores: { to: "/stores", icon: <StoreIcon /> },
+                    gifts: { to: "/gifts", icon: giftsIconWithBadge },
                   shopping: { to: "/shopping", icon: <ShoppingBagIcon /> },
                   profile: { to: "/profile", icon: <PersonIcon /> },
-                  brands: { to: "/brands", icon: <BusinessIcon /> },
-                  companies: {
-                    to: "/companies",
-                    icon: <CorporateFareIcon />,
-                  },
-                  jobs: { to: "/findjob", icon: <WorkOutlineIcon /> },
-                };
+                    brands: { to: "/brands", icon: <BusinessIcon /> },
+                    companies: {
+                      to: "/companies",
+                      icon: <CorporateFareIcon />,
+                    },
+                    jobs: { to: "/findjob", icon: <WorkOutlineIcon /> },
+                  };
 
-                const renderAction = (action, key) => {
-                  if (!action || action === "none") {
-                    return <Box key={key} sx={{ width: 40, height: 40 }} />;
-                  }
-                  if (action === "label")
-                    return <Box key={key} sx={{ width: 40, height: 40 }} />;
-                  if (action === "refresh") {
+                  const renderAction = (action, key) => {
+                    if (!action || action === "none") {
+                      return <Box key={key} sx={{ width: 40, height: 40 }} />;
+                    }
+                    if (action === "label")
+                      return <Box key={key} sx={{ width: 40, height: 40 }} />;
+                    if (action === "refresh") {
+                      return (
+                        <IconButton
+                          key={key}
+                          onClick={handleNavRefresh}
+                          sx={sxBtn}
+                        >
+                          <RefreshIcon />
+                        </IconButton>
+                      );
+                    }
+                    if (action === "city") {
+                      return (
+                        <IconButton
+                          key={key}
+                          onClick={(e) =>
+                            setMobileNavCityAnchor(e.currentTarget)
+                          }
+                          sx={sxBtn}
+                          aria-label={t("City")}
+                        >
+                          <LocationOnIcon />
+                        </IconButton>
+                      );
+                    }
+                    if (action === "language") {
+                      return (
+                        <IconButton
+                          key={key}
+                          onClick={(e) =>
+                            setMobileNavLangAnchor(e.currentTarget)
+                          }
+                          sx={sxBtn}
+                          aria-label={t("Language")}
+                        >
+                          <LanguageIcon />
+                        </IconButton>
+                      );
+                    }
+                    if (action === "notifications") {
+                      return (
+                        <IconButton
+                          key={key}
+                          onClick={handleNotificationMenuOpen}
+                          sx={sxBtn}
+                          aria-label={t("Notifications")}
+                        >
+                          <Badge badgeContent={unreadCount} color="error">
+                            <NotificationsIcon />
+                          </Badge>
+                        </IconButton>
+                      );
+                    }
+                    if (action === "draftCart") {
+                      return (
+                        <IconButton
+                          key={key}
+                          onClick={() => openDraftCart()}
+                          sx={sxBtn}
+                          aria-label={t("Draft cart")}
+                        >
+                          <ShoppingCartIcon />
+                        </IconButton>
+                      );
+                    }
+                    const cfg = map[action];
+                    if (!cfg)
+                      return <Box key={key} sx={{ width: 40, height: 40 }} />;
                     return (
                       <IconButton
                         key={key}
-                        onClick={handleNavRefresh}
+                        component={Link}
+                        to={cfg.to}
                         sx={sxBtn}
+                        onClick={
+                          cfg.to === "/gifts" ? markGiftsSeen : undefined
+                        }
                       >
-                        <RefreshIcon />
+                        {cfg.icon}
                       </IconButton>
                     );
-                  }
-                  if (action === "city") {
+                  };
+
+                  if (tpl === "custom2") {
                     return (
-                      <IconButton
-                        key={key}
-                        onClick={(e) => setMobileNavCityAnchor(e.currentTarget)}
-                        sx={sxBtn}
-                        aria-label={t("City")}
-                      >
-                        <LocationOnIcon />
-                      </IconButton>
+                      <>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            minWidth: 0,
+                            flex: "1 1 auto",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Avatar
+                            src={`${process.env.PUBLIC_URL || ""}/logo512.png`}
+                            alt={NAV_BRAND_TITLE}
+                            variant="rounded"
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              flexShrink: 0,
+                              bgcolor: "rgba(255,255,255,0.12)",
+                              "& img": {
+                                objectFit: "cover",
+                              },
+                              ...(isDarkNav
+                                ? {
+                                    border: "2px solid rgba(255,255,255,0.28)",
+                                  }
+                                : {
+                                    border: "2px solid rgba(255,255,255,0.3)",
+                                  }),
+                            }}
+                          />
+                          <Typography
+                            className="nav-brand-title"
+                            component={Link}
+                            to="/"
+                            noWrap
+                            sx={{
+                              textDecoration: "none",
+                              fontSize: "1.35rem",
+                              ...navBrandTitleSx,
+                              minWidth: 0,
+                              "&:hover": { transform: "scale(1.03)" },
+                            }}
+                          >
+                            {NAV_BRAND_TITLE}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {renderAction(top.topright1, "custom2-tr1")}
+                          {renderAction(top.topright2, "custom2-tr2")}
+                          {renderAction(top.topright3, "custom2-tr3")}
+                        </Box>
+                      </>
                     );
                   }
-                  if (action === "language") {
-                    return (
-                      <IconButton
-                        key={key}
-                        onClick={(e) => setMobileNavLangAnchor(e.currentTarget)}
-                        sx={sxBtn}
-                        aria-label={t("Language")}
-                      >
-                        <LanguageIcon />
-                      </IconButton>
-                    );
-                  }
-                  if (action === "notifications") {
-                    return (
-                      <IconButton
-                        key={key}
-                        onClick={handleNotificationMenuOpen}
-                        sx={sxBtn}
-                        aria-label={t("Notifications")}
-                      >
-                        <Badge badgeContent={unreadCount} color="error">
-                          <NotificationsIcon />
-                        </Badge>
-                      </IconButton>
-                    );
-                  }
-                  const cfg = map[action];
-                  if (!cfg)
-                    return <Box key={key} sx={{ width: 40, height: 40 }} />;
+
+                  const centerIsLabel = (top.center || "label") === "label";
                   return (
-                    <IconButton
-                      key={key}
-                      component={Link}
-                      to={cfg.to}
-                      sx={sxBtn}
-                      onClick={cfg.to === "/gifts" ? markGiftsSeen : undefined}
-                    >
-                      {cfg.icon}
-                    </IconButton>
+                    <>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.9 }}
+                      >
+                        {renderAction(top.topleft1, "topleft1")}
+                        {renderAction(top.topleft2, "topleft2")}
+                      </Box>
+
+                      <Typography
+                        className="nav-brand-title"
+                        component={centerIsLabel ? Link : "div"}
+                        to={centerIsLabel ? "/" : undefined}
+                        sx={{
+                          flex: 1,
+                          textAlign: "center",
+                          textDecoration: "none",
+                          ...navBrandTitleSx,
+                          pointerEvents: centerIsLabel ? "auto" : "none",
+                        }}
+                      >
+                        {NAV_BRAND_TITLE}
+                      </Typography>
+
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 0.9 }}
+                      >
+                        {renderAction(top.topright1, "topright1")}
+                        {renderAction(top.topright2, "topright2")}
+                      </Box>
+                    </>
                   );
-                };
-
-                const centerIsLabel = (top.center || "label") === "label";
-                return (
-                  <>
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.9 }}
-                    >
-                      {renderAction(top.topleft1, "topleft1")}
-                      {renderAction(top.topleft2, "topleft2")}
-                    </Box>
-
-                    <Typography
-                      className="nav-brand-title"
-                      component={centerIsLabel ? Link : "div"}
-                      to={centerIsLabel ? "/" : undefined}
-                      sx={{
-                        flex: 1,
-                        textAlign: "center",
-                        textDecoration: "none",
-                        ...navBrandTitleSx,
-                        pointerEvents: centerIsLabel ? "auto" : "none",
+                })()}
+                <Menu
+                  anchorEl={mobileNavCityAnchor}
+                  open={Boolean(mobileNavCityAnchor)}
+                  onClose={() => setMobileNavCityAnchor(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                  transformOrigin={{ vertical: "top", horizontal: "center" }}
+                  PaperProps={{
+                    sx: {
+                      mt: 1,
+                      minWidth: 200,
+                      maxHeight: 320,
+                    },
+                  }}
+                >
+                  {cities.map((city) => (
+                    <MenuItem
+                      key={city.value}
+                      selected={selectedCity === city.value}
+                      onClick={() => {
+                        changeCity(city.value);
+                        setMobileNavCityAnchor(null);
                       }}
                     >
-                      {NAV_BRAND_TITLE}
-                    </Typography>
-
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.9 }}
-                    >
-                      {renderAction(top.topright1, "topright1")}
-                      {renderAction(top.topright2, "topright2")}
-                    </Box>
-                  </>
-                );
-              })()}
-              <Menu
-                anchorEl={mobileNavCityAnchor}
-                open={Boolean(mobileNavCityAnchor)}
-                onClose={() => setMobileNavCityAnchor(null)}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                transformOrigin={{ vertical: "top", horizontal: "center" }}
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    minWidth: 200,
-                    maxHeight: 320,
-                  },
-                }}
-              >
-                {cities.map((city) => (
+                      {city.label}
+                    </MenuItem>
+                  ))}
+                </Menu>
+                <Menu
+                  anchorEl={mobileNavLangAnchor}
+                  open={Boolean(mobileNavLangAnchor)}
+                  onClose={() => setMobileNavLangAnchor(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                  transformOrigin={{ vertical: "top", horizontal: "center" }}
+                  PaperProps={{ sx: { mt: 1, minWidth: 200 } }}
+                >
                   <MenuItem
-                    key={city.value}
-                    selected={selectedCity === city.value}
+                    selected={i18n.language === "en"}
                     onClick={() => {
-                      changeCity(city.value);
-                      setMobileNavCityAnchor(null);
+                      i18n.changeLanguage("en");
+                      setMobileNavLangAnchor(null);
                     }}
                   >
-                    {city.label}
+                    🇺🇸 {t("English")}
                   </MenuItem>
-                ))}
-              </Menu>
-              <Menu
-                anchorEl={mobileNavLangAnchor}
-                open={Boolean(mobileNavLangAnchor)}
-                onClose={() => setMobileNavLangAnchor(null)}
-                anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                transformOrigin={{ vertical: "top", horizontal: "center" }}
-                PaperProps={{ sx: { mt: 1, minWidth: 200 } }}
-              >
-                <MenuItem
-                  selected={i18n.language === "en"}
-                  onClick={() => {
-                    i18n.changeLanguage("en");
-                    setMobileNavLangAnchor(null);
-                  }}
-                >
-                  🇺🇸 {t("English")}
-                </MenuItem>
-                <MenuItem
-                  selected={i18n.language === "ar"}
-                  onClick={() => {
-                    i18n.changeLanguage("ar");
-                    setMobileNavLangAnchor(null);
-                  }}
-                >
-                  🇸🇦 {t("Arabic")}
-                </MenuItem>
-                <MenuItem
-                  selected={i18n.language === "ku"}
-                  onClick={() => {
-                    i18n.changeLanguage("ku");
-                    setMobileNavLangAnchor(null);
-                  }}
-                >
-                  <Box
-                    component="span"
-                    sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                  <MenuItem
+                    selected={i18n.language === "ar"}
+                    onClick={() => {
+                      i18n.changeLanguage("ar");
+                      setMobileNavLangAnchor(null);
+                    }}
+                  >
+                    🇸🇦 {t("Arabic")}
+                  </MenuItem>
+                  <MenuItem
+                    selected={i18n.language === "ku"}
+                    onClick={() => {
+                      i18n.changeLanguage("ku");
+                      setMobileNavLangAnchor(null);
+                    }}
                   >
                     <Box
-                      component="img"
-                      src={kurdishFlag}
-                      alt="Kurdish"
-                      sx={{
-                        width: 16,
-                        height: 12,
-                        objectFit: "cover",
-                        borderRadius: 0.5,
-                      }}
-                    />
-                    {t("Kurdish")}
-                  </Box>
-                </MenuItem>
-              </Menu>
-            </Box>
-          )}
+                      component="span"
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <Box
+                        component="img"
+                        src={kurdishFlag}
+                        alt="Kurdish"
+                        sx={{
+                          width: 16,
+                          height: 12,
+                          objectFit: "cover",
+                          borderRadius: 0.5,
+                        }}
+                      />
+                      {t("Kurdish")}
+                    </Box>
+                  </MenuItem>
+                </Menu>
+              </Box>
+            )}
 
-          {/* Desktop: Logo and Brand */}
+          {/* Desktop: logo + main nav (LTR) + notifications + profile menu (not /profile) */}
           {isSmUp && (
-            <Box display="flex" alignItems="center">
-              <Avatar
-                sx={{
-                  mr: 2,
-                  width: 40,
-                  height: 40,
-                  ...(isDarkNav
-                    ? {
-                        bgcolor: "rgba(255,255,255,0.1)",
-                        backdropFilter: "blur(12px) saturate(150%)",
-                        WebkitBackdropFilter: "blur(12px) saturate(150%)",
-                        border: "2px solid rgba(255,255,255,0.28)",
-                        boxShadow:
-                          "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
-                      }
-                    : {
-                        backdropFilter: "blur(10px)",
-                        border: "2px solid rgba(255,255,255,0.3)",
-                      }),
-                }}
-              >
-                <StoreIcon sx={{ color: "white", fontSize: 24 }} />
-              </Avatar>
-              <Typography
-                className="nav-brand-title"
-                variant="h5"
-                component={Link}
-                to="/"
-                sx={{
-                  textDecoration: "none",
-                  fontSize: { xs: "1.75rem", sm: "1.75rem", md: "1.75rem" },
-                  ...navBrandTitleSx,
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                {NAV_BRAND_TITLE}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Desktop Navigation */}
-          {isSmUp && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
-              {/* First two nav items (Main Page, Products) */}
-              {navItems.slice(0, 2).map((item) => (
-                <Button
-                  key={item.path}
-                  component={Link}
-                  to={item.path}
-                  startIcon={item.icon}
+            <>
+              <Box display="flex" alignItems="center" flexShrink={0}>
+                <Avatar
+                  src={`${process.env.PUBLIC_URL || ""}/logo512.png`}
+                  alt={NAV_BRAND_TITLE}
+                  variant="rounded"
                   sx={{
-                    color: "white",
-                    textTransform: "none",
-                    fontSize: "1.3rem",
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    minWidth: "auto",
-                    position: "relative",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    // backgroundColor:
-                    //   location.pathname === item.path
-                    //     ? "rgba(255,255,255,0.2)"
-                    //     : "transparent",
-                    backdropFilter:
-                      location.pathname === item.path ? "blur(10px)" : "none",
-                    border:
-                      location.pathname === item.path
-                        ? "1px solid rgba(255,255,255,0.3)"
-                        : "1px solid transparent",
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.15)",
-                      backdropFilter: "blur(10px)",
-                      transform: "translateY(-2px)",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+                    mr: 2,
+                    width: 44,
+                    height: 44,
+                    bgcolor: "rgba(255,255,255,0.12)",
+                    "& img": {
+                      objectFit: "cover",
                     },
-                    "&::after": {
-                      content: '""',
-                      position: "absolute",
-                      bottom: -2,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: location.pathname === item.path ? "80%" : "0%",
-                      height: 2,
-                      // backgroundColor: "white",
-                      borderRadius: 1,
-                      transition: "width 0.3s ease",
+                    ...(isDarkNav
+                      ? {
+                          backdropFilter: "blur(12px) saturate(150%)",
+                          WebkitBackdropFilter: "blur(12px) saturate(150%)",
+                          border: "2px solid rgba(255,255,255,0.28)",
+                          boxShadow:
+                            "0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2)",
+                        }
+                      : {
+                          backdropFilter: "blur(10px)",
+                          border: "2px solid rgba(255,255,255,0.3)",
+                        }),
+                  }}
+                />
+                <Typography
+                  className="nav-brand-title"
+                  variant="h5"
+                  component={Link}
+                  to="/"
+                  sx={{
+                    textDecoration: "none",
+                    fontSize: { xs: "1.75rem", sm: "1.75rem", md: "1.75rem" },
+                    ...navBrandTitleSx,
+                    "&:hover": {
+                      transform: "scale(1.05)",
                     },
                   }}
                 >
-                  {item.name}
-                </Button>
-              ))}
+                  {NAV_BRAND_TITLE}
+                </Typography>
+              </Box>
 
-              {/* Stores link (no dropdown) */}
-              <Button
-                component={Link}
-                to="/stores"
-                startIcon={<StoreIcon />}
+              <Box
                 sx={{
-                  color: "white",
-                  textTransform: "none",
-                  fontSize: "1.3rem",
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  minWidth: "auto",
-                  position: "relative",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  // backgroundColor: location.pathname.startsWith("/stores")
-                  //   ? "rgba(255,255,255,0.2)"
-                  //   : "transparent",
-                  backdropFilter: location.pathname.startsWith("/stores")
-                    ? "blur(10px)"
-                    : "none",
-                  border: location.pathname.startsWith("/stores")
-                    ? "1px solid rgba(255,255,255,0.3)"
-                    : "1px solid transparent",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.15)",
-                    backdropFilter: "blur(10px)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                  },
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    bottom: -2,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: location.pathname.startsWith("/stores")
-                      ? "80%"
-                      : "0%",
-                    height: 2,
-                    // backgroundColor: "white",
-                    borderRadius: 1,
-                    transition: "width 0.3s ease",
-                  },
+                  flex: "1 1 auto",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: 0.5,
+                  minWidth: 0,
+                  pl: { md: 2 },
                 }}
               >
-                {t("Stores")}
-              </Button>
-
-              {/* Remaining nav items (Brands, Gifts, Admin) - exclude Favourites (moved to profile) */}
-              {navItems
-                .slice(2)
-                .filter((item) => item.path !== "/favourites")
-                .map((item) => (
-                  <Button
-                    key={item.path}
-                    component={Link}
-                    to={item.path}
-                    startIcon={item.icon}
-                    onClick={item.path === "/gifts" ? markGiftsSeen : undefined}
-                    sx={{
-                      color: "white",
-                      textTransform: "none",
-                      fontSize: "1.3rem",
-                      px: 2,
-                      py: 1,
-                      borderRadius: 2,
-                      minWidth: "auto",
-                      position: "relative",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      // backgroundColor:
-                      //   location.pathname === item.path
-                      //     ? "rgba(255,255,255,0.2)"
-                      //     : "transparent",
-                      backdropFilter:
-                        location.pathname === item.path ? "blur(10px)" : "none",
-                      border:
-                        location.pathname === item.path
-                          ? "1px solid rgba(255,255,255,0.3)"
-                          : "1px solid transparent",
-                      "&:hover": {
-                        backgroundColor: "rgba(255,255,255,0.15)",
-                        backdropFilter: "blur(10px)",
-                        transform: "translateY(-2px)",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                      },
-                      "&::after": {
-                        content: '""',
-                        position: "absolute",
-                        bottom: -2,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: location.pathname === item.path ? "80%" : "0%",
-                        height: 2,
-                        // backgroundColor: "white",
-                        borderRadius: 1,
-                        transition: "width 0.3s ease",
-                      },
-                    }}
-                  >
-                    {item.name}
-                  </Button>
-                ))}
-              {/* Admin: full menu for admin emails; support role sees Data Entry only */}
-              {showAdminNav && (
-                <>
-                  <Button
-                    startIcon={<AdminPanelSettingsIcon />}
-                    endIcon={isFullAdmin ? <ExpandMoreIcon /> : undefined}
-                    sx={{
-                      color: "white",
-                      textTransform: "none",
-                      fontSize: "1.3rem",
-                      px: 2,
-                      py: 1,
-                      borderRadius: 2,
-                      minWidth: "auto",
-                      backgroundColor: location.pathname.startsWith("/admin")
-                        ? "rgba(255,255,255,0.2)"
-                        : "transparent",
-                      border: location.pathname.startsWith("/admin")
-                        ? "1px solid rgba(255,255,255,0.3)"
-                        : "1px solid transparent",
-                      "&:hover": {
-                        backgroundColor: "rgba(255,255,255,0.15)",
-                        borderColor: "rgba(255,255,255,0.5)",
-                      },
-                    }}
-                    {...(isFullAdmin
-                      ? { onClick: handleAdminMenuOpen }
-                      : { component: Link, to: "/admin" })}
-                  >
-                    {t("Admin")}
-                  </Button>
-                  {isFullAdmin && (
-                    <Menu
-                      anchorEl={adminAnchorEl}
-                      open={Boolean(adminAnchorEl)}
-                      onClose={handleAdminMenuClose}
-                      anchorOrigin={{
-                        vertical: "bottom",
-                        horizontal: "center",
-                      }}
-                      transformOrigin={{
-                        vertical: "top",
-                        horizontal: "center",
-                      }}
-                      PaperProps={{
-                        sx: {
-                          mt: 1.5,
-                          minWidth: 180,
-                          backgroundColor:
-                            theme.palette.mode === "dark"
-                              ? "var(--brand-primary-blue)"
-                              : "#fff",
-                          border: `1px solid ${theme.palette.divider}`,
-                          borderRadius: 2,
-                        },
-                      }}
-                    >
-                      <MenuItem
-                        component={Link}
-                        to="/admin"
-                        onClick={handleAdminMenuClose}
-                        selected={location.pathname === "/admin"}
-                      >
-                        <ListItemIcon>
-                          <AdminPanelSettingsIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={t("Data Entry")} />
-                      </MenuItem>
-                      <MenuItem
-                        component={Link}
-                        to="/admin/users"
-                        onClick={handleAdminMenuClose}
-                        selected={location.pathname === "/admin/users"}
-                      >
-                        <ListItemIcon>
-                          <PeopleIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={t("Users")} />
-                      </MenuItem>
-                      <MenuItem
-                        component={Link}
-                        to="/admin/translations"
-                        onClick={handleAdminMenuClose}
-                        selected={location.pathname === "/admin/translations"}
-                      >
-                        <ListItemIcon>
-                          <LanguageIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={t("translationPage.title")} />
-                      </MenuItem>
-                      <MenuItem
-                        component={Link}
-                        to="/admin/dashboard"
-                        onClick={handleAdminMenuClose}
-                        selected={location.pathname === "/admin/dashboard"}
-                      >
-                        <ListItemIcon>
-                          <DashboardIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={t("Admin Dashboard")} />
-                      </MenuItem>
-                      <MenuItem
-                        component={Link}
-                        to="/admin/customization"
-                        onClick={handleAdminMenuClose}
-                        selected={location.pathname === "/admin/customization"}
-                      >
-                        <ListItemIcon>
-                          <SettingsIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary={t("Customization")} />
-                      </MenuItem>
-                    </Menu>
-                  )}
-                </>
-              )}
-              {NOTIFICATIONS_CENTER_ENABLED && (
-                <IconButton
-                  onClick={handleNotificationMenuOpen}
-                  sx={{ ...navIconBtnSx, ml: 0.5 }}
+                <Button
+                  component={Link}
+                  to="/"
+                  onClick={handleHomeTopAction}
+                  startIcon={<HomeIcon />}
+                  sx={desktopNavButtonSx(location.pathname === "/")}
                 >
-                  <Badge badgeContent={unreadCount} color="error">
-                    <NotificationsIcon />
-                  </Badge>
+                  {t("Main Page")}
+                </Button>
+                <Button
+                  component={Link}
+                  to="/reels"
+                  startIcon={<VideoLibraryIcon />}
+                  sx={desktopNavButtonSx(
+                    location.pathname.startsWith("/reels"),
+                  )}
+                >
+                  {t("Reels")}
+                </Button>
+                <Button
+                  component={Link}
+                  to="/search"
+                  startIcon={<SearchIcon />}
+                  sx={desktopNavButtonSx(
+                    location.pathname.startsWith("/search"),
+                  )}
+                >
+                  {t("Search")}
+                </Button>
+                <Button
+                  component={Link}
+                  to="/categories"
+                  startIcon={<CategoryIcon />}
+                  sx={desktopNavButtonSx(
+                    location.pathname.startsWith("/categories"),
+                  )}
+                >
+                  {t("Categories")}
+                </Button>
+
+                <Button
+                  startIcon={<StoreIcon />}
+                  endIcon={<ExpandMoreIcon />}
+                  onClick={handlePlacesMenuOpen}
+                  sx={desktopNavButtonSx(placesMenuActive)}
+                >
+                  {t("Places", { defaultValue: "Places" })}
+                </Button>
+                <Menu
+                  anchorEl={placesAnchorEl}
+                  open={Boolean(placesAnchorEl)}
+                  onClose={handlePlacesMenuClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  PaperProps={{
+                    sx: {
+                      mt: 1.5,
+                      minWidth: 200,
+                      backgroundColor:
+                        theme.palette.mode === "dark"
+                          ? "var(--brand-primary-blue)"
+                          : "#fff",
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                    },
+                  }}
+                >
+                  <MenuItem
+                    component={Link}
+                    to="/stores"
+                    onClick={handlePlacesMenuClose}
+                    selected={location.pathname.startsWith("/stores")}
+                  >
+                    <ListItemIcon>
+                      <StoreIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Stores")} />
+                  </MenuItem>
+                  <MenuItem
+                    component={Link}
+                    to="/brands"
+                    onClick={handlePlacesMenuClose}
+                    selected={location.pathname.startsWith("/brands")}
+                  >
+                    <ListItemIcon>
+                      <BusinessIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Brands")} />
+                  </MenuItem>
+                  <MenuItem
+                    component={Link}
+                    to="/companies"
+                    onClick={handlePlacesMenuClose}
+                    selected={location.pathname.startsWith("/companies")}
+                  >
+                    <ListItemIcon>
+                      <CorporateFareIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={t("Companies", { defaultValue: "Companies" })}
+                    />
+                  </MenuItem>
+                </Menu>
+
+                <Button
+                  startIcon={<ShoppingBagIcon />}
+                  endIcon={<ExpandMoreIcon />}
+                  onClick={handleServicesMenuOpen}
+                  sx={desktopNavButtonSx(servicesMenuActive)}
+                >
+                  {t("Services", { defaultValue: "Services" })}
+                </Button>
+                <Menu
+                  anchorEl={servicesAnchorEl}
+                  open={Boolean(servicesAnchorEl)}
+                  onClose={handleServicesMenuClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  PaperProps={{
+                    sx: {
+                      mt: 1.5,
+                      minWidth: 200,
+                      backgroundColor:
+                        theme.palette.mode === "dark"
+                          ? "var(--brand-primary-blue)"
+                          : "#fff",
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: 2,
+                    },
+                  }}
+                >
+                  <MenuItem
+                    component={Link}
+                    to="/findjob"
+                    onClick={handleServicesMenuClose}
+                    selected={location.pathname.startsWith("/findjob")}
+                  >
+                    <ListItemIcon>
+                      <WorkOutlineIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary={t("Find Job")} />
+                  </MenuItem>
+                  <MenuItem
+                    component={Link}
+                    to="/shopping"
+                    onClick={handleServicesMenuClose}
+                    selected={location.pathname.startsWith("/shopping")}
+                  >
+                    <ListItemIcon>
+                      <ShoppingBagIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={t("Shopping", { defaultValue: "Shopping" })}
+                    />
+                  </MenuItem>
+                  <MenuItem
+                    component={Link}
+                    to="/gifts"
+                    onClick={() => {
+                      markGiftsSeen();
+                      handleServicesMenuClose();
+                    }}
+                    selected={location.pathname.startsWith("/gifts")}
+                  >
+                    <ListItemIcon>{giftsIconWithBadge}</ListItemIcon>
+                    <ListItemText primary={t("Gifts")} />
+                  </MenuItem>
+                </Menu>
+
+                {showAdminNav && (
+                  <>
+                    <Button
+                      startIcon={<AdminPanelSettingsIcon />}
+                      endIcon={isFullAdmin ? <ExpandMoreIcon /> : undefined}
+                      sx={{
+                        ...desktopNavButtonSx(
+                          location.pathname.startsWith("/admin"),
+                        ),
+                        backgroundColor: location.pathname.startsWith("/admin")
+                          ? "rgba(255,255,255,0.12)"
+                          : undefined,
+                      }}
+                      {...(isFullAdmin
+                        ? { onClick: handleAdminMenuOpen }
+                        : { component: Link, to: "/admin" })}
+                    >
+                      {t("Admin")}
+                    </Button>
+                    {isFullAdmin && (
+                      <Menu
+                        anchorEl={adminAnchorEl}
+                        open={Boolean(adminAnchorEl)}
+                        onClose={handleAdminMenuClose}
+                        anchorOrigin={{
+                          vertical: "bottom",
+                          horizontal: "right",
+                        }}
+                        transformOrigin={{
+                          vertical: "top",
+                          horizontal: "right",
+                        }}
+                        PaperProps={{
+                          sx: {
+                            mt: 1.5,
+                            minWidth: 220,
+                            backgroundColor:
+                              theme.palette.mode === "dark"
+                                ? "var(--brand-primary-blue)"
+                                : "#fff",
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: 2,
+                          },
+                        }}
+                      >
+                        <MenuItem
+                          component={Link}
+                          to="/admin"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin"}
+                        >
+                          <ListItemIcon>
+                            <AdminPanelSettingsIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("Data Entry")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/users"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/users"}
+                        >
+                          <ListItemIcon>
+                            <PeopleIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("Users")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/translations"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/translations"}
+                        >
+                          <ListItemIcon>
+                            <LanguageIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("translationPage.title")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/dashboard"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/dashboard"}
+                        >
+                          <ListItemIcon>
+                            <DashboardIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("Admin Dashboard")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/customization"
+                          onClick={handleAdminMenuClose}
+                          selected={
+                            location.pathname === "/admin/customization"
+                          }
+                        >
+                          <ListItemIcon>
+                            <SettingsIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("Customization")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/visitors"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/visitors"}
+                        >
+                          <ListItemIcon>
+                            <BarChartIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary={t("Visitors report")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/cities"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/cities"}
+                        >
+                          <ListItemIcon>
+                            <LocationOnIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={t("City management", {
+                              defaultValue: "City management",
+                            })}
+                          />
+                        </MenuItem>
+                      </Menu>
+                    )}
+                  </>
+                )}
+
+                {NOTIFICATIONS_CENTER_ENABLED && (
+                  <IconButton
+                    onClick={handleNotificationMenuOpen}
+                    sx={{ ...navIconBtnSx, ml: 0.5 }}
+                  >
+                    <Badge badgeContent={unreadCount} color="error">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
+                )}
+                <IconButton
+                  onClick={handleProfileMenuOpen}
+                  sx={{ ...navIconBtnSx, ml: 0.5 }}
+                  aria-label={t("Profile", { defaultValue: "Profile" })}
+                >
+                  <PersonIcon />
                 </IconButton>
-              )}
-              {/* Desktop Profile Icon (contains Favourites, Login/Logout, City, Mode) */}
-              <IconButton
-                component={Link}
-                to="/profile"
-                sx={{ ...navIconBtnSx, ml: 0.5 }}
-              >
-                <PersonIcon />
-              </IconButton>
-            </Box>
+              </Box>
+            </>
           )}
 
           {/* Controls - desktop only (mobile has its own navbar above) */}
@@ -1401,6 +1677,427 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
           </Box>
         </Menu>
       )}
+
+      <Menu
+        anchorEl={profileAnchorEl}
+        open={Boolean(profileAnchorEl)}
+        onClose={handleProfileMenuClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          onMouseDown: (e) => e.stopPropagation(),
+          sx: {
+            mt: 1.5,
+            minWidth: 300,
+            maxWidth: 360,
+            maxHeight: "min(90dvh, 620px)",
+            overflow: "auto",
+            backgroundColor:
+              theme.palette.mode === "dark" ? "rgba(15, 23, 42, 0.98)" : "#fff",
+            border:
+              theme.palette.mode === "dark"
+                ? "1px solid rgba(148,163,184,0.18)"
+                : `1px solid ${theme.palette.divider}`,
+            borderRadius: 2,
+          },
+        }}
+        disableAutoFocus
+        MenuListProps={{ autoFocus: false }}
+      >
+        <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider" }}>
+          <Box display="flex" alignItems="center" gap={1.25}>
+            <Avatar
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: "primary.main",
+                fontWeight: 700,
+              }}
+            >
+              {(displayName || "U").charAt(0).toUpperCase()}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={700} noWrap>
+                {displayName}
+              </Typography>
+              {!!profileEmail && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  noWrap
+                  display="block"
+                >
+                  {profileEmail}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </Box>
+
+        <MenuItem
+          onClick={() => {
+            handleProfileMenuClose();
+            if (user) {
+              setUserNameInput(user?.displayName || user?.username || "");
+              setUserNameDialogOpen(true);
+            } else {
+              setGuestNameInput(guestUser?.displayName || "");
+              setGuestNameDialogOpen(true);
+            }
+          }}
+        >
+          <ListItemIcon>
+            <PersonIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("Change Your Account Name")} />
+        </MenuItem>
+
+        <Divider />
+
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 1,
+            }}
+          >
+            <PaletteIcon sx={{ fontSize: 20, color: "primary.main" }} />
+            <Typography variant="subtitle2" fontWeight={700}>
+              {t("Appearance", { defaultValue: "Appearance" })}
+            </Typography>
+          </Box>
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            size="small"
+            value={colorMode}
+            onChange={(_, v) => v != null && setColorMode(v)}
+            sx={{
+              "& .MuiToggleButton-root": {
+                textTransform: "none",
+                py: 0.75,
+              },
+            }}
+          >
+            <ToggleButton value="light" aria-label={t("Light")}>
+              <LightModeOutlined sx={{ fontSize: 22, mr: 0.5 }} />
+              {t("Light")}
+            </ToggleButton>
+            <ToggleButton value="dark" aria-label={t("Dark")}>
+              <DarkModeOutlined sx={{ fontSize: 22, mr: 0.5 }} />
+              {t("Dark")}
+            </ToggleButton>
+            <ToggleButton
+              value="system"
+              aria-label={t("System", { defaultValue: "System" })}
+            >
+              <BrightnessAutoRounded sx={{ fontSize: 22, mr: 0.5 }} />
+              {t("System", { defaultValue: "System" })}
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
+        <Box sx={{ px: 2, pb: 1.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mb: 0.75, display: "block" }}
+          >
+            {t("City")}
+          </Typography>
+          <FormControl fullWidth size="small">
+            <Select
+              value={selectedCity}
+              onChange={(e) => changeCity(e.target.value)}
+              startAdornment={
+                <LocationOnIcon sx={{ ml: 0.5, mr: 0.5, fontSize: 18 }} />
+              }
+            >
+              {cities.map((city) => (
+                <MenuItem key={city.value} value={city.value}>
+                  {city.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <Box sx={{ px: 2, pb: 1.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mb: 0.75, display: "block" }}
+          >
+            {t("Language")}
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+            <Button
+              size="small"
+              variant={i18n.language === "en" ? "contained" : "outlined"}
+              onClick={() => i18n.changeLanguage("en")}
+            >
+              🇺🇸 {t("English")}
+            </Button>
+            <Button
+              size="small"
+              variant={i18n.language === "ar" ? "contained" : "outlined"}
+              onClick={() => i18n.changeLanguage("ar")}
+            >
+              🇸🇦 {t("Arabic")}
+            </Button>
+            <Button
+              size="small"
+              variant={i18n.language === "ku" ? "contained" : "outlined"}
+              onClick={() => i18n.changeLanguage("ku")}
+            >
+              <Box
+                component="span"
+                sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+              >
+                <Box
+                  component="img"
+                  src={kurdishFlag}
+                  alt="Kurdish"
+                  sx={{
+                    width: 16,
+                    height: 12,
+                    objectFit: "cover",
+                    borderRadius: 0.5,
+                  }}
+                />
+                {t("Kurdish")}
+              </Box>
+            </Button>
+          </Box>
+        </Box>
+
+        {contactItems.length > 0 && (
+          <Box sx={{ px: 2, pb: 1.5 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mb: 0.75, display: "block" }}
+            >
+              {t("Contact Us")}
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 0.75,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+              }}
+            >
+              {contactItems.map((item) => {
+                const href = normalizeUrl(item.value, item.key);
+                if (item.key === "whatsapp" && href) {
+                  return (
+                    <Button
+                      key={item.key}
+                      type="button"
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openWhatsAppLink(href);
+                      }}
+                      sx={{ minWidth: 40, px: 1, flexShrink: 0 }}
+                    >
+                      {item.icon}
+                    </Button>
+                  );
+                }
+                return (
+                  <Button
+                    key={item.key}
+                    component="a"
+                    href={href || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="small"
+                    variant="outlined"
+                    sx={{ minWidth: 40, px: 1, flexShrink: 0 }}
+                  >
+                    {item.icon}
+                  </Button>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
+
+        <Divider />
+
+        <MenuItem
+          component={Link}
+          to="/privacy-policy"
+          onClick={handleProfileMenuClose}
+        >
+          <ListItemIcon>
+            <PrivacyTipIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("Privacy Policy")} />
+        </MenuItem>
+
+        {user ? (
+          <>
+            <MenuItem
+              onClick={() => {
+                handleProfileMenuClose();
+                setDeactivateDialogOpen(true);
+              }}
+              sx={{ color: "secondary.main" }}
+            >
+              <ListItemIcon>
+                <BlockIcon fontSize="small" color="secondary" />
+              </ListItemIcon>
+              <ListItemText primary={t("Deactivate Account")} />
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                handleLogout();
+              }}
+              sx={{ color: "error.main" }}
+            >
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" color="error" />
+              </ListItemIcon>
+              <ListItemText primary={t("Logout")} />
+            </MenuItem>
+          </>
+        ) : (
+          <MenuItem
+            component={Link}
+            to="/login"
+            onClick={handleProfileMenuClose}
+            sx={{ color: "primary.main" }}
+          >
+            <ListItemIcon>
+              <LoginIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText primary={t("Login")} />
+          </MenuItem>
+        )}
+      </Menu>
+
+      <Dialog
+        open={guestNameDialogOpen}
+        onClose={() => setGuestNameDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            margin="normal"
+            label={t("Name")}
+            value={guestNameInput}
+            onChange={(e) => setGuestNameInput(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGuestNameDialogOpen(false)}>
+            {t("Cancel")}
+          </Button>
+          <Button
+            onClick={async () => {
+              const name = guestNameInput.trim();
+              if (!name) return;
+              const res = await updateGuestName(name);
+              if (res?.success) setGuestNameDialogOpen(false);
+            }}
+          >
+            {t("Save")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={userNameDialogOpen}
+        onClose={() => setUserNameDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            margin="normal"
+            label={t("Name")}
+            value={userNameInput}
+            onChange={(e) => setUserNameInput(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUserNameDialogOpen(false)}>
+            {t("Cancel")}
+          </Button>
+          <Button
+            onClick={async () => {
+              const name = userNameInput.trim();
+              if (!name) return;
+              const res = await updateProfile({ displayName: name });
+              if (res?.success) setUserNameDialogOpen(false);
+            }}
+          >
+            {t("Save")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deactivateDialogOpen}
+        onClose={() => !deactivating && setDeactivateDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t(
+              "Your account will be inactive immediately and you will be logged out.",
+            )}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t(
+              "You have 30 days to log in again to reactivate your account and cancel deletion.",
+            )}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {t(
+              "If you do not log in within 30 days, your account and all data will be permanently deleted.",
+            )}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeactivateDialogOpen(false)}
+            disabled={deactivating}
+          >
+            {t("Cancel")}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deactivating}
+            onClick={async () => {
+              setDeactivating(true);
+              const result = await deactivate();
+              setDeactivating(false);
+              if (result?.success) {
+                setDeactivateDialogOpen(false);
+                navigate("/");
+              } else {
+                window.alert(result?.message || t("Deactivation failed"));
+              }
+            }}
+          >
+            {deactivating ? t("Deactivating...") : t("Deactivate Account")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* {NOTIFICATIONS_CENTER_ENABLED && (
         <Snackbar

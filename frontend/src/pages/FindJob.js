@@ -30,9 +30,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
-import Slider from "react-slick";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import BannerCarousel from "../components/BannerCarousel";
 import { useTranslation } from "react-i18next";
 import { adAPI, jobAPI, storeTypeAPI } from "../services/api";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -131,23 +129,6 @@ const FindJob = () => {
     [bannerAds],
   );
 
-  const bannerSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      { breakpoint: 1024, settings: { dots: true, arrows: false } },
-      {
-        breakpoint: 600,
-        settings: { dots: true, arrows: false, autoplaySpeed: 4000 },
-      },
-    ],
-  };
-
   const publicJobs = useMemo(
     () =>
       (jobs || []).filter((j) => {
@@ -203,54 +184,15 @@ const FindJob = () => {
       }}
     >
       <Container maxWidth="lg">
-        {/* Ads banner */}
-        <Box sx={{ mb: 3 }}>
-          <Box
-            sx={{
-              width: "100%",
-              height: { xs: 150, md: 250 },
-              borderRadius: { xs: 3, md: 4 },
-              overflow: "hidden",
-              boxShadow: isDark
-                ? "0 8px 32px rgba(0,0,0,0.5)"
-                : "0 8px 32px rgba(0,0,0,0.1)",
-              backgroundColor: isDark ? "#1a2235" : "#f0f4ff",
-            }}
-          >
-            {bannerAdsWithImages.length > 0 ? (
-              <Slider {...bannerSettings}>
-                {bannerAdsWithImages.map((ad, index) => (
-                  <div key={ad._id || index}>
-                    <img
-                      onClick={() =>
-                        ad.brandId
-                          ? navigate(`/brands/${ad.brandId}`)
-                          : ad.storeId
-                            ? navigate(`/stores/${ad.storeId}`)
-                            : ad.giftId
-                              ? navigate(`/gifts/${ad.giftId}`)
-                              : null
-                      }
-                      src={ad.src}
-                      alt={`Banner ${index + 1}`}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain",
-                        cursor:
-                          ad.brandId || ad.storeId || ad.giftId
-                            ? "pointer"
-                            : "default",
-                      }}
-                    />
-                  </div>
-                ))}
-              </Slider>
-            ) : (
-              <Skeleton variant="rectangular" width="100%" height="100%" />
-            )}
-          </Box>
-        </Box>
+        {/* Ads banner — same as MainPage `BannerCarousel` */}
+        <BannerCarousel
+          banners={bannerAdsWithImages}
+          onBannerClick={(ad) => {
+            if (ad.brandId) navigate(`/brands/${ad.brandId}`);
+            else if (ad.storeId) navigate(`/stores/${ad.storeId}`);
+            else if (ad.giftId) navigate(`/gifts/${ad.giftId}`);
+          }}
+        />
 
         {/* Header + filter */}
         <Box

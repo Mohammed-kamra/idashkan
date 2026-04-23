@@ -16,6 +16,7 @@ const DEFAULT_NAV_CONFIG = {
     center: "label",
     topright1: "",
     topright2: "",
+    topright3: "",
   },
   bottomSlots: {
     bottomleft1: "home",

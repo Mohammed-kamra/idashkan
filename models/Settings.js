@@ -21,6 +21,7 @@ const settingsSchema = new mongoose.Schema(
         center: { type: String, default: "label", trim: true },
         topright1: { type: String, default: "", trim: true },
         topright2: { type: String, default: "", trim: true },
+        topright3: { type: String, default: "", trim: true },
       },
       bottomSlots: {
         bottomleft1: { type: String, default: "home", trim: true },

@@ -32,6 +32,7 @@ import {
   Stack,
   Chip,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { useTranslation } from "react-i18next";
@@ -89,6 +90,8 @@ async function uploadProductImage(file, expireDateInput) {
 }
 
 export default function OwnerDataEntryPage() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [products, setProducts] = useState([]);
@@ -376,28 +379,40 @@ export default function OwnerDataEntryPage() {
     }
   };
 
+  const pageShell = (children) => (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
+        pb: { xs: 10, md: 6 },
+      }}
+    >
+      {children}
+    </Box>
+  );
+
   if (!isAuthenticated || !user) {
-    return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+    return pageShell(
+      <Container maxWidth="md" sx={{ pt: 4, px: { xs: 1.5, sm: 2 } }}>
         <Alert severity="info">
           {t("Please sign in to access this page.")}
         </Alert>
-      </Container>
+      </Container>,
     );
   }
 
   if (!canAccessOwnerDataEntryPage(user)) {
-    return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+    return pageShell(
+      <Container maxWidth="md" sx={{ pt: 4, px: { xs: 1.5, sm: 2 } }}>
         <Alert severity="warning">
           {t("You do not have access to Owner Data Entry.")}
         </Alert>
-      </Container>
+      </Container>,
     );
   }
 
-  return (
-    <Container maxWidth="lg" sx={{ mt: 7, mb: 6 }}>
+  return pageShell(
+    <Container maxWidth="lg" sx={{ mt: 7, mb: 0, px: { xs: 1.5, sm: 2 } }}>
       <Box
         sx={{
           display: "flex",
@@ -446,7 +461,25 @@ export default function OwnerDataEntryPage() {
         disabled={loading}
       />
 
-      <TableContainer component={Paper} variant="outlined">
+      <TableContainer
+        component={Paper}
+        variant="outlined"
+        sx={{
+          bgcolor: "background.paper",
+          borderColor: "divider",
+          "& .MuiTableHead-root .MuiTableCell-root": {
+            fontWeight: 700,
+            bgcolor: isDark
+              ? "rgba(255,255,255,0.06)"
+              : "rgba(0,0,0,0.03)",
+          },
+          "& .MuiTableBody-root .MuiTableRow-root:nth-of-type(even)": {
+            bgcolor: isDark
+              ? "rgba(255,255,255,0.02)"
+              : "rgba(0,0,0,0.015)",
+          },
+        }}
+      >
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
             <CircularProgress />
@@ -581,7 +614,14 @@ export default function OwnerDataEntryPage() {
                 <CircularProgress size={28} />
               </Box>
             ) : isSingleFixedEntity && selectedEntity ? (
-              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "action.hover" }}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  bgcolor: isDark ? "rgba(255,255,255,0.06)" : "action.hover",
+                  borderColor: "divider",
+                }}
+              >
                 <Typography variant="caption" color="text.secondary" display="block">
                   {form.ownerKind === "store"
                     ? t("Store", { defaultValue: "Store" })
@@ -721,6 +761,6 @@ export default function OwnerDataEntryPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Container>,
   );
 }

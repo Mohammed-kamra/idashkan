@@ -44,9 +44,23 @@ export const resources = {
       visitorsReportFrom: "From",
       visitorsReportTo: "To",
       visitorsReportApply: "Apply",
+      visitorsReportReset: "Reset",
       visitorsReportTotalVisits: "Total visits (period)",
       visitorsReportSumDailyUnique: "Sum of daily unique visitors",
-      visitorsReportChartTitle: "Daily trend",
+      visitorsReportTotalVisitsHint:
+        "App sessions recorded in the selected range (one per browser tab session per UTC day).",
+      visitorsReportSumDailyUniqueHint:
+        "Each day’s count of distinct visitors added together (UTC). One person can appear on multiple days.",
+      visitorsReportDaysInRange: "Days in range",
+      visitorsReportChartTitle: "Visitors trend",
+      visitorsReportTrendGranularity: "Trend granularity",
+      visitorsReportGranularityToday: "Today (UTC)",
+      visitorsReportGranularityDay: "Daily",
+      visitorsReportGranularityWeek: "Weekly",
+      visitorsReportGranularityMonth: "Monthly",
+      visitorsReportPeriod: "Period (UTC)",
+      visitorsReportGranularityChartHint:
+        "Weekly and monthly series group visits into buckets; unique visitors are distinct within each bucket. Top cards still use daily totals for the range.",
       visitorsReportVisits: "Visits",
       visitorsReportUniqueVisitors: "Unique visitors",
       visitorsReportDay: "Day",
@@ -118,6 +132,7 @@ export const resources = {
       "Continue to WhatsApp": "Continue to WhatsApp",
       "No draft cart items":
         "No saved carts yet. Add items from a store with delivery.",
+      "Go shopping": "Go shopping",
       "Admin Panel": "Admin Panel",
       "Add stores and products to the storeplace":
         "Add stores and products to the storeplace",
@@ -732,9 +747,23 @@ export const resources = {
       visitorsReportFrom: "من",
       visitorsReportTo: "إلى",
       visitorsReportApply: "تطبيق",
+      visitorsReportReset: "إعادة تعيين",
       visitorsReportTotalVisits: "إجمالي الزيارات (الفترة)",
       visitorsReportSumDailyUnique: "مجموع الزوار الفريدين يومياً",
-      visitorsReportChartTitle: "الاتجاه اليومي",
+      visitorsReportTotalVisitsHint:
+        "جلسات التطبيق المسجلة ضمن النطاق (واحدة لكل جلسة متصفح لكل يوم UTC).",
+      visitorsReportSumDailyUniqueHint:
+        "مجموع عدد الزوار المميزين لكل يوم (UTC). قد يظهر الشخص نفسه في أيام متعددة.",
+      visitorsReportDaysInRange: "أيام في النطاق",
+      visitorsReportChartTitle: "اتجاه الزوار",
+      visitorsReportTrendGranularity: "دقة الاتجاه",
+      visitorsReportGranularityToday: "اليوم (UTC)",
+      visitorsReportGranularityDay: "يومي",
+      visitorsReportGranularityWeek: "أسبوعي",
+      visitorsReportGranularityMonth: "شهري",
+      visitorsReportPeriod: "الفترة (UTC)",
+      visitorsReportGranularityChartHint:
+        "السلاسل الأسبوعية والشهرية تجمع الزيارات في فترات؛ الزوار الفريدون مميزون داخل كل فترة. البطاقات العلوية ما زالت تعتمد على الإجماليات اليومية للنطاق.",
       visitorsReportVisits: "زيارات",
       visitorsReportUniqueVisitors: "زوار فريدون",
       visitorsReportDay: "اليوم",
@@ -812,6 +841,7 @@ export const resources = {
       "Continue to WhatsApp": "المتابعة إلى واتساب",
       "No draft cart items":
         "لا توجد سلات محفوظة بعد. أضف منتجات من متجر يوفر التوصيل.",
+      "Go shopping": "تسوق الآن",
       "Admin Panel": "لوحة المسؤول",
       "Add stores and products to the storeplace":
         "أضف متاجر ومنتجات إلى السوق",
@@ -1348,9 +1378,23 @@ export const resources = {
       visitorsReportFrom: "لە",
       visitorsReportTo: "بۆ",
       visitorsReportApply: "جێبەجێکردن",
+      visitorsReportReset: "ڕێکخستنەوە",
       visitorsReportTotalVisits: "کۆی سەردانەکان (ماوە)",
       visitorsReportSumDailyUnique: "کۆی سەردانکەرە تایبەتەکان بە ڕۆژ",
-      visitorsReportChartTitle: "ڕەوتی ڕۆژانە",
+      visitorsReportTotalVisitsHint:
+        "جۆگەکانی ئەپ لە ماوەکەدا (یەک بۆ هەر جۆگەی وێبگەڕ بۆ هەر ڕۆژێکی UTC).",
+      visitorsReportSumDailyUniqueHint:
+        "کۆی ژمارەی سەردانکەرە جیاوازەکان بۆ هەر ڕۆژێک (UTC). هەمان کەس دەتوانێت لە چەند ڕۆژدا بژمێردرێت.",
+      visitorsReportDaysInRange: "ڕۆژ لە ماوەدا",
+      visitorsReportChartTitle: "ڕەوتی سەردانکەران",
+      visitorsReportTrendGranularity: "وردی ڕەوت",
+      visitorsReportGranularityToday: "ئەمڕۆ (UTC)",
+      visitorsReportGranularityDay: "ڕۆژانە",
+      visitorsReportGranularityWeek: "هەفتانە",
+      visitorsReportGranularityMonth: "مانگانە",
+      visitorsReportPeriod: "ماوە (UTC)",
+      visitorsReportGranularityChartHint:
+        "زنجیرەی هەفتانە و مانگانە سەردانەکان کۆدەکاتەوە؛ سەردانکەرە تایبەتەکان لە هەر بەندێکدا جیا دەکرێنەوە. کارتی سەرەوە هێشتا کۆی ڕۆژانە بەکاردەهێنێت.",
       visitorsReportVisits: "سەردانەکان",
       visitorsReportUniqueVisitors: "سەردانکەرە تایبەتەکان",
       visitorsReportDay: "ڕۆژ",
@@ -1430,6 +1474,7 @@ export const resources = {
       "Continue to WhatsApp": "بەردەوام بە بۆ واتساپ",
       "No draft cart items":
         "هیچ داتایەک لەنێو سەبەتەکەدا نەدۆزرایەوە ، گەڕان بکە بەنێو ئەو فرۆشگایانەى گەیاندنیان هەیە.",
+      "Go shopping": "بازاڕی بکە",
       "Admin Panel": "پەڕەی ئەدمین",
       "Add stores and products to the storeplace":
         "فرۆشگا و کاڵا زیاد بکە بۆ بازاڕ",

@@ -177,6 +177,18 @@ const AdminSearchAnalyticsPage = () => {
 
   const cur = overview?.current;
   const prev = overview?.previous;
+  const isDark = theme.palette.mode === "dark";
+
+  const tableStripeSx = {
+    "& .MuiTableBody .MuiTableRow-root:nth-of-type(even)": {
+      bgcolor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+    },
+  };
+
+  const tableHeadRowSx = {
+    bgcolor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)",
+    "& .MuiTableCell-root": { fontWeight: 700 },
+  };
 
   return (
     <Box
@@ -184,11 +196,11 @@ const AdminSearchAnalyticsPage = () => {
         py: 3,
         pb: 6,
         minHeight: "100vh",
-        bgcolor: "background.default",
+        bgcolor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
         pt: 7,
       }}
     >
-      <Container maxWidth="xl">
+      <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
             display: "flex",
@@ -207,7 +219,7 @@ const AdminSearchAnalyticsPage = () => {
               Back
             </Button>
 
-            <Typography variant="h5" fontWeight={800}>
+            <Typography variant="h5" fontWeight={800} color="text.primary">
               Search analytics
             </Typography>
           </Box>
@@ -221,7 +233,23 @@ const AdminSearchAnalyticsPage = () => {
           </Button>
         </Box>
 
-        <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: 2,
+            bgcolor: "background.paper",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: isDark
+              ? "0 4px 22px rgba(0,0,0,0.4)"
+              : "0 2px 12px rgba(0,0,0,0.06)",
+            "& .MuiOutlinedInput-root": {
+              bgcolor: isDark ? "rgba(255,255,255,0.05)" : undefined,
+            },
+          }}
+        >
           <Grid container spacing={2} alignItems="center">
             <Grid size={{ xs: 6, sm: 6, md: 2 }} sx={{ minWidth: 0 }}>
               <TextField
@@ -316,17 +344,7 @@ const AdminSearchAnalyticsPage = () => {
           </Box>
         ) : (
           <>
-            <Grid
-              container
-              spacing={2}
-              sx={{
-                mb: 3,
-                color:
-                  theme.palette.mode === "dark"
-                    ? "secondary.main"
-                    : "primary.main",
-              }}
-            >
+            <Grid container spacing={2} sx={{ mb: 3 }}>
               {[
                 {
                   label: "Total searches",
@@ -360,7 +378,19 @@ const AdminSearchAnalyticsPage = () => {
                   sx={{ minWidth: 0 }}
                   key={card.label}
                 >
-                  <Card variant="outlined" sx={{ height: "100%" }}>
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      height: "100%",
+                      bgcolor: isDark
+                        ? "rgba(255,255,255,0.04)"
+                        : "background.paper",
+                      borderColor: "divider",
+                      boxShadow: isDark
+                        ? "0 2px 14px rgba(0,0,0,0.35)"
+                        : "0 1px 4px rgba(0,0,0,0.06)",
+                    }}
+                  >
                     <CardContent>
                       <Box
                         sx={{
@@ -368,20 +398,14 @@ const AdminSearchAnalyticsPage = () => {
                           alignItems: "center",
                           gap: 1,
                           mb: 1,
-                          color:
-                            theme.palette.mode === "dark"
-                              ? "text.primary"
-                              : "text.secondary",
+                          color: "primary.light",
                         }}
                       >
                         {card.icon}
                         <Typography
-                          color={
-                            theme.palette.mode === "dark"
-                              ? "text.primary"
-                              : "text.secondary"
-                          }
                           variant="body2"
+                          fontWeight={600}
+                          color="text.primary"
                         >
                           {card.label}
                         </Typography>
@@ -392,23 +416,13 @@ const AdminSearchAnalyticsPage = () => {
                         sx={{
                           fontSize: { xs: "1.35rem", sm: "2.125rem" },
                           wordBreak: "break-word",
-                          color:
-                            theme.palette.mode === "dark"
-                              ? "text.primary"
-                              : "text.secondary",
+                          color: "text.primary",
                         }}
                       >
                         {card.value}
                       </Typography>
                       {card.prev != null && (
-                        <Typography
-                          variant="caption"
-                          color={
-                            theme.palette.mode === "dark"
-                              ? "text.primary"
-                              : "text.secondary"
-                          }
-                        >
+                        <Typography variant="caption" color="text.secondary">
                           Previous period: {card.prev}
                         </Typography>
                       )}
@@ -420,17 +434,48 @@ const AdminSearchAnalyticsPage = () => {
 
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid size={{ xs: 12, lg: 8 }}>
-                <Paper sx={{ p: 2, height: 360 }}>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    height: 360,
+                    bgcolor: "background.paper",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    boxShadow: isDark
+                      ? "0 4px 22px rgba(0,0,0,0.35)"
+                      : "0 2px 12px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom color="text.primary">
                     Search volume & clicks
                   </Typography>
                   <ResponsiveContainer width="100%" height="90%">
                     <LineChart data={trends}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Legend />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDark ? "rgba(255,255,255,0.12)" : undefined}
+                      />
+                      <XAxis
+                        dataKey="period"
+                        tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#666" }}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#666" }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: isDark ? "#1e293b" : "#fff",
+                          border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "#e5e7eb"}`,
+                          borderRadius: 8,
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{
+                          color: isDark ? "#e2e8f0" : "#333",
+                        }}
+                      />
                       <Line
                         type="monotone"
                         dataKey="count"
@@ -452,8 +497,21 @@ const AdminSearchAnalyticsPage = () => {
                 </Paper>
               </Grid>
               <Grid size={{ xs: 12, lg: 4 }}>
-                <Paper sx={{ p: 2, height: 360, overflow: "auto" }}>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    height: 360,
+                    overflow: "auto",
+                    bgcolor: "background.paper",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    boxShadow: isDark
+                      ? "0 4px 22px rgba(0,0,0,0.35)"
+                      : "0 2px 12px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom color="text.primary">
                     Trending (7 days)
                   </Typography>
                   {trending.map((row) => (
@@ -472,7 +530,17 @@ const AdminSearchAnalyticsPage = () => {
                       >
                         {row.keyword}
                       </Typography>
-                      <Chip size="small" label={row.count} />
+                      <Chip
+                        size="small"
+                        label={row.count}
+                        sx={{
+                          bgcolor: isDark
+                            ? "rgba(30, 111, 217, 0.25)"
+                            : undefined,
+                          color: "text.primary",
+                          fontWeight: 700,
+                        }}
+                      />
                     </Box>
                   ))}
                   {!trending.length && (
@@ -484,13 +552,17 @@ const AdminSearchAnalyticsPage = () => {
 
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Top keywords
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Keyword</TableCell>
                         <TableCell align="right">Searches</TableCell>
                         <TableCell align="right">Clicks</TableCell>
@@ -513,13 +585,17 @@ const AdminSearchAnalyticsPage = () => {
                 </TableContainer>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Top clicked terms
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Keyword</TableCell>
                         <TableCell align="right">Clicks</TableCell>
                       </TableRow>
@@ -537,13 +613,17 @@ const AdminSearchAnalyticsPage = () => {
               </Grid>
 
               <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   No-result keywords
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Keyword</TableCell>
                         <TableCell align="right">Count</TableCell>
                       </TableRow>
@@ -561,13 +641,17 @@ const AdminSearchAnalyticsPage = () => {
               </Grid>
 
               <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Top converting keywords (min 5 searches)
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Keyword</TableCell>
                         <TableCell align="right">Searches</TableCell>
                         <TableCell align="right">Clicks</TableCell>
@@ -591,13 +675,17 @@ const AdminSearchAnalyticsPage = () => {
               </Grid>
 
               <Grid size={{ xs: 12, md: 4 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Popular cities (filter)
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>City</TableCell>
                         <TableCell align="right">Searches</TableCell>
                       </TableRow>
@@ -614,13 +702,17 @@ const AdminSearchAnalyticsPage = () => {
                 </TableContainer>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Top stores (filter)
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Store</TableCell>
                         <TableCell align="right">Searches</TableCell>
                       </TableRow>
@@ -637,13 +729,17 @@ const AdminSearchAnalyticsPage = () => {
                 </TableContainer>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Top categories (filter)
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Category</TableCell>
                         <TableCell align="right">Searches</TableCell>
                       </TableRow>
@@ -661,14 +757,23 @@ const AdminSearchAnalyticsPage = () => {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Filter usage
                 </Typography>
                 <Grid container spacing={2}>
                   {topFilters &&
                     ["category", "city", "store", "sortBy"].map((k) => (
                       <Grid size={{ xs: 12, sm: 6, md: 3 }} key={k}>
-                        <Paper variant="outlined" sx={{ p: 1.5 }}>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1.5,
+                            bgcolor: isDark
+                              ? "rgba(255,255,255,0.04)"
+                              : "background.paper",
+                            borderColor: "divider",
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">
                             {k}
                           </Typography>
@@ -699,13 +804,17 @@ const AdminSearchAnalyticsPage = () => {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }} color="text.primary">
                   Recent activity
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ bgcolor: "background.paper", borderColor: "divider" }}
+                >
+                  <Table size="small" sx={tableStripeSx}>
                     <TableHead>
-                      <TableRow>
+                      <TableRow sx={tableHeadRowSx}>
                         <TableCell>Time</TableCell>
                         <TableCell>Query</TableCell>
                         <TableCell>Source</TableCell>

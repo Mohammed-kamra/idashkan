@@ -81,6 +81,7 @@ import {
   ActiveThemeProvider,
   useActiveTheme,
 } from "./context/ActiveThemeContext";
+import { DraftCartDrawerProvider } from "./context/DraftCartDrawerContext";
 import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext";
 import { appVisitAPI } from "./services/api";
 import { getDeviceId } from "./utils/deviceId";
@@ -209,6 +210,7 @@ function AppContent() {
   return (
     <CacheProvider value={cacheRtl}>
       <ThemeProvider theme={theme}>
+        <DraftCartDrawerProvider>
         <CssBaseline />
         {!splashFinished ? (
           <SplashScreen darkMode={darkMode} onComplete={handleSplashComplete} />
@@ -457,6 +459,7 @@ function AppContent() {
           <BottomNavigationBar />
           {false && <NotificationEnableBanner />}
         </Box>
+        </DraftCartDrawerProvider>
       </ThemeProvider>
     </CacheProvider>
   );

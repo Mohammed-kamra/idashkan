@@ -17,12 +17,15 @@ import {
   TableHead,
   TableRow,
   TextField,
+  MenuItem,
   CircularProgress,
   Alert,
   Grid,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import {
   ResponsiveContainer,
   LineChart,
@@ -51,6 +54,9 @@ function formatPct(v) {
   return `${n > 0 ? "+" : ""}${n}%`;
 }
 
+const ACCENT_VISITS = "#1E6FD9";
+const ACCENT_UNIQUE = "#2e7d32";
+
 const AdminVisitorsReportPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -58,8 +64,10 @@ const AdminVisitorsReportPage = () => {
   const { t } = useTranslation();
   const { i18n } = useTranslation();
   const isRtl = i18n.language === "ar" || i18n.language === "ku";
+  const isDark = theme.palette.mode === "dark";
 
   const [range, setRange] = useState(() => defaultRange());
+  const [granularity, setGranularity] = useState("day");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [series, setSeries] = useState([]);
@@ -70,31 +78,42 @@ const AdminVisitorsReportPage = () => {
     user?.email === "admin@gmail.com" ||
     user?.role === "support";
 
-  const queryParams = useMemo(
-    () => ({
-      from: range.from,
-      to: range.to,
-    }),
-    [range.from, range.to],
+  const load = useCallback(
+    async (override) => {
+      setLoading(true);
+      setError("");
+      try {
+        const g = override?.granularity ?? granularity;
+        const from = override?.from ?? range.from;
+        const to = override?.to ?? range.to;
+        const todayStr = formatInputDate(new Date());
+        const params =
+          g === "today"
+            ? { from: todayStr, to: todayStr, granularity: "day" }
+            : { from, to, granularity: g };
+        const res = await adminAPI.getVisitorsReportDaily(params);
+        const data = res.data?.data ?? res.data;
+        setSeries(Array.isArray(data?.series) ? data.series : []);
+        setSummary(data?.summary ?? null);
+      } catch (e) {
+        console.error(e);
+        setError(e.response?.data?.message || e.message || "Failed to load");
+        setSeries([]);
+        setSummary(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [granularity, range.from, range.to],
   );
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const handleReset = () => {
+    const r = defaultRange();
+    setRange(r);
+    setGranularity("day");
     setError("");
-    try {
-      const res = await adminAPI.getVisitorsReportDaily(queryParams);
-      const data = res.data?.data ?? res.data;
-      setSeries(Array.isArray(data?.series) ? data.series : []);
-      setSummary(data?.summary ?? null);
-    } catch (e) {
-      console.error(e);
-      setError(e.response?.data?.message || e.message || "Failed to load");
-      setSeries([]);
-      setSummary(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [queryParams]);
+    load({ from: r.from, to: r.to, granularity: "day" });
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -118,17 +137,67 @@ const AdminVisitorsReportPage = () => {
     [series],
   );
 
+  /** Prefer API summary; fall back to summing series so cards always match the table. */
+  const effectiveSummary = useMemo(() => {
+    const fromSeries = {
+      totalVisits: series.reduce((s, r) => s + (Number(r.visits) || 0), 0),
+      sumDailyUniqueVisitors: series.reduce(
+        (s, r) => s + (Number(r.uniqueVisitors) || 0),
+        0,
+      ),
+      dayCount: series.length,
+    };
+    if (!summary || typeof summary.totalVisits !== "number") {
+      return fromSeries;
+    }
+    return {
+      totalVisits: summary.totalVisits ?? fromSeries.totalVisits,
+      sumDailyUniqueVisitors:
+        summary.sumDailyUniqueVisitors ?? fromSeries.sumDailyUniqueVisitors,
+      dayCount: summary.dayCount ?? fromSeries.dayCount,
+    };
+  }, [summary, series]);
+
+  const statCardShellSx = (accent) => ({
+    height: "100%",
+    border: "1px solid",
+    borderColor: "divider",
+    borderRadius: 2,
+    overflow: "hidden",
+    background: isDark
+      ? `linear-gradient(145deg, ${accent}28 0%, rgba(255,255,255,0.03) 50%)`
+      : `linear-gradient(145deg, ${accent}18 0%, #ffffff 55%)`,
+    boxShadow: isDark
+      ? "0 4px 22px rgba(0,0,0,0.4)"
+      : "0 2px 14px rgba(0,0,0,0.07)",
+    borderInlineStart: "4px solid",
+    borderInlineStartColor: accent,
+  });
+
+  const formatInt = (n) =>
+    new Intl.NumberFormat(i18n.language || undefined, {
+      maximumFractionDigits: 0,
+    }).format(Number(n) || 0);
+
+  const periodColumnLabel =
+    granularity === "day" || granularity === "today"
+      ? t("visitorsReportDay")
+      : t("visitorsReportPeriod");
+
+  const utcTodayStr = formatInputDate(new Date());
+  const isTodayPreset = granularity === "today";
+
   return (
     <Box
       sx={{
         py: 3,
         pb: 6,
         minHeight: "100vh",
-        bgcolor: "background.default",
+        bgcolor: isDark ? "rgba(13,17,28,1)" : "rgba(248,249,252,1)",
         pt: 7,
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 2 } }}>
         <Box
           sx={{
             display: "flex",
@@ -146,7 +215,7 @@ const AdminVisitorsReportPage = () => {
           >
             {t("Back")}
           </Button>
-          <Typography variant="h4" component="h1">
+          <Typography variant="h4" component="h1" fontWeight={800}>
             {t("Visitors report")}
           </Typography>
         </Box>
@@ -158,31 +227,121 @@ const AdminVisitorsReportPage = () => {
         <Box
           sx={{
             display: "flex",
-            flexWrap: "wrap",
+            flexDirection: { xs: "column", md: "row" },
+            flexWrap: { md: "wrap" },
             gap: 2,
             mb: 3,
-            alignItems: "center",
+            alignItems: { xs: "stretch", md: "center" },
           }}
         >
-          <TextField
-            label={t("visitorsReportFrom")}
-            type="date"
-            size="small"
-            value={range.from}
-            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label={t("visitorsReportTo")}
-            type="date"
-            size="small"
-            value={range.to}
-            onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
-          <Button variant="contained" onClick={load} disabled={loading}>
-            {t("visitorsReportApply")}
-          </Button>
+          {/* Row 1 on mobile: From + To; inline with controls from md */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              width: { xs: "100%", md: "auto" },
+              minWidth: 0,
+            }}
+          >
+            <TextField
+              label={t("visitorsReportFrom")}
+              type="date"
+              size="small"
+              fullWidth
+              value={isTodayPreset ? utcTodayStr : range.from}
+              onChange={(e) => {
+                setGranularity("day");
+                setRange((r) => ({ ...r, from: e.target.value }));
+              }}
+              disabled={isTodayPreset}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                flex: { xs: 1, md: "0 0 auto" },
+                minWidth: { md: 160 },
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
+                },
+              }}
+            />
+            <TextField
+              label={t("visitorsReportTo")}
+              type="date"
+              size="small"
+              fullWidth
+              value={isTodayPreset ? utcTodayStr : range.to}
+              onChange={(e) => {
+                setGranularity("day");
+                setRange((r) => ({ ...r, to: e.target.value }));
+              }}
+              disabled={isTodayPreset}
+              InputLabelProps={{ shrink: true }}
+              sx={{
+                flex: { xs: 1, md: "0 0 auto" },
+                minWidth: { md: 160 },
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
+                },
+              }}
+            />
+          </Box>
+          {/* Row 2 on mobile: granularity + Apply + Reset */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: { xs: 1, md: 2 },
+              width: { xs: "100%", md: "auto" },
+              minWidth: 0,
+              alignItems: "center",
+              flex: { md: "1 1 auto" },
+            }}
+          >
+            <TextField
+              select
+              label={t("visitorsReportTrendGranularity")}
+              size="small"
+              fullWidth
+              value={granularity}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "today") {
+                  const td = formatInputDate(new Date());
+                  setRange({ from: td, to: td });
+                  setGranularity("today");
+                } else {
+                  setGranularity(v);
+                }
+              }}
+              sx={{
+                flex: { xs: 1, md: "0 1 auto" },
+                minWidth: { xs: 0, md: 180 },
+                maxWidth: { md: 320 },
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
+                },
+              }}
+            >
+              <MenuItem value="today">{t("visitorsReportGranularityToday")}</MenuItem>
+              <MenuItem value="day">{t("visitorsReportGranularityDay")}</MenuItem>
+              <MenuItem value="week">{t("visitorsReportGranularityWeek")}</MenuItem>
+              <MenuItem value="month">{t("visitorsReportGranularityMonth")}</MenuItem>
+            </TextField>
+            <Button
+              variant="contained"
+              onClick={() => load()}
+              disabled={loading}
+              sx={{ flexShrink: 0, px: { xs: 1.5, sm: 2 } }}
+            >
+              {t("visitorsReportApply")}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleReset}
+              disabled={loading}
+              sx={{ flexShrink: 0, px: { xs: 1.5, sm: 2 } }}
+            >
+              {t("visitorsReportReset")}
+            </Button>
+          </Box>
         </Box>
 
         {error ? (
@@ -197,87 +356,133 @@ const AdminVisitorsReportPage = () => {
           </Box>
         ) : (
           <>
-            {summary ? (
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography
-                        color={
-                          theme.palette.mode === "dark"
-                            ? "text.primary"
-                            : "text.secondary"
-                        }
-                        variant="body2"
-                      >
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid size={{ xs: 12, sm: 6 }} sx={{ minWidth: 0 }}>
+                <Card variant="outlined" sx={statCardShellSx(ACCENT_VISITS)}>
+                  <CardContent>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                        color: ACCENT_VISITS,
+                      }}
+                    >
+                      <VisibilityOutlinedIcon fontSize="small" />
+                      <Typography variant="body2" fontWeight={700} color="text.primary">
                         {t("visitorsReportTotalVisits")}
                       </Typography>
-                      <Typography
-                        color={
-                          theme.palette.mode === "dark"
-                            ? "text.primary"
-                            : "text.secondary"
-                        }
-                        variant="h5"
-                      >
-                        {summary.totalVisits ?? 0}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography
-                        color={
-                          theme.palette.mode === "dark"
-                            ? "text.primary"
-                            : "text.secondary"
-                        }
-                        variant="body2"
-                      >
+                    </Box>
+                    <Typography
+                      variant="h4"
+                      fontWeight={900}
+                      sx={{
+                        fontSize: { xs: "1.75rem", sm: "2.125rem" },
+                        letterSpacing: "-0.02em",
+                        color: "text.primary",
+                      }}
+                    >
+                      {formatInt(effectiveSummary.totalVisits)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                      {t("visitorsReportTotalVisitsHint")}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }} sx={{ minWidth: 0 }}>
+                <Card variant="outlined" sx={statCardShellSx(ACCENT_UNIQUE)}>
+                  <CardContent>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                        color: ACCENT_UNIQUE,
+                      }}
+                    >
+                      <GroupsOutlinedIcon fontSize="small" />
+                      <Typography variant="body2" fontWeight={700} color="text.primary">
                         {t("visitorsReportSumDailyUnique")}
                       </Typography>
-                      <Typography
-                        color={
-                          theme.palette.mode === "dark"
-                            ? "text.primary"
-                            : "text.secondary"
-                        }
-                        variant="h5"
-                      >
-                        {summary.sumDailyUniqueVisitors ?? 0}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                    </Box>
+                    <Typography
+                      variant="h4"
+                      fontWeight={900}
+                      sx={{
+                        fontSize: { xs: "1.75rem", sm: "2.125rem" },
+                        letterSpacing: "-0.02em",
+                        color: "text.primary",
+                      }}
+                    >
+                      {formatInt(effectiveSummary.sumDailyUniqueVisitors)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                      {t("visitorsReportSumDailyUniqueHint")}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grid>
-            ) : null}
+            </Grid>
 
-            <Paper sx={{ p: 2, mb: 3 }}>
-              <Typography variant="subtitle1" gutterBottom fontWeight={600}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t("visitorsReportDaysInRange")}: {formatInt(effectiveSummary.dayCount)}{" "}
+              ·{" "}
+              {isTodayPreset
+                ? utcTodayStr
+                : `${range.from} → ${range.to}`}
+            </Typography>
+
+            <Paper
+              sx={{
+                p: 2,
+                mb: 3,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle1" gutterBottom fontWeight={700} color="text.primary">
                 {t("visitorsReportChartTitle")}
               </Typography>
+              {granularity !== "day" && granularity !== "today" ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                  {t("visitorsReportGranularityChartHint")}
+                </Typography>
+              ) : null}
               <Box sx={{ width: "100%", height: 320 }}>
                 <ResponsiveContainer>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" reversed={isRtl} />
-                    <YAxis />
-                    <Tooltip />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke={isDark ? "rgba(255,255,255,0.12)" : undefined}
+                    />
+                    <XAxis dataKey="day" reversed={isRtl} tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: isDark ? "#1e293b" : "#fff",
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "#e5e7eb"}`,
+                        borderRadius: 8,
+                      }}
+                    />
                     <Legend />
                     <Line
                       type="monotone"
                       dataKey="visits"
                       name={t("visitorsReportVisits")}
-                      stroke="#1976d2"
+                      stroke={ACCENT_VISITS}
+                      strokeWidth={2}
                       dot={false}
                     />
                     <Line
                       type="monotone"
                       dataKey="uniqueVisitors"
                       name={t("visitorsReportUniqueVisitors")}
-                      stroke="#2e7d32"
+                      stroke={ACCENT_UNIQUE}
+                      strokeWidth={2}
                       dot={false}
                     />
                   </LineChart>
@@ -285,21 +490,33 @@ const AdminVisitorsReportPage = () => {
               </Box>
             </Paper>
 
-            <TableContainer component={Paper}>
+            <TableContainer
+              component={Paper}
+              variant="outlined"
+              sx={{ bgcolor: "background.paper" }}
+            >
               <Table size="small">
                 <TableHead>
-                  <TableRow>
-                    <TableCell>{t("visitorsReportDay")}</TableCell>
-                    <TableCell align="right">
+                  <TableRow
+                    sx={{
+                      bgcolor: isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.04)",
+                    }}
+                  >
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      {periodColumnLabel}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {t("visitorsReportVisits")}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {t("visitorsReportUniqueVisitors")}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {t("visitorsReportDeltaVisits")}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {t("visitorsReportDeltaUnique")}
                     </TableCell>
                   </TableRow>
@@ -313,7 +530,16 @@ const AdminVisitorsReportPage = () => {
                     </TableRow>
                   ) : (
                     series.map((row) => (
-                      <TableRow key={row.day}>
+                      <TableRow
+                        key={row.day}
+                        sx={{
+                          "&:nth-of-type(even)": {
+                            bgcolor: isDark
+                              ? "rgba(255,255,255,0.03)"
+                              : "rgba(0,0,0,0.02)",
+                          },
+                        }}
+                      >
                         <TableCell>{row.day}</TableCell>
                         <TableCell align="right">{row.visits}</TableCell>
                         <TableCell align="right">

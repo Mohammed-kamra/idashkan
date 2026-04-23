@@ -47,6 +47,7 @@ const DEFAULT_NAV_CONFIG = {
     center: "label",
     topright1: "",
     topright2: "",
+    topright3: "",
   },
   bottomSlots: {
     bottomleft1: "home",
@@ -57,7 +58,7 @@ const DEFAULT_NAV_CONFIG = {
   },
 };
 
-const ALLOWED_NAV_TEMPLATES = ["template1", "template2", "custom"];
+const ALLOWED_NAV_TEMPLATES = ["template1", "template2", "custom", "custom2"];
 const ALLOWED_NAV_ACTIONS = [
   "", // empty slot
   "none",
@@ -71,6 +72,7 @@ const ALLOWED_NAV_ACTIONS = [
   "stores",
   "gifts",
   "shopping",
+  "draftCart",
   "profile",
   "brands",
   "companies",
@@ -145,6 +147,7 @@ const sanitizeNavConfig = (input) => {
       center: sanitizeSlot(top.center) || "label",
       topright1: sanitizeSlot(top.topright1),
       topright2: sanitizeSlot(top.topright2),
+      topright3: sanitizeSlot(top.topright3),
     },
     bottomSlots: {
       bottomleft1: sanitizeSlot(bottom.bottomleft1) || "home",
