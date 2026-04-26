@@ -58,12 +58,14 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import ProfilePage from "./pages/ProfilePage";
 import OwnerDashboardPage from "./pages/OwnerDashboardPage";
 import OwnerDataEntryPage from "./pages/OwnerDataEntryPage";
+import PendingPage from "./pages/PendingPage";
 import FindJob from "./pages/FindJob";
 import ShoppingPage from "./pages/ShoppingPage";
 import ProtectedRoute, {
   ProtectedAdminOnlyRoute,
   ProtectedOwnerRoute,
   ProtectedOwnerDataEntryRoute,
+  ProtectedPendingRoute,
 } from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -447,6 +449,14 @@ function AppContent() {
                     <ProtectedOwnerDataEntryRoute>
                       <OwnerDataEntryPage />
                     </ProtectedOwnerDataEntryRoute>
+                  }
+                />
+                <Route
+                  path="/pending"
+                  element={
+                    <ProtectedPendingRoute>
+                      <PendingPage />
+                    </ProtectedPendingRoute>
                   }
                 />
                 <Route path="/findjob" element={<FindJob />} />

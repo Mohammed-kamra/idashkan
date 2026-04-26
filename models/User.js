@@ -118,10 +118,10 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
-  /** Application role: `support` = Data Entry; `owner` = linked store/brand/company dashboard; `owner_dataentry` = add-only products for scoped entities. */
+  /** Application role: `support` = Data Entry; `owner` = linked store/brand/company dashboard; `owner_dataentry` = add-only products for scoped entities; `owner_superadmin` = both owner + data entry capabilities. */
   role: {
     type: String,
-    enum: ["user", "support", "owner", "owner_dataentry"],
+    enum: ["user", "support", "owner", "owner_dataentry", "owner_superadmin"],
     default: "user",
   },
   /** Legacy single link — kept in sync with first entry of `ownerEntities`. */

@@ -2,9 +2,11 @@ const mongoose = require("mongoose");
 const Store = require("../models/Store");
 const Brand = require("../models/Brand");
 const Company = require("../models/Company");
+const Product = require("../models/Product");
+const { isOwnerDataEntryRole } = require("./roleHelpers");
 
 function hasOwnerDataEntryScope(user) {
-  if (!user || user.role !== "owner_dataentry") return false;
+  if (!user || !isOwnerDataEntryRole(user)) return false;
   if (
     user.ownerDataEntryAllStores ||
     user.ownerDataEntryAllBrands ||
@@ -113,6 +115,32 @@ async function assertOwnerDataEntryCanCreateProduct(user, { storeId, brandId, co
   return { ok: false, message: "Invalid product owner" };
 }
 
+/**
+ * True if this product is visible under owner data entry scope rules.
+ */
+async function productMatchesOwnerDataEntryScope(user, productId) {
+  if (!user || !hasOwnerDataEntryScope(user)) return false;
+  if (!truthyId(productId)) return false;
+  const scope = await buildOwnerDataEntryProductFilter(user);
+  const id = new mongoose.Types.ObjectId(String(productId));
+  return !!(await Product.exists({ $and: [{ _id: id }, scope] }));
+}
+
+/** Single owner key for scoped product (store wins over brand over company). */
+function primaryOwnerIdsFromProduct(product) {
+  const p = product || {};
+  if (truthyId(p.storeId)) {
+    return { storeId: p.storeId, brandId: null, companyId: null };
+  }
+  if (truthyId(p.brandId)) {
+    return { storeId: null, brandId: p.brandId, companyId: null };
+  }
+  if (truthyId(p.companyId)) {
+    return { storeId: null, brandId: null, companyId: p.companyId };
+  }
+  return { storeId: null, brandId: null, companyId: null };
+}
+
 function normalizeOwnerDataEntryPayload(body) {
   const {
     ownerDataEntryAllStores,
@@ -165,6 +193,8 @@ module.exports = {
   hasOwnerDataEntryScope,
   buildOwnerDataEntryProductFilter,
   assertOwnerDataEntryCanCreateProduct,
+  productMatchesOwnerDataEntryScope,
+  primaryOwnerIdsFromProduct,
   normalizeOwnerDataEntryPayload,
   validateOwnerDataEntryScopePayload,
   truthyId,

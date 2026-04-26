@@ -10,6 +10,7 @@ const { deleteUserAndAssociatedData } = require("./deleteUserAndAssociatedData")
 const {
   validateAndNormalizeOwnerEntitiesInput,
 } = require("../utils/ownerEntities");
+const { isOwnerDashboardRole } = require("../utils/roleHelpers");
 
 const GRACE_DAYS = 30;
 
@@ -447,7 +448,7 @@ const updateProfile = async (req, res) => {
     if (displayName !== undefined) user.displayName = displayName && displayName.trim() ? displayName.trim() : null;
     if (avatar !== undefined) user.avatar = avatar;
 
-    if (user.role === "owner") {
+    if (isOwnerDashboardRole(user)) {
       if (ownerEntities !== undefined) {
         const v = await validateAndNormalizeOwnerEntitiesInput(ownerEntities);
         if (!v.ok) {

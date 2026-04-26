@@ -485,7 +485,9 @@ export default function OwnerDashboardPage() {
     p: 2,
     mb: 2,
     borderRadius: 2,
-    bgcolor: isDark ? alpha(theme.palette.background.paper, 0.72) : "background.paper",
+    bgcolor: isDark
+      ? alpha(theme.palette.background.paper, 0.72)
+      : "background.paper",
     borderColor: isDark ? alpha(theme.palette.divider, 0.85) : "divider",
     border: "1px solid",
     boxShadow: isDark
@@ -536,7 +538,9 @@ export default function OwnerDashboardPage() {
 
   const tablePaperSx = {
     borderRadius: 2,
-    bgcolor: isDark ? alpha(theme.palette.background.paper, 0.65) : "background.paper",
+    bgcolor: isDark
+      ? alpha(theme.palette.background.paper, 0.65)
+      : "background.paper",
     borderColor: isDark ? alpha(theme.palette.divider, 0.85) : "divider",
     boxShadow: isDark ? "0 4px 24px rgba(0,0,0,0.35)" : undefined,
   };
@@ -557,7 +561,7 @@ export default function OwnerDashboardPage() {
       sx={{
         maxWidth: "100%",
         py: 3,
-        pt: { xs: 20, sm: 20 },
+        pt: { sm: 20 },
       }}
     >
       <Stack spacing={1.5} sx={{ mb: 2, mt: 6 }}>
@@ -861,7 +865,9 @@ export default function OwnerDashboardPage() {
               <Legend
                 wrapperStyle={{ color: theme.palette.text.primary }}
                 formatter={(value) => (
-                  <span style={{ color: theme.palette.text.primary }}>{value}</span>
+                  <span style={{ color: theme.palette.text.primary }}>
+                    {value}
+                  </span>
                 )}
               />
               <Bar
@@ -910,7 +916,9 @@ export default function OwnerDashboardPage() {
               <Legend
                 wrapperStyle={{ color: theme.palette.text.primary }}
                 formatter={(value) => (
-                  <span style={{ color: theme.palette.text.primary }}>{value}</span>
+                  <span style={{ color: theme.palette.text.primary }}>
+                    {value}
+                  </span>
                 )}
               />
               <Line

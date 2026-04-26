@@ -9,7 +9,17 @@ const {
   hasOwnerDataEntryScope,
   assertOwnerDataEntryCanCreateProduct,
   buildOwnerDataEntryProductFilter,
+  productMatchesOwnerDataEntryScope,
+  primaryOwnerIdsFromProduct,
 } = require("../utils/ownerDataEntryScope");
+const {
+  isOwnerDataEntryRole,
+  isOwnerDataEntryOnlyRole,
+} = require("../utils/roleHelpers");
+const {
+  canApprovePendingProducts,
+  canListPendingProducts,
+} = require("../utils/pendingReviewers");
 const { normalizeExpiryDate } = require("../utils/normalizeExpiryDate");
 const { parseOptionalNonNegativePrice } = require("../utils/productPriceValidation");
 const {
@@ -54,7 +64,43 @@ function sanitizeProductUpdateBody(body) {
   if (updateDoc.storeTypeId === "") {
     delete updateDoc.storeTypeId;
   }
+  delete updateDoc.pendingReason;
+  delete updateDoc.wasEverPublished;
+  delete updateDoc.pendingDraft;
+  delete updateDoc.discardPendingDraft;
+  delete updateDoc.approvedBy;
+  delete updateDoc.approvedAt;
   return { updateDoc, storeTypeId, storeTypeName };
+}
+
+/** Fields owner data entry may propose on a still-published product (stored in pendingDraft). */
+const ODE_PENDING_DRAFT_KEYS = [
+  "name",
+  "barcode",
+  "previousPrice",
+  "newPrice",
+  "isDiscount",
+  "expireDate",
+  "image",
+  "storeTypeId",
+];
+
+function pickOdePendingDraft(updateDoc) {
+  const out = {};
+  if (!updateDoc || typeof updateDoc !== "object") return out;
+  for (const k of ODE_PENDING_DRAFT_KEYS) {
+    if (updateDoc[k] !== undefined) out[k] = updateDoc[k];
+  }
+  return out;
+}
+
+/** Remove internal moderation field from API payloads (public lists). */
+function stripPendingDraftFromDocs(docs) {
+  return (docs || []).map((doc) => {
+    const o = doc && doc.toObject ? doc.toObject() : { ...doc };
+    delete o.pendingDraft;
+    return o;
+  });
 }
 
 const getPublicStoreIds = async () => {
@@ -124,7 +170,7 @@ const getProducts = async (req, res) => {
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
       .sort({ name: 1 });
-    res.json(products);
+    res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
@@ -168,7 +214,9 @@ const getProductById = async (req, res) => {
       return res.status(404).json({ msg: "Product not found" });
     }
 
-    res.json(product);
+    const pub = product.toObject ? product.toObject() : product;
+    delete pub.pendingDraft;
+    res.json(pub);
   } catch (err) {
     console.error(err.message);
     if (err.kind === "ObjectId") {
@@ -217,7 +265,7 @@ const createProduct = async (req, res) => {
     String(storeId).trim() !== "null";
 
   try {
-    if (req.user?.role === "owner_dataentry") {
+    if (isOwnerDataEntryRole(req.user)) {
       const user = await User.findById(req.user._id).lean();
       if (!user) {
         return res.status(401).json({ msg: "Unauthorized" });
@@ -280,6 +328,7 @@ const createProduct = async (req, res) => {
       const newODE = parseOptionalNonNegativePrice(newPrice, "newPrice");
       if (!newODE.ok) return res.status(400).json({ msg: newODE.msg });
 
+      // Owner data entry: new products always start pending until admin/support publishes.
       const newProduct = new Product({
         name: nameTrim,
         barcode: barcode || undefined,
@@ -292,7 +341,9 @@ const createProduct = async (req, res) => {
         companyId: companyId || null,
         storeId: hasStoreId ? storeId : null,
         ...(storeTypeIdToUse ? { storeTypeId: storeTypeIdToUse } : {}),
-        status: "published",
+        status: "pending",
+        pendingReason: "adding",
+        wasEverPublished: false,
       });
 
       const product = await newProduct.save();
@@ -397,6 +448,8 @@ const createProduct = async (req, res) => {
     const newParsed = parseOptionalNonNegativePrice(newPrice, "newPrice");
     if (!newParsed.ok) return res.status(400).json({ msg: newParsed.msg });
 
+    const finalStatus = status === "pending" ? "pending" : "published";
+
     const newProduct = new Product({
       name,
       nameEn,
@@ -419,7 +472,9 @@ const createProduct = async (req, res) => {
       companyId,
       storeId: hasStoreId ? storeId : null,
       ...(storeTypeIdToUse ? { storeTypeId: storeTypeIdToUse } : {}),
-      status: status === "pending" ? "pending" : "published",
+      status: finalStatus,
+      pendingReason: finalStatus === "pending" ? "adding" : null,
+      wasEverPublished: finalStatus === "published",
       expireDate,
     });
 
@@ -456,7 +511,7 @@ const getProductsByBrand = async (req, res) => {
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
       .sort({ name: 1 });
-    res.json(products);
+    res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
@@ -483,7 +538,7 @@ const getProductsByCompany = async (req, res) => {
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
       .sort({ name: 1 });
-    res.json(products);
+    res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
@@ -515,7 +570,7 @@ const getProductsByStore = async (req, res) => {
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
       .sort({ name: 1 });
-    res.json(products);
+    res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
@@ -540,7 +595,7 @@ const getProductsByCategory = async (req, res) => {
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
       .sort({ name: 1 });
-    res.json(products);
+    res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");
@@ -560,12 +615,114 @@ const getCategories = async (req, res) => {
   }
 };
 
+// @desc    List pending products for moderation
+// @route   GET /api/products/pending
+// @access  Private
+const getPendingProducts = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const user = await User.findById(req.user._id).lean();
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (!canListPendingProducts(user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed to view pending products",
+      });
+    }
+
+    const reason = String(req.query.pendingReason || "").toLowerCase();
+
+    const hasDraftObj = {
+      $expr: {
+        $gt: [
+          {
+            $size: {
+              $objectToArray: { $ifNull: ["$pendingDraft", {}] },
+            },
+          },
+          0,
+        ],
+      },
+    };
+
+    let match;
+    if (reason === "adding") {
+      match = {
+        status: "pending",
+        wasEverPublished: false,
+        $or: [
+          { pendingDraft: null },
+          { pendingDraft: { $exists: false } },
+        ],
+      };
+    } else if (reason === "editing") {
+      match = {
+        $or: [
+          hasDraftObj,
+          {
+            status: "pending",
+            pendingReason: "editing",
+            wasEverPublished: true,
+          },
+        ],
+      };
+    } else {
+      match = {
+        $or: [{ status: "pending" }, hasDraftObj],
+      };
+    }
+
+    let query = match;
+    if (!canApprovePendingProducts(user)) {
+      const scope = await buildOwnerDataEntryProductFilter(user);
+      query = { $and: [match, scope] };
+    }
+
+    const auditUserSelect = "username email displayName";
+    const products = await Product.find(query)
+      .populate("brandId", brandList)
+      .populate("companyId", companyList)
+      .populate("storeId", storeList)
+      .populate("categoryId", categoryList)
+      .populate("storeTypeId", storeTypeList)
+      .populate("createdBy", auditUserSelect)
+      .populate("updatedBy", auditUserSelect)
+      .sort({ updatedAt: -1 })
+      .limit(500)
+      .lean();
+
+    const normalized = products.map((p) => {
+      const draft =
+        p.pendingDraft && typeof p.pendingDraft === "object"
+          ? p.pendingDraft
+          : null;
+      const hasPendingDraft = draft && Object.keys(draft).length > 0;
+      let displayReason = p.pendingReason;
+      if (hasPendingDraft) displayReason = "editing";
+      else if (p.status === "pending") displayReason = displayReason || "adding";
+      return {
+        ...p,
+        pendingReason: displayReason,
+      };
+    });
+
+    res.json(normalized);
+  } catch (err) {
+    console.error("[getPendingProducts]", err.message);
+    res.status(500).send("Server Error");
+  }
+};
+
 // @desc    List products for Owner Data Entry role (scoped)
 // @route   GET /api/products/owner-data-entry
 // @access  Private
 const getOwnerDataEntryProducts = async (req, res) => {
   try {
-    if (!req.user || req.user.role !== "owner_dataentry") {
+    if (!req.user || !isOwnerDataEntryRole(req.user)) {
       return res.status(403).json({
         success: false,
         message: "Owner Data Entry role required",
@@ -597,19 +754,39 @@ const getOwnerDataEntryProducts = async (req, res) => {
 
 // @desc    Update product
 // @route   PUT /api/products/:id
-// @access  Private (Admin)
+// @access  Private
 const updateProduct = async (req, res) => {
   try {
-    if (req.user?.role === "owner_dataentry") {
-      return res.status(403).json({
-        msg: "Not allowed to update products for this account",
-      });
+    if (!req.user) {
+      return res.status(401).json({ msg: "Unauthorized" });
     }
+
     const paramId = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(paramId)) {
       return res.status(400).json({ msg: "Invalid product id" });
     }
 
+    const existing = await Product.findById(paramId).lean();
+    if (!existing) {
+      return res.status(404).json({ msg: "Product not found" });
+    }
+
+    const userLean = await User.findById(req.user._id).lean();
+    if (!userLean) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+
+    const isApprover = canApprovePendingProducts(userLean);
+    const isOde = isOwnerDataEntryRole(userLean);
+
+    if (!isApprover && !isOde) {
+      return res.status(403).json({
+        msg: "Not allowed to update products for this account",
+      });
+    }
+
+    const discardPendingDraft =
+      isApprover && req.body && req.body.discardPendingDraft === true;
     const { updateDoc: rawDoc, storeTypeId, storeTypeName } =
       sanitizeProductUpdateBody(req.body);
     const updateDoc = { ...rawDoc };
@@ -631,6 +808,122 @@ const updateProduct = async (req, res) => {
       if (!r.ok) return res.status(400).json({ msg: r.msg });
       if (r.value === undefined) delete updateDoc[key];
       else updateDoc[key] = r.value;
+    }
+
+    if (isOde && !isApprover) {
+      const inScope = await productMatchesOwnerDataEntryScope(
+        userLean,
+        existing._id,
+      );
+      if (!inScope) {
+        return res.status(403).json({ msg: "Not allowed to update this product" });
+      }
+      if (updateDoc.status === "published") {
+        delete updateDoc.status;
+      }
+
+      const wasAddingPending =
+        existing.status === "pending" &&
+        !existing.wasEverPublished &&
+        (existing.pendingReason === "adding" ||
+          existing.pendingReason == null ||
+          existing.pendingReason === undefined);
+
+      // Live published row: keep root fields unchanged; stash proposal in pendingDraft.
+      if (existing.status === "published") {
+        const draftPick = pickOdePendingDraft(updateDoc);
+        const mergedForScope = { ...existing, ...draftPick };
+        const primary = primaryOwnerIdsFromProduct(mergedForScope);
+        const v = await assertOwnerDataEntryCanCreateProduct(userLean, primary);
+        if (!v.ok) {
+          return res.status(400).json({ msg: v.message });
+        }
+        if (Object.keys(draftPick).length === 0) {
+          return res.status(400).json({ msg: "No changes to save" });
+        }
+        const prevDraft =
+          existing.pendingDraft && typeof existing.pendingDraft === "object"
+            ? existing.pendingDraft
+            : {};
+        const nextDraft = { ...prevDraft, ...draftPick };
+        const product = await Product.findByIdAndUpdate(
+          paramId,
+          {
+            $set: {
+              pendingDraft: nextDraft,
+              pendingReason: "editing",
+            },
+          },
+          { new: true },
+        )
+          .populate("brandId", brandList)
+          .populate("companyId", companyList)
+          .populate("storeTypeId", storeTypeList);
+        if (!product) {
+          return res.status(404).json({ msg: "Product not found" });
+        }
+        return res.json(product);
+      }
+
+      const merged = { ...existing, ...updateDoc };
+      const primary = primaryOwnerIdsFromProduct(merged);
+      const v = await assertOwnerDataEntryCanCreateProduct(userLean, primary);
+      if (!v.ok) {
+        return res.status(400).json({ msg: v.message });
+      }
+
+      updateDoc.status = "pending";
+      updateDoc.pendingDraft = null;
+      updateDoc.approvedBy = null;
+      updateDoc.approvedAt = null;
+      if (wasAddingPending) {
+        updateDoc.pendingReason = "adding";
+      } else {
+        updateDoc.pendingReason = "editing";
+      }
+    } else {
+      const prevStatus = existing.status;
+      const nextStatus =
+        updateDoc.status !== undefined ? updateDoc.status : prevStatus;
+
+      if (discardPendingDraft) {
+        updateDoc.pendingDraft = null;
+        if (existing.status === "published") {
+          updateDoc.pendingReason = null;
+        }
+      }
+
+      if (nextStatus === "published") {
+        updateDoc.status = "published";
+        updateDoc.wasEverPublished = true;
+        updateDoc.pendingReason = null;
+        updateDoc.approvedBy = userLean?._id || null;
+        updateDoc.approvedAt = new Date();
+        const draft =
+          existing.pendingDraft &&
+          typeof existing.pendingDraft === "object"
+            ? existing.pendingDraft
+            : null;
+        if (draft && Object.keys(draft).length > 0) {
+          for (const k of ODE_PENDING_DRAFT_KEYS) {
+            if (draft[k] !== undefined) updateDoc[k] = draft[k];
+          }
+        }
+        updateDoc.pendingDraft = null;
+      } else if (nextStatus === "pending") {
+        updateDoc.approvedBy = null;
+        updateDoc.approvedAt = null;
+        if (prevStatus === "published" || existing.wasEverPublished) {
+          updateDoc.pendingReason = "editing";
+        } else if (prevStatus === "pending") {
+          updateDoc.pendingReason =
+            existing.pendingReason === "editing"
+              ? "editing"
+              : existing.pendingReason || "adding";
+        } else {
+          updateDoc.pendingReason = "adding";
+        }
+      }
     }
 
     const product = await Product.findByIdAndUpdate(paramId, updateDoc, {
@@ -655,12 +948,119 @@ const updateProduct = async (req, res) => {
   }
 };
 
+// @desc    Full product for moderation (includes pendingDraft; pending/unpublished OK)
+// @route   GET /api/products/moderation/:id
+// @access  Private
+const getProductModerationById = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+    const user = await User.findById(req.user._id).lean();
+    if (!user) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+    if (!canListPendingProducts(user)) {
+      return res.status(403).json({ msg: "Not allowed" });
+    }
+    const paramId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(paramId)) {
+      return res.status(400).json({ msg: "Invalid product id" });
+    }
+    const product = await Product.findById(paramId)
+      .populate("brandId", brandList)
+      .populate("companyId", companyList)
+      .populate("storeId", storeList)
+      .populate("categoryId", categoryList)
+      .populate("storeTypeId", storeTypeList)
+      .lean();
+    if (!product) {
+      return res.status(404).json({ msg: "Product not found" });
+    }
+    if (!canApprovePendingProducts(user)) {
+      const inScope = await productMatchesOwnerDataEntryScope(
+        user,
+        product._id,
+      );
+      if (!inScope) {
+        return res.status(403).json({ msg: "Not allowed" });
+      }
+    }
+    res.json(product);
+  } catch (err) {
+    console.error("[getProductModerationById]", err.message);
+    res.status(500).send("Server Error");
+  }
+};
+
+// @desc    Reject pending submission or discard pendingDraft on published product
+// @route   POST /api/products/:id/reject
+// @access  Private (admin / support)
+const rejectPendingProduct = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+    const user = await User.findById(req.user._id).lean();
+    if (!user) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+    if (!canApprovePendingProducts(user)) {
+      return res.status(403).json({ msg: "Not allowed to reject" });
+    }
+    const paramId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(paramId)) {
+      return res.status(400).json({ msg: "Invalid product id" });
+    }
+    const existing = await Product.findById(paramId).lean();
+    if (!existing) {
+      return res.status(404).json({ msg: "Product not found" });
+    }
+    const draft =
+      existing.pendingDraft && typeof existing.pendingDraft === "object"
+        ? existing.pendingDraft
+        : null;
+    const hasDraft = draft && Object.keys(draft).length > 0;
+
+    if (hasDraft) {
+      await Product.findByIdAndUpdate(paramId, {
+        $set: {
+          pendingDraft: null,
+          pendingReason: null,
+        },
+      });
+      return res.json({
+        msg: "Proposed update rejected",
+        clearedDraft: true,
+      });
+    }
+
+    if (existing.status === "pending" && !existing.wasEverPublished) {
+      await Product.findByIdAndDelete(paramId);
+      return res.json({ msg: "Pending product rejected", removed: true });
+    }
+
+    return res.status(400).json({
+      msg: "Nothing to reject for this product.",
+    });
+  } catch (err) {
+    console.error("[rejectPendingProduct]", err.message);
+    if (err.kind === "ObjectId") {
+      return res.status(404).json({ msg: "Product not found" });
+    }
+    res.status(500).send("Server Error");
+  }
+};
+
 // @desc    Delete product
 // @route   DELETE /api/products/:id
 // @access  Private (Admin)
 const deleteProduct = async (req, res) => {
   try {
-    if (req.user?.role === "owner_dataentry") {
+    if (!req.user) {
+      return res.status(401).json({ msg: "Unauthorized" });
+    }
+    if (isOwnerDataEntryOnlyRole(req.user)) {
       return res.status(403).json({
         msg: "Not allowed to delete products for this account",
       });
@@ -685,6 +1085,9 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  getPendingProducts,
+  getProductModerationById,
+  rejectPendingProduct,
   getOwnerDataEntryProducts,
   getProductsByBrand,
   getProductsByCompany,

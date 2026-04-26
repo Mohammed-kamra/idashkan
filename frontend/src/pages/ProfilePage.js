@@ -19,6 +19,7 @@ import {
   Divider,
   Button,
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
@@ -75,6 +76,7 @@ import {
   CorporateFare as CorporateFareNavIcon,
   WorkOutline as WorkOutlineNavIcon,
   BarChart as BarChartIcon,
+  HourglassTop as HourglassTopIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -93,14 +95,21 @@ import {
   DATA_LANG_KU,
   DATA_LANG_NORMAL,
 } from "../context/DataLanguageContext";
+import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { getLocalizedField } from "../utils/localize";
 import { useDarkMode } from "../context/DarkModeContext";
 import {
   isAdminEmail,
   canAccessDataEntry,
   canAccessOwnerDashboard,
   canAccessOwnerDataEntryPage,
+  canAccessPendingPage,
 } from "../utils/adminAccess";
-import { normalizeOwnerEntities } from "../utils/ownerEntities";
+import {
+  normalizeOwnerEntities,
+  getOwnerPublicProfileChoices,
+} from "../utils/ownerEntities";
+import { isOwnerDashboardRole } from "../utils/roles";
 import { storeAPI, brandAPI, companyAPI } from "../services/api";
 import { useActiveTheme } from "../context/ActiveThemeContext";
 import {
@@ -122,6 +131,56 @@ const PROFILE_SHORTCUT_ICONS = {
   findjob: WorkOutlineNavIcon,
 };
 
+function ownerEntityIdsEqual(a, b) {
+  const sa = String(a ?? "").trim();
+  const sb = String(b ?? "").trim();
+  if (!sa || !sb) return false;
+  if (sa === sb) return true;
+  return sa.toLowerCase() === sb.toLowerCase();
+}
+
+function ownerProfileChoiceKey(choice) {
+  return `${String(choice.entityType || "").toLowerCase()}:${String(
+    choice.entityId || "",
+  ).trim()}`;
+}
+
+function findOwnerEntityRow(choice, entityLists) {
+  const idStr = String(choice.entityId || "").trim();
+  if (!idStr) return null;
+  const typ = String(choice.entityType || "").toLowerCase();
+  if (typ === "store") {
+    return (
+      entityLists.stores.find((s) => ownerEntityIdsEqual(s?._id, idStr)) || null
+    );
+  }
+  if (typ === "brand") {
+    return (
+      entityLists.brands.find((b) => ownerEntityIdsEqual(b?._id, idStr)) || null
+    );
+  }
+  if (typ === "company") {
+    return (
+      entityLists.companies.find((c) => ownerEntityIdsEqual(c?._id, idStr)) ||
+      null
+    );
+  }
+  return null;
+}
+
+function ownerProfileFallbackLabel(choice, t) {
+  const typ = String(choice.entityType || "").toLowerCase();
+  const idStr = String(choice.entityId || "").trim();
+  const tail = idStr.length > 8 ? idStr.slice(-8) : idStr;
+  if (typ === "store") {
+    return `${t("Store", { defaultValue: "Store" })} (${tail})`;
+  }
+  if (typ === "brand") {
+    return `${t("Brand", { defaultValue: "Brand" })} (${tail})`;
+  }
+  return `${t("Company", { defaultValue: "Company" })} (${tail})`;
+}
+
 const ProfilePage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -132,9 +191,11 @@ const ProfilePage = () => {
   const { contactInfo } = useAppSettings();
   const { profileShortcuts } = useActiveTheme();
   const { dataLanguage, setDataLanguage } = useDataLanguage();
+  const { locName } = useLocalizedContent();
   const { colorMode, setColorMode } = useDarkMode();
 
   const [guestNameDialogOpen, setGuestNameDialogOpen] = useState(false);
+  const [ownerProfilePickerOpen, setOwnerProfilePickerOpen] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState("");
   const [userNameDialogOpen, setUserNameDialogOpen] = useState(false);
   const [userNameInput, setUserNameInput] = useState("");
@@ -155,10 +216,12 @@ const ProfilePage = () => {
   const [loadingEntities, setLoadingEntities] = useState(false);
   const [ownerSaveError, setOwnerSaveError] = useState("");
   const [savingOwnerEntity, setSavingOwnerEntity] = useState(false);
+  const [ownerProfileFetchedNames, setOwnerProfileFetchedNames] = useState({});
+  const ownerProfileFetchedKeysRef = useRef(new Set());
 
   const ownerEntitiesServerSig = useMemo(
     () =>
-      user?.role === "owner"
+      isOwnerDashboardRole(user)
         ? JSON.stringify(normalizeOwnerEntities(user))
         : "",
     [
@@ -170,12 +233,15 @@ const ProfilePage = () => {
   );
 
   useEffect(() => {
-    if (user?.role !== "owner") return;
+    if (!isOwnerDashboardRole(user)) return;
     setDraftOwnerEntities(normalizeOwnerEntities(user));
   }, [ownerEntitiesServerSig, user?.role]);
 
   const loadEntityLists = useCallback(async () => {
-    if (user?.role !== "owner") return;
+    if (!user) return;
+    const profileChoices = getOwnerPublicProfileChoices(user);
+    const needsLists = isOwnerDashboardRole(user) || profileChoices.length > 0;
+    if (!needsLists) return;
     setLoadingEntities(true);
     setOwnerSaveError("");
     try {
@@ -200,7 +266,20 @@ const ProfilePage = () => {
     } finally {
       setLoadingEntities(false);
     }
-  }, [user?.role, t]);
+  }, [
+    user?._id,
+    user?.role,
+    user?.ownerEntities,
+    user?.ownerEntityType,
+    user?.ownerEntityId,
+    user?.ownerDataEntryStoreIds,
+    user?.ownerDataEntryBrandIds,
+    user?.ownerDataEntryCompanyIds,
+    user?.ownerDataEntryAllStores,
+    user?.ownerDataEntryAllBrands,
+    user?.ownerDataEntryAllCompanies,
+    t,
+  ]);
 
   useEffect(() => {
     loadEntityLists();
@@ -253,6 +332,104 @@ const ProfilePage = () => {
   const email = user?.email || "";
   const isAdmin = !!user && isAdminEmail(user);
   const showDataEntryLink = !!user && canAccessDataEntry(user);
+
+  const ownerProfileChoices = useMemo(
+    () => getOwnerPublicProfileChoices(user),
+    [
+      user?._id,
+      user?.role,
+      user?.ownerEntities,
+      user?.ownerEntityType,
+      user?.ownerEntityId,
+      user?.ownerDataEntryStoreIds,
+      user?.ownerDataEntryBrandIds,
+      user?.ownerDataEntryCompanyIds,
+      user?.ownerDataEntryAllStores,
+      user?.ownerDataEntryAllBrands,
+      user?.ownerDataEntryAllCompanies,
+    ],
+  );
+
+  const ownerProfileChoicesSig = useMemo(
+    () =>
+      ownerProfileChoices
+        .map((c) => ownerProfileChoiceKey(c))
+        .sort()
+        .join("|"),
+    [ownerProfileChoices],
+  );
+
+  useEffect(() => {
+    ownerProfileFetchedKeysRef.current = new Set();
+    setOwnerProfileFetchedNames({});
+  }, [ownerProfileChoicesSig, user?._id, dataLanguage]);
+
+  useEffect(() => {
+    if (!ownerProfileChoices.length) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      for (const choice of ownerProfileChoices) {
+        if (cancelled) break;
+        const key = ownerProfileChoiceKey(choice);
+        const row = findOwnerEntityRow(choice, entityLists);
+        const fromList = row
+          ? getLocalizedField(row, "name", dataLanguage)
+          : "";
+        if (fromList) continue;
+        if (ownerProfileFetchedKeysRef.current.has(key)) continue;
+
+        try {
+          let res;
+          if (choice.entityType === "store") {
+            res = await storeAPI.getById(choice.entityId);
+          } else if (choice.entityType === "brand") {
+            res = await brandAPI.getById(choice.entityId);
+          } else {
+            res = await companyAPI.getById(choice.entityId);
+          }
+          const data = res?.data;
+          const name = data
+            ? getLocalizedField(data, "name", dataLanguage)
+            : "";
+          if (!cancelled && name) {
+            ownerProfileFetchedKeysRef.current.add(key);
+            setOwnerProfileFetchedNames((prev) => {
+              if (prev[key]) return prev;
+              return { ...prev, [key]: name };
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerProfileChoices, entityLists, dataLanguage, ownerProfileChoicesSig]);
+
+  const OwnerProfileListIcon = useMemo(() => {
+    if (ownerProfileChoices.length !== 1) return StorefrontIcon;
+    const p = ownerProfileChoices[0].path || "";
+    if (p.startsWith("/stores/")) return StoreNavIcon;
+    if (p.startsWith("/brands/")) return BusinessNavIcon;
+    if (p.startsWith("/companies/")) return CorporateFareNavIcon;
+    return StorefrontIcon;
+  }, [ownerProfileChoices]);
+
+  const ownerProfileChoiceLabel = useCallback(
+    (choice) => {
+      const row = findOwnerEntityRow(choice, entityLists);
+      const fromList = row ? locName(row) : "";
+      if (fromList) return fromList;
+      const key = ownerProfileChoiceKey(choice);
+      if (ownerProfileFetchedNames[key]) return ownerProfileFetchedNames[key];
+      return ownerProfileFallbackLabel(choice, t);
+    },
+    [entityLists, locName, ownerProfileFetchedNames, t],
+  );
 
   const normalizeUrl = (url, type) => {
     if (!url || typeof url !== "string") return null;
@@ -414,20 +591,51 @@ const ProfilePage = () => {
             <ListItemText primary={t("Change Your Account Name")} />
           </ListItemButton>
 
+          {user &&
+            (ownerProfileChoices.length > 0 ||
+              canAccessOwnerDashboard(user)) && <Divider />}
+          {user && ownerProfileChoices.length > 0 && (
+            <ListItemButton
+              component={ownerProfileChoices.length === 1 ? Link : undefined}
+              to={
+                ownerProfileChoices.length === 1
+                  ? ownerProfileChoices[0].path
+                  : undefined
+              }
+              onClick={
+                ownerProfileChoices.length > 1
+                  ? (e) => {
+                      e.preventDefault();
+                      e.currentTarget?.blur?.();
+                      setOwnerProfilePickerOpen(true);
+                    }
+                  : undefined
+              }
+            >
+              <ListItemIcon>
+                <OwnerProfileListIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary={t("ownerMyProfile", {
+                  defaultValue: "My profile",
+                })}
+                secondary={t("ownerMyProfileHint", {
+                  defaultValue: "Open your public Profile",
+                })}
+              />
+            </ListItemButton>
+          )}
           {user && canAccessOwnerDashboard(user) && (
-            <>
-              <Divider />
-              <ListItemButton component={Link} to="/owner-dashboard">
-                <ListItemIcon>
-                  <StorefrontIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={t("Owner dashboard", {
-                    defaultValue: "Owner dashboard",
-                  })}
-                />
-              </ListItemButton>
-            </>
+            <ListItemButton component={Link} to="/owner-dashboard">
+              <ListItemIcon>
+                <StorefrontIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary={t("Owner dashboard", {
+                  defaultValue: "Owner dashboard",
+                })}
+              />
+            </ListItemButton>
           )}
 
           {user && canAccessOwnerDataEntryPage(user) && (
@@ -440,6 +648,22 @@ const ProfilePage = () => {
                 <ListItemText
                   primary={t("Owner Data Entry", {
                     defaultValue: "Owner Data Entry",
+                  })}
+                />
+              </ListItemButton>
+            </>
+          )}
+
+          {user && canAccessPendingPage(user) && (
+            <>
+              <Divider />
+              <ListItemButton component={Link} to="/pending">
+                <ListItemIcon>
+                  <HourglassTopIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={t("Pending reviews", {
+                    defaultValue: "Pending reviews",
                   })}
                 />
               </ListItemButton>
@@ -973,6 +1197,63 @@ const ProfilePage = () => {
           )}
         </List>
       </Paper>
+
+      <Dialog
+        open={ownerProfilePickerOpen}
+        onClose={() => setOwnerProfilePickerOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {t("ownerMyProfilePickTitle", {
+            defaultValue: "Which page do you want to open?",
+          })}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <List disablePadding>
+            {ownerProfileChoices.map((choice) => {
+              const RowIcon = choice.path.startsWith("/stores/")
+                ? StoreNavIcon
+                : choice.path.startsWith("/brands/")
+                  ? BusinessNavIcon
+                  : CorporateFareNavIcon;
+              return (
+                <ListItem
+                  key={`${choice.entityType}:${choice.entityId}`}
+                  disablePadding
+                  sx={{ mb: 0.5 }}
+                >
+                  <ListItemButton
+                    onClick={() => {
+                      setOwnerProfilePickerOpen(false);
+                      navigate(choice.path);
+                    }}
+                  >
+                    <ListItemIcon>
+                      <RowIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={ownerProfileChoiceLabel(choice)}
+                      secondary={
+                        choice.entityType === "store"
+                          ? t("Store", { defaultValue: "Store" })
+                          : choice.entityType === "brand"
+                            ? t("Brand", { defaultValue: "Brand" })
+                            : t("Company", { defaultValue: "Company" })
+                      }
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOwnerProfilePickerOpen(false)}>
+            {t("Cancel")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={guestNameDialogOpen}

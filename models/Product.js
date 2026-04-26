@@ -53,6 +53,26 @@ const productSchema = new mongoose.Schema(
       default: "published",
       index: true,
     },
+    /** When status is pending: first-time moderation vs revision after publish. */
+    pendingReason: {
+      type: String,
+      enum: ["adding", "editing"],
+      default: null,
+    },
+    /** Set true the first time (and stays true) after a product is published. */
+    wasEverPublished: { type: Boolean, default: false },
+    /**
+     * Proposed field changes from owner data entry (etc.) while `status` stays `published`.
+     * Applied to root fields when admin/support approves (publish).
+     */
+    pendingDraft: { type: mongoose.Schema.Types.Mixed, default: null },
+    /** Moderation audit fields (set when pending gets approved/published). */
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    approvedAt: { type: Date, default: null },
     // User tracking fields
     viewCount: { type: Number, default: 0 },
     likeCount: { type: Number, default: 0 },

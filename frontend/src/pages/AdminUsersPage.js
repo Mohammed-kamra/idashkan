@@ -37,6 +37,7 @@ import { adminAPI, storeAPI, brandAPI, companyAPI } from "../services/api";
 import { useTranslation } from "react-i18next";
 import { isAdminEmail, normalizeUserRole } from "../utils/adminAccess";
 import { normalizeOwnerEntities } from "../utils/ownerEntities";
+import { isOwnerDashboardRole, isOwnerDataEntryRole } from "../utils/roles";
 
 const AdminUsersPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -111,8 +112,8 @@ const AdminUsersPage = () => {
     if (
       !editDialogOpen ||
       !editingUser ||
-      (editingUser.role !== "owner" &&
-        editingUser.role !== "owner_dataentry")
+      (!isOwnerDashboardRole(editingUser) &&
+        !isOwnerDataEntryRole(editingUser))
     ) {
       setOwnerEntityLists({ stores: [], brands: [], companies: [] });
       return;
@@ -247,6 +248,8 @@ const AdminUsersPage = () => {
       const roleNorm =
         editingUser.role === "support"
           ? "support"
+          : editingUser.role === "owner_superadmin"
+            ? "owner_superadmin"
           : editingUser.role === "owner"
             ? "owner"
             : editingUser.role === "owner_dataentry"
@@ -254,7 +257,8 @@ const AdminUsersPage = () => {
               : "user";
 
       const appendOwnerDataEntry = (payload) => {
-        if (roleNorm !== "owner_dataentry") return;
+        if (roleNorm !== "owner_dataentry" && roleNorm !== "owner_superadmin")
+          return;
         const anyAll =
           editingUser.ownerDataEntryAllStores ||
           editingUser.ownerDataEntryAllBrands ||
@@ -298,7 +302,7 @@ const AdminUsersPage = () => {
         if (editingUser.password && editingUser.password.trim() !== "") {
           updatePayload.password = editingUser.password;
         }
-        if (roleNorm === "owner") {
+        if (roleNorm === "owner" || roleNorm === "owner_superadmin") {
           const valid = (editingUser.ownerEntities || []).filter(
             (e) =>
               e.entityType &&
@@ -337,7 +341,7 @@ const AdminUsersPage = () => {
           displayName: editingUser.displayName,
           role: roleNorm,
         };
-        if (roleNorm === "owner") {
+        if (roleNorm === "owner" || roleNorm === "owner_superadmin") {
           const valid = (editingUser.ownerEntities || []).filter(
             (e) =>
               e.entityType &&
@@ -490,6 +494,14 @@ const AdminUsersPage = () => {
                           color="secondary"
                           label={t("Support (Data Entry)")}
                         />
+                      ) : role === "owner_superadmin" ? (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={t("Owner Superadmin", {
+                            defaultValue: "Owner Superadmin",
+                          })}
+                        />
                       ) : role === "owner" ? (
                         <Chip
                           size="small"
@@ -622,6 +634,8 @@ const AdminUsersPage = () => {
                   value={
                     editingUser.role === "support"
                       ? "support"
+                      : editingUser.role === "owner_superadmin"
+                        ? "owner_superadmin"
                       : editingUser.role === "owner"
                         ? "owner"
                         : editingUser.role === "owner_dataentry"
@@ -631,6 +645,16 @@ const AdminUsersPage = () => {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v === "owner") {
+                      setEditingUser((prev) => ({
+                        ...prev,
+                        role: v,
+                        ownerEntities:
+                          Array.isArray(prev.ownerEntities) &&
+                          prev.ownerEntities.length > 0
+                            ? prev.ownerEntities
+                            : [{ entityType: "store", entityId: "" }],
+                      }));
+                    } else if (v === "owner_superadmin") {
                       setEditingUser((prev) => ({
                         ...prev,
                         role: v,
@@ -679,9 +703,15 @@ const AdminUsersPage = () => {
                       defaultValue: "Owner (Data Entry)",
                     })}
                   </MenuItem>
+                  <MenuItem value="owner_superadmin">
+                    {t("Owner Superadmin (dashboard + data entry)", {
+                      defaultValue: "Owner Superadmin (dashboard + data entry)",
+                    })}
+                  </MenuItem>
                 </Select>
               </FormControl>
-              {editingUser.role === "owner" && (
+              {(editingUser.role === "owner" ||
+                editingUser.role === "owner_superadmin") && (
                 <>
                   <Typography
                     variant="body2"
@@ -819,7 +849,8 @@ const AdminUsersPage = () => {
                   )}
                 </>
               )}
-              {editingUser.role === "owner_dataentry" && (
+              {(editingUser.role === "owner_dataentry" ||
+                editingUser.role === "owner_superadmin") && (
                 <>
                   <Typography
                     variant="body2"

@@ -1,4 +1,5 @@
 import { normalizeOwnerEntities } from "./ownerEntities";
+import { isOwnerDashboardRole, isOwnerDataEntryRole } from "./roles";
 
 /** Must match server `utils/roleAccess.js` admin emails. */
 export const ADMIN_EMAILS = ["mshexani45@gmail.com", "admin@gmail.com"];
@@ -16,13 +17,13 @@ export const canUseDataEntryNotifications = (user) =>
 
 export const normalizeUserRole = (user) => user?.role || "user";
 
-/** Owner dashboard — role must be owner and profile must link at least one entity. */
+/** Owner dashboard — owner or owner_superadmin with at least one linked entity. */
 export const canAccessOwnerDashboard = (user) =>
-  user?.role === "owner" && normalizeOwnerEntities(user).length > 0;
+  isOwnerDashboardRole(user) && normalizeOwnerEntities(user).length > 0;
 
-/** True when user has role owner_dataentry and at least one scope (all-* or specific ids). */
+/** True when user has data-entry role (including owner_superadmin) and at least one scope (all-* or specific ids). */
 export function hasOwnerDataEntryScope(user) {
-  if (!user || user.role !== "owner_dataentry") return false;
+  if (!user || !isOwnerDataEntryRole(user)) return false;
   if (
     user.ownerDataEntryAllStores ||
     user.ownerDataEntryAllBrands ||
@@ -38,3 +39,21 @@ export function hasOwnerDataEntryScope(user) {
 
 export const canAccessOwnerDataEntryPage = (user) =>
   hasOwnerDataEntryScope(user);
+
+/** Admin/support: can approve pending products (publish). Same rule as Data Entry access. */
+export const canApprovePendingProducts = (user) => canAccessDataEntry(user);
+
+/** Pending moderation page: Data Entry users or scoped Owner Data Entry (incl. superadmin). */
+export const canAccessPendingPage = (user) =>
+  canAccessDataEntry(user) || canAccessOwnerDataEntryPage(user);
+
+/**
+ * Desktop Owner nav — only owner-linked roles (`owner`, `owner_dataentry`,
+ * `owner_superadmin`). Hidden for guests, normal users, admin/support data entry.
+ */
+export const canSeeOwnerNavSection = (user) => {
+  if (!user) return false;
+  if (isOwnerDashboardRole(user)) return true;
+  if (isOwnerDataEntryRole(user)) return true;
+  return false;
+};

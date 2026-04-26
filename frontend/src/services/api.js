@@ -133,6 +133,10 @@ export const productAPI = {
   getCategories: () => api.get("/products/categories"),
   /** Owner Data Entry: scoped product list (Bearer required). */
   getOwnerDataEntryList: () => api.get("/products/owner-data-entry"),
+  /** Pending moderation list (Bearer required). */
+  getPendingList: (params = {}) => api.get("/products/pending", { params }),
+  getModeration: (id) => api.get(`/products/moderation/${id}`),
+  rejectPending: (id) => api.post(`/products/${id}/reject`),
   bulkUpload: (data) => api.post("/products/bulk-upload", data),
 };
 

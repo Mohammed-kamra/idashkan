@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   canAccessOwnerDashboard,
   canAccessOwnerDataEntryPage,
+  canAccessPendingPage,
 } from "../utils/adminAccess";
 
 /**
@@ -75,6 +76,21 @@ export const ProtectedOwnerDataEntryRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   if (!canAccessOwnerDataEntryPage(user)) {
+    return <Navigate to="/profile" replace />;
+  }
+
+  return children;
+};
+
+/** Pending products review — admin, support, or scoped owner data entry. */
+export const ProtectedPendingRoute = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  if (!canAccessPendingPage(user)) {
     return <Navigate to="/profile" replace />;
   }
 

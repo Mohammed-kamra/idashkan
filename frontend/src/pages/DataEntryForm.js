@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+import { Link } from "react-router-dom";
 import {
   Box,
   Stack,
@@ -4033,31 +4034,49 @@ const DataEntryForm = () => {
         }}
       >
         <CardContent>
-          <Typography
-            variant="h5"
-            gutterBottom
-            sx={{
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              ...(theme.palette.mode === "dark"
-                ? {
-                    background:
-                      "linear-gradient(135deg, #b8d9ff 0%, #6ba8f5 45%, #4A90E2 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }
-                : {
-                    background:
-                      "linear-gradient(135deg, #FFA94D 0%, #FF7A1A 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }),
-            }}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ sm: "center" }}
+            justifyContent="space-between"
+            spacing={1}
+            sx={{ mb: 2 }}
           >
-            {t("Data Lists")}
-          </Typography>
+            <Typography
+              variant="h5"
+              gutterBottom
+              sx={{
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                mb: 0,
+                ...(theme.palette.mode === "dark"
+                  ? {
+                      background:
+                        "linear-gradient(135deg, #b8d9ff 0%, #6ba8f5 45%, #4A90E2 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }
+                  : {
+                      background:
+                        "linear-gradient(135deg, #FFA94D 0%, #FF7A1A 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }),
+              }}
+            >
+              {t("Data Lists")}
+            </Typography>
+            <Button
+              component={Link}
+              to="/pending"
+              variant="outlined"
+              size="small"
+              sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+            >
+              {t("Pending reviews", { defaultValue: "Pending reviews" })}
+            </Button>
+          </Stack>
           <Box
             component="div"
             sx={{

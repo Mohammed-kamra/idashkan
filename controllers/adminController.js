@@ -19,6 +19,10 @@ const {
   normalizeOwnerDataEntryPayload,
   validateOwnerDataEntryScopePayload,
 } = require("../utils/ownerDataEntryScope");
+const {
+  isOwnerDashboardRole,
+  isOwnerDataEntryRole,
+} = require("../utils/roleHelpers");
 
 // Simple admin check helper (by email)
 const isAdminUser = (user) => {
@@ -161,6 +165,7 @@ const createUser = async (req, res) => {
     if (roleIn === "support") role = "support";
     else if (roleIn === "owner") role = "owner";
     else if (roleIn === "owner_dataentry") role = "owner_dataentry";
+    else if (roleIn === "owner_superadmin") role = "owner_superadmin";
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -194,7 +199,7 @@ const createUser = async (req, res) => {
       role,
     });
 
-    if (role === "owner") {
+    if (isOwnerDashboardRole(role)) {
       if (Array.isArray(bodyOwnerEntities) && bodyOwnerEntities.length) {
         const v = await validateAndNormalizeOwnerEntitiesInput(bodyOwnerEntities);
         if (!v.ok) {
@@ -221,12 +226,12 @@ const createUser = async (req, res) => {
         return res.status(400).json({
           success: false,
           message:
-            "Owner role requires ownerEntities (array) or ownerEntityType + ownerEntityId",
+            "Owner / Owner Superadmin role requires ownerEntities (array) or ownerEntityType + ownerEntityId",
         });
       }
     }
 
-    if (role === "owner_dataentry") {
+    if (isOwnerDataEntryRole(role)) {
       const p = normalizeOwnerDataEntryPayload(req.body);
       const v = validateOwnerDataEntryScopePayload(p);
       if (!v.ok) {
@@ -319,6 +324,7 @@ const updateUser = async (req, res) => {
       if (roleIn === "support") user.role = "support";
       else if (roleIn === "owner") user.role = "owner";
       else if (roleIn === "owner_dataentry") user.role = "owner_dataentry";
+      else if (roleIn === "owner_superadmin") user.role = "owner_superadmin";
       else user.role = "user";
     }
     if (bodyOwnerEntities !== undefined) {
@@ -328,7 +334,7 @@ const updateUser = async (req, res) => {
           message: "ownerEntities must be an array",
         });
       }
-      if (user.role === "owner") {
+      if (isOwnerDashboardRole(user.role)) {
         const v = await validateAndNormalizeOwnerEntitiesInput(bodyOwnerEntities);
         if (!v.ok) {
           return res.status(400).json({ success: false, message: v.message });
@@ -351,7 +357,7 @@ const updateUser = async (req, res) => {
         user.ownerEntityId = ownerEntityId || null;
       }
       if (
-        user.role === "owner" &&
+        isOwnerDashboardRole(user.role) &&
         bodyOwnerEntities === undefined &&
         (ownerEntityType !== undefined || ownerEntityId !== undefined)
       ) {
@@ -362,12 +368,12 @@ const updateUser = async (req, res) => {
         }
       }
     }
-    if (user.role === "owner") {
+    if (isOwnerDashboardRole(user.role)) {
       const nList = normalizeOwnerEntitiesList(user);
       if (!nList.length) {
         return res.status(400).json({
           success: false,
-          message: "Owner role requires valid linked businesses",
+          message: "Owner / Owner Superadmin role requires valid linked businesses",
         });
       }
       if (!user.ownerEntities?.length) {
@@ -383,7 +389,7 @@ const updateUser = async (req, res) => {
         if (!t || !eid || !(await adminOwnerEntityExists(t, eid))) {
           return res.status(400).json({
             success: false,
-            message: "Owner role requires valid linked businesses",
+            message: "Owner / Owner Superadmin role requires valid linked businesses",
           });
         }
       }
@@ -393,7 +399,7 @@ const updateUser = async (req, res) => {
       user.ownerEntities = [];
     }
 
-    if (user.role === "owner_dataentry") {
+    if (isOwnerDataEntryRole(user.role)) {
       const p = normalizeOwnerDataEntryPayload(req.body);
       const v = validateOwnerDataEntryScopePayload(p);
       if (!v.ok) {

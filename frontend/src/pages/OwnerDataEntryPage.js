@@ -33,16 +33,25 @@ import {
   Chip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { Link } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import EditIcon from "@mui/icons-material/Edit";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { productAPI, storeAPI, brandAPI, companyAPI } from "../services/api";
-import { normalizeExpiryInputForApi } from "../utils/expiryDate";
+import {
+  normalizeExpiryInputForApi,
+  toDatetimeLocalValue,
+} from "../utils/expiryDate";
 import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 import { getApiBaseURL } from "../utils/getApiBaseURL";
 import { resolveMediaUrl } from "../utils/mediaUrl";
-import { canAccessOwnerDataEntryPage } from "../utils/adminAccess";
+import {
+  canAccessOwnerDataEntryPage,
+  canAccessPendingPage,
+} from "../utils/adminAccess";
+import { isOwnerDataEntryRole } from "../utils/roles";
 
 const KIND_ORDER = ["store", "brand", "company"];
 
@@ -115,10 +124,26 @@ export default function OwnerDataEntryPage() {
     entityId: null,
   });
   const [imageFile, setImageFile] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    barcode: "",
+    previousPrice: "",
+    newPrice: "",
+    isDiscount: false,
+    expireDate: "",
+    imageUrl: "",
+    ownerKind: "store",
+    entityId: null,
+  });
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editPlaceLabel, setEditPlaceLabel] = useState("");
   const dialogInitRef = useRef(false);
 
   const allowed = useMemo(() => {
-    if (!user || user.role !== "owner_dataentry") {
+    if (!user || !isOwnerDataEntryRole(user)) {
       return { stores: [], brands: [], companies: [] };
     }
     const filterList = (all, allFlag, ids) => {
@@ -146,7 +171,7 @@ export default function OwnerDataEntryPage() {
   }, [user, lists]);
 
   const availableKinds = useMemo(() => {
-    if (!user || user.role !== "owner_dataentry") return [];
+    if (!user || !isOwnerDataEntryRole(user)) return [];
     const k = [];
     if (
       user.ownerDataEntryAllStores ||
@@ -379,6 +404,114 @@ export default function OwnerDataEntryPage() {
     }
   };
 
+  const openEditDialog = (p) => {
+    setEditingProductId(p._id);
+    const ownerKind = p.storeId ? "store" : p.brandId ? "brand" : "company";
+    const rawSid = p.storeId && typeof p.storeId === "object" ? p.storeId._id : p.storeId;
+    const rawBid = p.brandId && typeof p.brandId === "object" ? p.brandId._id : p.brandId;
+    const rawCid =
+      p.companyId && typeof p.companyId === "object" ? p.companyId._id : p.companyId;
+    const entityId = rawSid || rawBid || rawCid || null;
+    const labelFrom = (obj) =>
+      obj && typeof obj === "object"
+        ? obj.nameEn || obj.name || obj.nameKu || ""
+        : "";
+    let place = "";
+    if (ownerKind === "store") place = labelFrom(p.storeId);
+    else if (ownerKind === "brand") place = labelFrom(p.brandId);
+    else place = labelFrom(p.companyId);
+    setEditPlaceLabel(place || "—");
+    const draft =
+      p.pendingDraft && typeof p.pendingDraft === "object" ? p.pendingDraft : {};
+    setEditForm({
+      name: (draft.name != null ? draft.name : p.name) || "",
+      barcode: (draft.barcode != null ? draft.barcode : p.barcode) || "",
+      previousPrice:
+        (draft.previousPrice != null ? draft.previousPrice : p.previousPrice) !=
+        null
+          ? String(
+              draft.previousPrice != null ? draft.previousPrice : p.previousPrice,
+            )
+          : "",
+      newPrice:
+        (draft.newPrice != null ? draft.newPrice : p.newPrice) != null
+          ? String(draft.newPrice != null ? draft.newPrice : p.newPrice)
+          : "",
+      isDiscount:
+        draft.isDiscount !== undefined ? !!draft.isDiscount : !!p.isDiscount,
+      expireDate: toDatetimeLocalValue(
+        draft.expireDate != null ? draft.expireDate : p.expireDate,
+      ),
+      imageUrl: (draft.image != null ? draft.image : p.image) || "",
+      ownerKind,
+      entityId: entityId ? String(entityId) : null,
+    });
+    setEditImageFile(null);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingProductId) return;
+    const nameTrim = String(editForm.name || "").trim();
+    if (!nameTrim) {
+      setError(
+        t("Product name is required", {
+          defaultValue: "Product name is required",
+        }),
+      );
+      return;
+    }
+    const prevP = parseOptionalNonNegativePrice(
+      editForm.previousPrice,
+      t("Previous price", { defaultValue: "Previous price" }),
+    );
+    if (!prevP.ok) {
+      setError(prevP.msg);
+      return;
+    }
+    const newP = parseOptionalNonNegativePrice(
+      editForm.newPrice,
+      t("New price", { defaultValue: "New price" }),
+    );
+    if (!newP.ok) {
+      setError(newP.msg);
+      return;
+    }
+    setEditSaving(true);
+    setError("");
+    try {
+      let imageUrl = editForm.imageUrl || "";
+      if (editImageFile) {
+        imageUrl = await uploadProductImage(editImageFile, editForm.expireDate);
+      }
+      const payload = {
+        name: nameTrim,
+        isDiscount: !!editForm.isDiscount,
+      };
+      if (editForm.barcode?.trim()) payload.barcode = editForm.barcode.trim();
+      if (prevP.value !== undefined) payload.previousPrice = prevP.value;
+      if (newP.value !== undefined) payload.newPrice = newP.value;
+      const exp = normalizeExpiryInputForApi(editForm.expireDate);
+      if (exp) payload.expireDate = exp;
+      if (imageUrl) payload.image = imageUrl;
+
+      await productAPI.update(editingProductId, payload);
+      setEditDialogOpen(false);
+      setEditingProductId(null);
+      await loadProducts();
+    } catch (e) {
+      console.error(e);
+      setError(
+        e?.response?.data?.msg ||
+          e?.response?.data?.message ||
+          e?.message ||
+          "Failed to save",
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const pageShell = (children) => (
     <Box
       sx={{
@@ -426,20 +559,32 @@ export default function OwnerDataEntryPage() {
         <Typography variant="h5" component="h1">
           {t("Owner Data Entry", { defaultValue: "Owner Data Entry" })}
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={openDialog}
-        >
-          {t("Add product", { defaultValue: "Add product" })}
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {canAccessPendingPage(user) && (
+            <Button
+              component={Link}
+              to="/pending"
+              variant="outlined"
+              size="small"
+            >
+              {t("Pending reviews", { defaultValue: "Pending reviews" })}
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openDialog}
+          >
+            {t("Add product", { defaultValue: "Add product" })}
+          </Button>
+        </Stack>
       </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t(
-          "View products in your scope and add new ones. Editing and deleting are not available here.",
+          "odeIntroPendingAdds",
           {
             defaultValue:
-              "View products in your scope and add new ones. Editing and deleting are not available here.",
+              "View products in your scope. New products you add stay pending until admin or support approves them. Edits to published products go through the same review flow.",
           },
         )}
       </Typography>
@@ -489,23 +634,27 @@ export default function OwnerDataEntryPage() {
             <TableHead>
               <TableRow>
                 <TableCell>{t("Name")}</TableCell>
+                <TableCell>{t("Status", { defaultValue: "Status" })}</TableCell>
                 <TableCell align="right">{t("Price")}</TableCell>
                 <TableCell align="right">
                   {t("Previous price", { defaultValue: "Previous price" })}
                 </TableCell>
                 <TableCell>{t("Expiry", { defaultValue: "Expiry" })}</TableCell>
+                <TableCell align="right">
+                  {t("Actions", { defaultValue: "Actions" })}
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={6} align="center">
                     {t("No products yet", { defaultValue: "No products yet" })}
                   </TableCell>
                 </TableRow>
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={6} align="center">
                     {t("No products match your search.", {
                       defaultValue: "No products match your search.",
                     })}
@@ -513,9 +662,51 @@ export default function OwnerDataEntryPage() {
                 </TableRow>
               ) : (
                 filteredProducts.map((p) => {
+                  const isPending = p.status === "pending";
+                  const hasUpdateDraft =
+                    p.pendingDraft &&
+                    typeof p.pendingDraft === "object" &&
+                    Object.keys(p.pendingDraft).length > 0;
                   return (
                     <TableRow key={p._id}>
-                      <TableCell>{p.name}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{p.name}</Typography>
+                        {hasUpdateDraft && !isPending && (
+                          <Typography
+                            variant="caption"
+                            color="warning.main"
+                            display="block"
+                            sx={{ mt: 0.25 }}
+                          >
+                            {t("odeUpdateAwaitingApproval", {
+                              defaultValue: "Updated version awaiting approval",
+                            })}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          <Chip
+                            size="small"
+                            color={isPending ? "warning" : "success"}
+                            label={
+                              isPending
+                                ? t("Pending", { defaultValue: "Pending" })
+                                : t("Published", { defaultValue: "Published" })
+                            }
+                          />
+                          {hasUpdateDraft && !isPending && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={t("odeUpdatePendingChip", {
+                                defaultValue: "Update pending",
+                              })}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell align="right">
                         {p.newPrice != null ? p.newPrice : "—"}
                       </TableCell>
@@ -526,6 +717,16 @@ export default function OwnerDataEntryPage() {
                         {p.expireDate
                           ? new Date(p.expireDate).toLocaleDateString()
                           : "—"}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<EditIcon />}
+                          onClick={() => openEditDialog(p)}
+                        >
+                          {t("Edit")}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -758,6 +959,151 @@ export default function OwnerDataEntryPage() {
           </Button>
           <Button onClick={handleSubmit} variant="contained" disabled={saving}>
             {saving ? t("Saving...") : t("Save")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => !editSaving && setEditDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>{t("Edit product", { defaultValue: "Edit product" })}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t("odeEditModerationNote", {
+                defaultValue:
+                  "Saving changes sends the product back to pending review if it was already published.",
+              })}
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 1.5 }}>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {editForm.ownerKind === "store"
+                  ? t("Store", { defaultValue: "Store" })
+                  : editForm.ownerKind === "brand"
+                    ? t("Brand", { defaultValue: "Brand" })
+                    : t("Company", { defaultValue: "Company" })}
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {editPlaceLabel}
+              </Typography>
+            </Paper>
+            <TextField
+              label={t("Product name", { defaultValue: "Product name" })}
+              value={editForm.name}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, name: e.target.value }))
+              }
+              required
+              fullWidth
+            />
+            <TextField
+              label={t("Barcode (optional)", {
+                defaultValue: "Barcode (optional)",
+              })}
+              value={editForm.barcode}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, barcode: e.target.value }))
+              }
+              fullWidth
+            />
+            <TextField
+              label={t("Previous price (optional)", {
+                defaultValue: "Previous price (optional)",
+              })}
+              type="number"
+              inputProps={{ min: 0, step: "any" }}
+              value={editForm.previousPrice}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, previousPrice: e.target.value }))
+              }
+              fullWidth
+            />
+            <TextField
+              label={t("New price (optional)", {
+                defaultValue: "New price (optional)",
+              })}
+              type="number"
+              inputProps={{ min: 0, step: "any" }}
+              value={editForm.newPrice}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, newPrice: e.target.value }))
+              }
+              fullWidth
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={editForm.isDiscount}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      isDiscount: e.target.checked,
+                    }))
+                  }
+                />
+              }
+              label={t("Discount", { defaultValue: "Discount" })}
+            />
+            <TextField
+              label={t("Expiry date (optional)", {
+                defaultValue: "Expiry date (optional)",
+              })}
+              type="datetime-local"
+              value={editForm.expireDate}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, expireDate: e.target.value }))
+              }
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUploadIcon />}
+            >
+              {t("Image (optional)", { defaultValue: "Image (optional)" })}
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setEditImageFile(file || null);
+                  if (!file) setEditForm((f) => ({ ...f, imageUrl: "" }));
+                }}
+              />
+            </Button>
+            {editImageFile && (
+              <Typography variant="caption" color="text.secondary">
+                {editImageFile.name}
+              </Typography>
+            )}
+            {editForm.imageUrl && !editImageFile && (
+              <Box
+                component="img"
+                src={resolveMediaUrl(editForm.imageUrl)}
+                alt=""
+                sx={{ maxWidth: 120, maxHeight: 120, borderRadius: 1 }}
+              />
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEditDialogOpen(false)}
+            disabled={editSaving}
+          >
+            {t("Cancel")}
+          </Button>
+          <Button
+            onClick={handleEditSubmit}
+            variant="contained"
+            disabled={editSaving}
+          >
+            {editSaving ? t("Saving...") : t("Save")}
           </Button>
         </DialogActions>
       </Dialog>

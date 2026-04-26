@@ -11,6 +11,9 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  getPendingProducts,
+  getProductModerationById,
+  rejectPendingProduct,
   getOwnerDataEntryProducts,
   getProductsByBrand,
   getProductsByCompany,
@@ -46,6 +49,18 @@ router.get("/category/:category", getProductsByCategory);
 // @desc    Products visible to Owner Data Entry user (scoped)
 router.get("/owner-data-entry", protect, getOwnerDataEntryProducts);
 
+// @route   GET /api/products/pending
+// @desc    Pending products for moderation (must be before /:id)
+router.get("/pending", protect, getPendingProducts);
+
+// @route   GET /api/products/moderation/:id
+// @desc    Full product for moderation (before generic /:id)
+router.get("/moderation/:id", protect, getProductModerationById);
+
+// @route   POST /api/products/:id/reject
+// @desc    Reject pending submission or discard owner draft
+router.post("/:id/reject", protect, rejectPendingProduct);
+
 // @route   GET /api/products/:id
 // @desc    Get product by ID
 router.get("/:id", getProductById);
@@ -56,11 +71,11 @@ router.post("/", createProduct);
 
 // @route   PUT /api/products/:id
 // @desc    Update product
-router.put("/:id", updateProduct);
+router.put("/:id", protect, updateProduct);
 
 // @route   DELETE /api/products/:id
 // @desc    Delete product
-router.delete("/:id", deleteProduct);
+router.delete("/:id", protect, deleteProduct);
 
 // @route   POST /api/products/upload-image
 // @desc    Upload product image
@@ -203,6 +218,8 @@ router.post("/bulk-upload", upload.single("excelFile"), async (req, res) => {
           expireDate: row[10] ? new Date(row[10]).toISOString() : null,
           weight: row[11] || "",
           status: "pending",
+          pendingReason: "adding",
+          wasEverPublished: false,
         };
 
         if (!baseProductData.name || baseProductData.isDiscount === undefined) {

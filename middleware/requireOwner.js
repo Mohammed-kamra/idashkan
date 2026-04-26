@@ -1,11 +1,12 @@
 const mongoose = require("mongoose");
 const { normalizeOwnerEntitiesList } = require("../utils/ownerEntities");
+const { isOwnerDashboardRole } = require("../utils/roleHelpers");
 
 /** Use after `protect`. Sets `req.ownerContext` from query or defaults to first linked entity. */
 module.exports = function requireOwner(req, res, next) {
   try {
     const user = req.user;
-    if (!user || user.role !== "owner") {
+    if (!user || !isOwnerDashboardRole(user)) {
       return res.status(403).json({
         success: false,
         message: "Owner role required",

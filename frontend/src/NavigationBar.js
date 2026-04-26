@@ -19,6 +19,7 @@ import {
   ListItemIcon,
   ListItemText,
   Badge,
+  Chip,
   ListItemButton,
   Divider,
   Dialog,
@@ -55,6 +56,9 @@ import {
   CorporateFare as CorporateFareIcon,
   BarChart as BarChartIcon,
   Palette as PaletteIcon,
+  Storefront as StorefrontNavOwnerIcon,
+  Add as AddOwnerDataEntryIcon,
+  HourglassTop as HourglassTopIcon,
   LightModeOutlined,
   DarkModeOutlined,
   BrightnessAutoRounded,
@@ -88,9 +92,15 @@ import {
   DATA_LANG_KU,
   useDataLanguage,
 } from "./context/DataLanguageContext";
-import { giftAPI } from "./services/api";
+import { giftAPI, productAPI } from "./services/api";
 import { isExpiryStillValid } from "./utils/expiryDate";
-import { isAdminEmail, canAccessDataEntry } from "./utils/adminAccess";
+import {
+  isAdminEmail,
+  canAccessDataEntry,
+  canAccessPendingPage,
+  canSeeOwnerNavSection,
+} from "./utils/adminAccess";
+import { getOwnerMyProfileNavPath } from "./utils/ownerEntities";
 import {
   resetMainPageScrollPositionInSession,
   scrollWindowToTop,
@@ -180,6 +190,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
   const [placesAnchorEl, setPlacesAnchorEl] = useState(null);
   const [servicesAnchorEl, setServicesAnchorEl] = useState(null);
+  const [ownerNavAnchorEl, setOwnerNavAnchorEl] = useState(null);
 
   const [mobileNavCityAnchor, setMobileNavCityAnchor] = useState(null);
   const [mobileNavLangAnchor, setMobileNavLangAnchor] = useState(null);
@@ -217,6 +228,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const GIFTS_LAST_SEEN_KEY_PREFIX = "giftsLastSeenAt.v1";
   /** null until identity is ready and first fetch completes — avoids bogus badge during hydration */
   const [newGiftsCount, setNewGiftsCount] = useState(null);
+  const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const latestGiftTsRef = useRef(0);
 
   const getGiftSeenStorageKey = useCallback(() => {
@@ -335,6 +347,30 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [giftsBadgeIdentityReady, fetchNewGiftsCount]);
 
+  const fetchPendingReviewsCount = useCallback(async () => {
+    if (!user || !canAccessDataEntry(user)) {
+      setPendingReviewsCount(0);
+      return;
+    }
+    try {
+      const res = await productAPI.getPendingList();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setPendingReviewsCount(list.length);
+    } catch {
+      setPendingReviewsCount(0);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !canAccessDataEntry(user)) {
+      setPendingReviewsCount(0);
+      return undefined;
+    }
+    fetchPendingReviewsCount();
+    const id = window.setInterval(fetchPendingReviewsCount, 60000);
+    return () => window.clearInterval(id);
+  }, [user, fetchPendingReviewsCount]);
+
   const handleLangChange = (event) => {
     i18n.changeLanguage(event.target.value);
   };
@@ -398,6 +434,14 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
 
   const handleServicesMenuClose = () => {
     setServicesAnchorEl(null);
+  };
+
+  const handleOwnerNavMenuOpen = (event) => {
+    setOwnerNavAnchorEl(event.currentTarget);
+  };
+
+  const handleOwnerNavMenuClose = () => {
+    setOwnerNavAnchorEl(null);
   };
 
   const displayName =
@@ -500,6 +544,28 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     ["/findjob", "/shopping", "/gifts"].some((p) =>
       location.pathname.startsWith(p),
     ) || false;
+
+  const ownerNavMenuActive =
+    Boolean(ownerNavAnchorEl) ||
+    location.pathname.startsWith("/owner-dashboard") ||
+    location.pathname.startsWith("/owner-data-entry");
+
+  const ownerMyProfileNavPath = useMemo(
+    () => (user ? getOwnerMyProfileNavPath(user) : "/profile"),
+    [
+      user?._id,
+      user?.role,
+      user?.ownerEntities,
+      user?.ownerEntityType,
+      user?.ownerEntityId,
+      user?.ownerDataEntryStoreIds,
+      user?.ownerDataEntryBrandIds,
+      user?.ownerDataEntryCompanyIds,
+      user?.ownerDataEntryAllStores,
+      user?.ownerDataEntryAllBrands,
+      user?.ownerDataEntryAllCompanies,
+    ],
+  );
 
   const desktopNavButtonSx = (active) => ({
     color: "white",
@@ -1360,6 +1426,131 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     <ListItemText primary={t("Gifts")} />
                   </MenuItem>
                 </Menu>
+
+                {isAuthenticated && canAccessPendingPage(user) && (
+                  <Button
+                    component={Link}
+                    to="/pending"
+                    startIcon={<HourglassTopIcon />}
+                    sx={desktopNavButtonSx(
+                      location.pathname.startsWith("/pending"),
+                    )}
+                  >
+                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+                      <span>
+                        {t("Pending", {
+                          defaultValue: "Pending",
+                        })}
+                      </span>
+                      {canAccessDataEntry(user) && pendingReviewsCount > 0 && (
+                        <Chip
+                          label={pendingReviewsCount}
+                          size="small"
+                          color="warning"
+                          sx={{
+                            height: 18,
+                            minWidth: 18,
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                            "& .MuiChip-label": { px: 0.6 },
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </Button>
+                )}
+
+                {isAuthenticated && canSeeOwnerNavSection(user) && (
+                  <>
+                    <Button
+                      startIcon={<StorefrontNavOwnerIcon />}
+                      endIcon={<ExpandMoreIcon />}
+                      onClick={handleOwnerNavMenuOpen}
+                      sx={desktopNavButtonSx(ownerNavMenuActive)}
+                    >
+                      {t("navOwnerSection", { defaultValue: "Owner" })}
+                    </Button>
+                    <Menu
+                      anchorEl={ownerNavAnchorEl}
+                      open={Boolean(ownerNavAnchorEl)}
+                      onClose={handleOwnerNavMenuClose}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "right",
+                      }}
+                      transformOrigin={{
+                        vertical: "top",
+                        horizontal: "right",
+                      }}
+                      PaperProps={{
+                        sx: {
+                          mt: 1.5,
+                          minWidth: 220,
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? "var(--brand-primary-blue)"
+                              : "#fff",
+                          border: `1px solid ${theme.palette.divider}`,
+                          borderRadius: 2,
+                        },
+                      }}
+                    >
+                      <MenuItem
+                        component={Link}
+                        to={ownerMyProfileNavPath}
+                        onClick={handleOwnerNavMenuClose}
+                        selected={
+                          ownerMyProfileNavPath === "/profile"
+                            ? location.pathname === "/profile"
+                            : location.pathname === ownerMyProfileNavPath
+                        }
+                      >
+                        <ListItemIcon>
+                          <PersonIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={t("ownerMyProfile", {
+                            defaultValue: "My profile",
+                          })}
+                        />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/owner-dashboard"
+                        onClick={handleOwnerNavMenuClose}
+                        selected={location.pathname.startsWith(
+                          "/owner-dashboard",
+                        )}
+                      >
+                        <ListItemIcon>
+                          <DashboardIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={t("Owner dashboard", {
+                            defaultValue: "Owner dashboard",
+                          })}
+                        />
+                      </MenuItem>
+                      <MenuItem
+                        component={Link}
+                        to="/owner-data-entry"
+                        onClick={handleOwnerNavMenuClose}
+                        selected={location.pathname.startsWith(
+                          "/owner-data-entry",
+                        )}
+                      >
+                        <ListItemIcon>
+                          <AddOwnerDataEntryIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={t("Owner Data Entry", {
+                            defaultValue: "Owner Data Entry",
+                          })}
+                        />
+                      </MenuItem>
+                    </Menu>
+                  </>
+                )}
 
                 {showAdminNav && (
                   <>
