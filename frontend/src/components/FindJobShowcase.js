@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
   Box,
   Typography,
@@ -28,7 +28,7 @@ const genderLabel = (t, g) => {
   return t("Any");
 };
 
-const FindJobShowcase = ({ jobs }) => {
+const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName, locTitle } = useLocalizedContent();
@@ -302,6 +302,6 @@ const FindJobShowcase = ({ jobs }) => {
       </Box>
     </Box>
   );
-};
+});
 
 export default FindJobShowcase;

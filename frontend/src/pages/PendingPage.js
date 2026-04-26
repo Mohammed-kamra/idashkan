@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
@@ -61,7 +62,7 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const FILTERS = [
   { value: "all", key: "pendingFilterAll" },
@@ -184,9 +185,24 @@ export default function PendingPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("all");
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const listEnabled = Boolean(
+    isAuthenticated && user && canAccessPendingPage(user),
+  );
+  const {
+    data: items = [],
+    isPending: loading,
+    error: pendingQueryError,
+  } = useQuery({
+    queryKey: ["pendingProducts", filter],
+    queryFn: async () => {
+      const params = filter === "all" ? {} : { pendingReason: filter };
+      const res = await productAPI.getPendingList(params);
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: listEnabled,
+  });
   const [busyKey, setBusyKey] = useState(null);
 
   const [reviewProduct, setReviewProduct] = useState(null);
@@ -234,33 +250,6 @@ export default function PendingPage() {
   const setBusy = (key) => setBusyKey(key);
   const clearBusy = () => setBusyKey(null);
   const isBusy = (key) => busyKey === key;
-
-  const load = useCallback(async () => {
-    if (!isAuthenticated || !canAccessPendingPage(user)) return;
-    setLoading(true);
-    setError("");
-    try {
-      const params = filter === "all" ? {} : { pendingReason: filter };
-      const res = await productAPI.getPendingList(params);
-      setItems(Array.isArray(res.data) ? res.data : []);
-    } catch (e) {
-      console.error(e);
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          t("pendingLoadError", {
-            defaultValue: "Failed to load pending products.",
-          }),
-      );
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [isAuthenticated, user, filter, t]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const fetchCategoryTypes = useCallback(async (categoryId) => {
     try {
@@ -317,7 +306,7 @@ export default function PendingPage() {
     setError("");
     try {
       await productAPI.update(id, { status: "published" });
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
     } catch (e) {
       console.error(e);
       setError(
@@ -337,7 +326,7 @@ export default function PendingPage() {
     try {
       await productAPI.rejectPending(id);
       setConfirmRejectId(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
     } catch (e) {
       console.error(e);
       setError(
@@ -357,7 +346,7 @@ export default function PendingPage() {
     try {
       await productAPI.delete(id);
       setConfirmDeleteId(null);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
     } catch (e) {
       console.error(e);
       setError(
@@ -538,7 +527,7 @@ export default function PendingPage() {
       }
       await productAPI.update(editId, productUpdateData);
       closeEdit();
-      await load();
+      await queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
     } catch (e) {
       console.error(e);
       setEditError(
@@ -575,6 +564,14 @@ export default function PendingPage() {
   }
 
   const canModerate = canApprovePendingProducts(user);
+  const listErrorMsg =
+    error ||
+    (pendingQueryError &&
+      (pendingQueryError?.response?.data?.message ||
+        pendingQueryError?.message ||
+        t("pendingLoadError", {
+          defaultValue: "Failed to load pending products.",
+        })));
 
   return (
     <Box sx={{ py: 4, pt: { xs: 10, sm: 11 } }}>
@@ -620,9 +617,18 @@ export default function PendingPage() {
         ))}
       </ToggleButtonGroup>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
-          {error}
+      {listErrorMsg && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => {
+            setError("");
+            if (pendingQueryError) {
+              void queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
+            }
+          }}
+        >
+          {listErrorMsg}
         </Alert>
       )}
 

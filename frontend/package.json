@@ -2,13 +2,13 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
+    "@tanstack/react-query": "^5.100.5",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -22,7 +22,6 @@
     "react-dom": "^18.2.0",
     "react-i18next": "^11.18.6",
     "react-router-dom": "^7.6.3",
-    "react-scripts": "^5.0.1",
     "react-slick": "^0.30.3",
     "react-virtuoso": "^4.18.4",
     "recharts": "^2.15.0",
@@ -34,12 +33,13 @@
   },
   "scripts": {
     "prestart": "node scripts/generateFonts.js && node scripts/write-version.js",
-    "start": "craco start",
+    "start": "vite",
     "prebuild": "node scripts/generateFonts.js && node scripts/write-version.js",
-    "build": "cross-env CI=false craco build",
-    "build:hostgator": "echo 'Ensure .env.production has REACT_APP_API_BASE_URL and REACT_APP_BACKEND_URL (HTTPS)' && npm run build",
-    "test": "craco test",
-    "eject": "react-scripts eject",
+    "build": "cross-env CI=false vite build",
+    "build:hostgator": "echo 'Ensure .env.production has VITE_API_BASE_URL and VITE_BACKEND_URL (HTTPS)' && npm run build",
+    "test": "echo \"No test runner configured\"",
+    "preview": "vite preview",
+    "eject": "echo \"Eject is not supported after Vite migration\"",
     "i18n:dedupe": "node scripts/dedupe-i18n-resources.cjs"
   },
   "eslintConfig": {
@@ -57,7 +57,9 @@
         }
       },
       {
-        "files": ["src/version.js"],
+        "files": [
+          "src/version.js"
+        ],
         "globals": {
           "__APP_VERSION__": "readonly"
         }
@@ -77,10 +79,12 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
+    "@vitejs/plugin-react": "^5.0.2",
     "autoprefixer": "^10.5.0",
     "cross-env": "^10.1.0",
     "postcss": "^8.5.10",
-    "tailwindcss": "^3.4.19"
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7"
   }
 }

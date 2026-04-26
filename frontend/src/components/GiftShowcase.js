@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import {
   Box,
   Typography,
@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
-const GiftShowcase = ({ gifts }) => {
+const GiftShowcase = memo(function GiftShowcase({ gifts }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName, locDescription } = useLocalizedContent();
@@ -251,6 +251,6 @@ const GiftShowcase = ({ gifts }) => {
       </Slider>
     </Paper>
   );
-};
+});
 
 export default GiftShowcase;

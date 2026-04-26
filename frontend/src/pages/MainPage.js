@@ -6,6 +6,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Typography,
   Button,
@@ -24,17 +25,11 @@ import {
   Skeleton,
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
+import { productAPI } from "../services/api";
 import {
-  storeAPI,
-  productAPI,
-  categoryAPI,
-  adAPI,
-  storeTypeAPI,
-  brandAPI,
-  companyAPI,
-  giftAPI,
-  jobAPI,
-} from "../services/api";
+  fetchMainPageFullBundle,
+  mainPageQueryKeys,
+} from "../queries/mainPageQueries";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import BusinessIcon from "@mui/icons-material/Business";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -74,11 +69,7 @@ import {
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useContentRefresh } from "../context/ContentRefreshContext";
-import {
-  readMainPageCache,
-  writeMainPageCache,
-  buildMainPagePayload,
-} from "../utils/mainPageCache";
+import { readMainPageCache, writeMainPageCache } from "../utils/mainPageCache";
 import useOnlineStatus from "../hooks/useOnlineStatus";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import { storeMatchesSelectedCity } from "../utils/cityMatch";
@@ -270,6 +261,11 @@ const MainPage = () => {
 
   // City filter hook
   const { selectedCity } = useCityFilter();
+  const queryClient = useQueryClient();
+
+  /** On mobile, paint banner + filters + first store rows before Flash Deals / Jobs (idle). */
+  const [mobileDeferredSectionsReady, setMobileDeferredSectionsReady] =
+    useState(() => !isMobile);
 
   // State for tracking like counts locally
   const [likeCounts, setLikeCounts] = useState(
@@ -502,56 +498,15 @@ const MainPage = () => {
       try {
         if (!silent) setLoading(true);
         setError("");
-        const [
-          storesResponse,
-          categoriesResponse,
-          productsResponse,
-          adsResponse,
-          storeTypesResponse,
-          brandsResponse,
-          companiesResponse,
-          giftsResponse,
-          jobsResponse,
-        ] = await Promise.all([
-          storeAPI.getAll(),
-          categoryAPI.getAll(),
-          productAPI.getAll(),
-          adAPI.getAll({ page: "home" }),
-          storeTypeAPI.getAll(),
-          brandAPI.getAll(),
-          companyAPI.getAll().catch(() => ({ data: [] })),
-          giftAPI.getAll().catch(() => ({ data: { data: [] } })),
-          jobAPI.getAll().catch(() => ({ data: [] })),
-        ]);
-
-        const storesData = storesResponse.data;
-        const categoriesData = categoriesResponse.data;
-        const productsData = productsResponse.data;
-        const adsData = adsResponse.data || [];
-        const brandsData = brandsResponse.data || [];
-        const companiesData = companiesResponse.data || [];
-        const giftsData = Array.isArray(giftsResponse.data?.data)
-          ? giftsResponse.data.data
-          : Array.isArray(giftsResponse.data)
-            ? giftsResponse.data
-            : [];
-        const jobsData = Array.isArray(jobsResponse.data)
-          ? jobsResponse.data
-          : [];
-
-        const payload = buildMainPagePayload({
-          storesData,
-          categoriesData,
-          productsData,
-          adsData,
-          storeTypesData: storeTypesResponse?.data || [],
-          brandsData,
-          companiesData,
-          giftsData,
-          jobsData,
+        const fullPayload = await fetchMainPageFullBundle({
+          refreshKey,
+          queryClient,
+          onPhase1Payload: (partial) => {
+            applyMainPagePayload(partial);
+            if (!silent) setLoading(false);
+          },
         });
-        applyMainPagePayload(payload);
-        writeMainPageCache(refreshKey, payload);
+        applyMainPagePayload(fullPayload);
       } catch (err) {
         setError(
           err.response
@@ -563,8 +518,31 @@ const MainPage = () => {
         if (!silent) setLoading(false);
       }
     },
-    [refreshKey, applyMainPagePayload],
+    [refreshKey, applyMainPagePayload, queryClient],
   );
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileDeferredSectionsReady(true);
+      return undefined;
+    }
+    if (loading) {
+      setMobileDeferredSectionsReady(false);
+      return undefined;
+    }
+    const schedule =
+      typeof window.requestIdleCallback === "function"
+        ? (cb) => window.requestIdleCallback(cb, { timeout: 2200 })
+        : (cb) => window.setTimeout(cb, 320);
+    const id = schedule(() => setMobileDeferredSectionsReady(true));
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(id);
+      } else {
+        window.clearTimeout(id);
+      }
+    };
+  }, [isMobile, loading]);
 
   useLayoutEffect(() => {
     const cached = readMainPageCache(refreshKey);
@@ -573,12 +551,18 @@ const MainPage = () => {
         applyMainPagePayload(cached);
         setLoading(false);
       }
+      queryClient.setQueryData(mainPageQueryKeys.hydrated(refreshKey), cached);
       setError("");
       // Skip the follow-up silent refetch whenever we hydrate from memory: refetch rebuilds
       // the payload and would change non‑VIP order (shuffle is reload-only) or fight scroll restore.
       skipInitialSilentRefreshRef.current = true;
     }
-  }, [refreshKey, applyMainPagePayload, mainPageBootstrapPayload]);
+  }, [
+    refreshKey,
+    applyMainPagePayload,
+    mainPageBootstrapPayload,
+    queryClient,
+  ]);
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
@@ -2679,21 +2663,44 @@ const MainPage = () => {
       >
         {mainPageTab === 0 ? (
           <>
-            {/* Flash Deals / Most Viewed */}
-            <FlashDealsSection
-              products={topViewedProducts}
-              onProductOpen={handleProductClick}
-              likeStates={likeStates}
-              isProductLiked={isProductLiked}
-              onLikeClick={handleLikeClick}
-              likeLoading={likeLoading}
-              formatPrice={formatPrice}
-              storeById={storeById}
-              getID={getID}
-            />
-
-            {/* Find Job */}
-            <FindJobShowcase jobs={showcaseEligibleJobs} />
+            {!isMobile || mobileDeferredSectionsReady ? (
+              <>
+                <FlashDealsSection
+                  products={topViewedProducts}
+                  onProductOpen={handleProductClick}
+                  likeStates={likeStates}
+                  isProductLiked={isProductLiked}
+                  onLikeClick={handleLikeClick}
+                  likeLoading={likeLoading}
+                  formatPrice={formatPrice}
+                  storeById={storeById}
+                  getID={getID}
+                />
+                <FindJobShowcase jobs={showcaseEligibleJobs} />
+              </>
+            ) : (
+              <Box
+                sx={{
+                  mb: { xs: 1.5, sm: 2 },
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                }}
+              >
+                <Skeleton
+                  variant="rounded"
+                  width="100%"
+                  height={152}
+                  sx={{ borderRadius: "20px" }}
+                />
+                <Skeleton
+                  variant="rounded"
+                  width="100%"
+                  height={124}
+                  sx={{ borderRadius: "20px" }}
+                />
+              </Box>
+            )}
 
             <Virtuoso
               useWindowScroll

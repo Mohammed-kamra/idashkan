@@ -38,7 +38,7 @@ import {
 import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 function productToEditForm(data) {
   if (!data) return null;

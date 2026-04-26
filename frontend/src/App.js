@@ -1,7 +1,7 @@
 import "./i18n";
 import "./styles/kurdishFonts.css";
 import "./styles/themes.css";
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -24,27 +24,26 @@ import createCache from "@emotion/cache";
 import rtlPlugin from "stylis-plugin-rtl";
 import CloseIcon from "@mui/icons-material/Close";
 
-// Import pages
-import MainPage from "./pages/MainPage";
-import ReelsPage from "./pages/reels";
-import StoreList from "./pages/StoreList";
-import BrandList from "./pages/BrandList";
-import CompanyList from "./pages/CompanyList";
-import BrandProfile from "./pages/BrandProfile";
-import ProductCategory from "./pages/ProductCategory";
-import DataEntryForm from "./pages/DataEntryForm";
-import ProductDetail from "./pages/ProductDetail";
-import StoreProfile from "./pages/StoreProfile";
-import SearchPage from "./pages/SearchPage";
-import Gifts from "./pages/Gifts";
-import FavouritesPage from "./pages/FavouritesPage";
-import AdminPage from "./pages/AdminPage";
-import AdminUsersPage from "./pages/AdminUsersPage";
-import AdminCitiesPage from "./pages/AdminCitiesPage";
-import AdminSearchAnalyticsPage from "./pages/AdminSearchAnalyticsPage";
-import AdminVisitorsReportPage from "./pages/AdminVisitorsReportPage";
-import CustomizationPage from "./pages/CustomizationPage";
-import TranslationPage from "./pages/TranslationPage";
+const MainPage = lazy(() => import("./pages/MainPage"));
+const ReelsPage = lazy(() => import("./pages/reels"));
+const StoreList = lazy(() => import("./pages/StoreList"));
+const BrandList = lazy(() => import("./pages/BrandList"));
+const CompanyList = lazy(() => import("./pages/CompanyList"));
+const BrandProfile = lazy(() => import("./pages/BrandProfile"));
+const ProductCategory = lazy(() => import("./pages/ProductCategory"));
+const DataEntryForm = lazy(() => import("./pages/DataEntryForm"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const StoreProfile = lazy(() => import("./pages/StoreProfile"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const Gifts = lazy(() => import("./pages/Gifts"));
+const FavouritesPage = lazy(() => import("./pages/FavouritesPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
+const AdminCitiesPage = lazy(() => import("./pages/AdminCitiesPage"));
+const AdminSearchAnalyticsPage = lazy(() => import("./pages/AdminSearchAnalyticsPage"));
+const AdminVisitorsReportPage = lazy(() => import("./pages/AdminVisitorsReportPage"));
+const CustomizationPage = lazy(() => import("./pages/CustomizationPage"));
+const TranslationPage = lazy(() => import("./pages/TranslationPage"));
 import NavigationBar from "./NavigationBar";
 import BottomNavigationBar from "./components/BottomNavigation";
 import { AuthProvider } from "./context/AuthContext";
@@ -53,14 +52,14 @@ import FirstVisitCityDialog from "./components/FirstVisitCityDialog";
 import { DataLanguageProvider } from "./context/DataLanguageContext";
 import { AppSettingsProvider } from "./context/AppSettingsContext";
 import { NotificationProvider } from "./context/NotificationContext";
-import LoginPage from "./pages/LoginPage";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import ProfilePage from "./pages/ProfilePage";
-import OwnerDashboardPage from "./pages/OwnerDashboardPage";
-import OwnerDataEntryPage from "./pages/OwnerDataEntryPage";
-import PendingPage from "./pages/PendingPage";
-import FindJob from "./pages/FindJob";
-import ShoppingPage from "./pages/ShoppingPage";
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const OwnerDashboardPage = lazy(() => import("./pages/OwnerDashboardPage"));
+const OwnerDataEntryPage = lazy(() => import("./pages/OwnerDataEntryPage"));
+const PendingPage = lazy(() => import("./pages/PendingPage"));
+const FindJob = lazy(() => import("./pages/FindJob"));
+const ShoppingPage = lazy(() => import("./pages/ShoppingPage"));
 import ProtectedRoute, {
   ProtectedAdminOnlyRoute,
   ProtectedOwnerRoute,
@@ -73,6 +72,7 @@ import NotificationEnableBanner from "./components/NotificationEnableBanner";
 import SplashScreen from "./components/SplashScreen";
 import ConnectionLostBanner from "./components/ConnectionLostBanner";
 import AppUpdateBanner from "./components/AppUpdateBanner";
+import Loader from "./components/Loader";
 import {
   ContentRefreshProvider,
   useContentRefresh,
@@ -85,8 +85,20 @@ import {
 } from "./context/ActiveThemeContext";
 import { DraftCartDrawerProvider } from "./context/DraftCartDrawerContext";
 import { DarkModeProvider, useDarkMode } from "./context/DarkModeContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { appVisitAPI } from "./services/api";
 import { getDeviceId } from "./utils/deviceId";
+import { installGlobalImageLazyLoading } from "./utils/globalImageLazyLoading";
+import { schedulePrefetchSearchPageWhenIdle } from "./utils/prefetchSearchPage";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const APP_VISIT_SESSION_KEY = "appVisitSessionId";
 
@@ -156,6 +168,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    return installGlobalImageLazyLoading();
+  }, []);
+
+  useEffect(() => {
     if (!splashFinished) return;
     void (async () => {
       try {
@@ -166,6 +182,12 @@ function AppContent() {
         /* ignore */
       }
     })();
+  }, [splashFinished]);
+
+  useEffect(() => {
+    if (!splashFinished) return undefined;
+    schedulePrefetchSearchPageWhenIdle();
+    return undefined;
   }, [splashFinished]);
 
   useEffect(() => {
@@ -207,6 +229,12 @@ function AppContent() {
         activeFontKey,
       }),
     [darkMode, i18n.language, effectiveTheme, activeFontKey],
+  );
+
+  const routeFallback = (
+    <Box sx={{ py: 6 }}>
+      <Loader message={t("Loading...", { defaultValue: "Loading..." })} />
+    </Box>
   );
 
   return (
@@ -311,158 +339,160 @@ function AppContent() {
                     : undefined
               }
             >
-              <Routes>
-                <Route path="/" element={<MainPage />} />
-                <Route path="/reels" element={<ReelsPage />} />
-                <Route path="/reels/:videoId" element={<ReelsPage />} />
-                <Route path="/stores" element={<StoreList />} />
-                <Route path="/stores/:id" element={<StoreProfile />} />
-                <Route path="/categories" element={<ProductCategory />} />
-                <Route path="/brands" element={<BrandList />} />
-                <Route path="/brands/:id" element={<BrandProfile />} />
-                <Route path="/companies" element={<CompanyList />} />
-                <Route path="/companies/:id" element={<BrandProfile />} />
-                <Route path="/gifts" element={<Gifts />} />
-                <Route path="/favourites" element={<FavouritesPage />} />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                      allowSupportRole
-                    >
-                      <DataEntryForm />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/dashboard"
-                  element={
-                    <ProtectedAdminOnlyRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                    >
-                      <AdminPage />
-                    </ProtectedAdminOnlyRoute>
-                  }
-                />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                    >
-                      <AdminUsersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/customization"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                    >
-                      <CustomizationPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/translations"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                    >
-                      <TranslationPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/cities"
-                  element={
-                    <ProtectedAdminOnlyRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                    >
-                      <AdminCitiesPage />
-                    </ProtectedAdminOnlyRoute>
-                  }
-                />
-                <Route
-                  path="/admin/search-analytics"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                      allowSupportRole
-                    >
-                      <AdminSearchAnalyticsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/visitors"
-                  element={
-                    <ProtectedRoute
-                      allowedEmails={[
-                        "mshexani45@gmail.com",
-                        "admin@gmail.com",
-                      ]}
-                      allowSupportRole
-                    >
-                      <AdminVisitorsReportPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route
-                  path="/owner-dashboard"
-                  element={
-                    <ProtectedOwnerRoute>
-                      <OwnerDashboardPage />
-                    </ProtectedOwnerRoute>
-                  }
-                />
-                <Route
-                  path="/owner-data-entry"
-                  element={
-                    <ProtectedOwnerDataEntryRoute>
-                      <OwnerDataEntryPage />
-                    </ProtectedOwnerDataEntryRoute>
-                  }
-                />
-                <Route
-                  path="/pending"
-                  element={
-                    <ProtectedPendingRoute>
-                      <PendingPage />
-                    </ProtectedPendingRoute>
-                  }
-                />
-                <Route path="/findjob" element={<FindJob />} />
-                <Route path="/shopping" element={<ShoppingPage />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-              </Routes>
+              <Suspense fallback={routeFallback}>
+                <Routes>
+                  <Route path="/" element={<MainPage />} />
+                  <Route path="/reels" element={<ReelsPage />} />
+                  <Route path="/reels/:videoId" element={<ReelsPage />} />
+                  <Route path="/stores" element={<StoreList />} />
+                  <Route path="/stores/:id" element={<StoreProfile />} />
+                  <Route path="/categories" element={<ProductCategory />} />
+                  <Route path="/brands" element={<BrandList />} />
+                  <Route path="/brands/:id" element={<BrandProfile />} />
+                  <Route path="/companies" element={<CompanyList />} />
+                  <Route path="/companies/:id" element={<BrandProfile />} />
+                  <Route path="/gifts" element={<Gifts />} />
+                  <Route path="/favourites" element={<FavouritesPage />} />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                        allowSupportRole
+                      >
+                        <DataEntryForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/dashboard"
+                    element={
+                      <ProtectedAdminOnlyRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                      >
+                        <AdminPage />
+                      </ProtectedAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/users"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                      >
+                        <AdminUsersPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/customization"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                      >
+                        <CustomizationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/translations"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                      >
+                        <TranslationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/cities"
+                    element={
+                      <ProtectedAdminOnlyRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                      >
+                        <AdminCitiesPage />
+                      </ProtectedAdminOnlyRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/search-analytics"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                        allowSupportRole
+                      >
+                        <AdminSearchAnalyticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/visitors"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                        allowSupportRole
+                      >
+                        <AdminVisitorsReportPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route
+                    path="/owner-dashboard"
+                    element={
+                      <ProtectedOwnerRoute>
+                        <OwnerDashboardPage />
+                      </ProtectedOwnerRoute>
+                    }
+                  />
+                  <Route
+                    path="/owner-data-entry"
+                    element={
+                      <ProtectedOwnerDataEntryRoute>
+                        <OwnerDataEntryPage />
+                      </ProtectedOwnerDataEntryRoute>
+                    }
+                  />
+                  <Route
+                    path="/pending"
+                    element={
+                      <ProtectedPendingRoute>
+                        <PendingPage />
+                      </ProtectedPendingRoute>
+                    }
+                  />
+                  <Route path="/findjob" element={<FindJob />} />
+                  <Route path="/shopping" element={<ShoppingPage />} />
+                  <Route path="/products/:id" element={<ProductDetail />} />
+                </Routes>
+              </Suspense>
             </Container>
           </Box>
           <Footer />
@@ -484,24 +514,26 @@ const App = () => (
 // Root component remains the same
 const Root = () => (
   <ErrorBoundary>
-    <DarkModeProvider>
-      <AuthProvider>
-        <CityFilterProvider>
-          <DataLanguageProvider>
-            <AppSettingsProvider>
-              <ActiveThemeProvider>
-                <NotificationProvider>
-                  <Router>
-                    <ScrollToTop />
-                    <App />
-                  </Router>
-                </NotificationProvider>
-              </ActiveThemeProvider>
-            </AppSettingsProvider>
-          </DataLanguageProvider>
-        </CityFilterProvider>
-      </AuthProvider>
-    </DarkModeProvider>
+    <QueryClientProvider client={queryClient}>
+      <DarkModeProvider>
+        <AuthProvider>
+          <CityFilterProvider>
+            <DataLanguageProvider>
+              <AppSettingsProvider>
+                <ActiveThemeProvider>
+                  <NotificationProvider>
+                    <Router>
+                      <ScrollToTop />
+                      <App />
+                    </Router>
+                  </NotificationProvider>
+                </ActiveThemeProvider>
+              </AppSettingsProvider>
+            </DataLanguageProvider>
+          </CityFilterProvider>
+        </AuthProvider>
+      </DarkModeProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 

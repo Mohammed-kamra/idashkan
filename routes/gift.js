@@ -30,9 +30,10 @@ router.post("/upload-image", upload.single("image"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    const { url: imageUrl } = await uploadImage(req.file, "gifts");
+    const { url: imageUrl, urls } = await uploadImage(req.file, "gifts");
     res.json({
       imageUrl,
+      ...(urls ? { urls } : {}),
       filename: req.file.filename || "",
     });
   } catch (error) {

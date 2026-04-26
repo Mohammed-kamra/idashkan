@@ -22,8 +22,12 @@ router.delete("/:id", deleteCompany);
 router.post("/upload-logo", upload.single("logo"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-    const { url: fileUrl } = await uploadImage(req.file, "companies");
-    res.json({ message: "File uploaded successfully", url: fileUrl });
+    const { url: fileUrl, urls } = await uploadImage(req.file, "companies");
+    res.json({
+      message: "File uploaded successfully",
+      url: fileUrl,
+      ...(urls ? { urls } : {}),
+    });
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ message: "Error uploading file" });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Box, Typography, Avatar, Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import DiamondIcon from "@mui/icons-material/Diamond";
@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
-const CompanyShowcase = ({ companies }) => {
+const CompanyShowcase = memo(function CompanyShowcase({ companies }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { locName } = useLocalizedContent();
@@ -206,6 +206,6 @@ const CompanyShowcase = ({ companies }) => {
       </Box>
     </Box>
   );
-};
+});
 
 export default CompanyShowcase;

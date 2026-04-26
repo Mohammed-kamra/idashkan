@@ -85,11 +85,13 @@ router.post("/upload-image", upload.single("image"), async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
     const expireDate = req.body?.expireDate;
-    const { url: imageUrl } = await uploadImage(req.file, "products", {
+    const uploadResult = await uploadImage(req.file, "products", {
       expireDate,
     });
+    const { url: imageUrl, urls: imageUrls } = uploadResult;
     res.json({
       imageUrl,
+      ...(imageUrls ? { imageUrls } : {}),
       filename: req.file.filename || "",
     });
   } catch (error) {

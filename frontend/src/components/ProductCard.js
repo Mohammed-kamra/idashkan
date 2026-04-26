@@ -2,7 +2,6 @@ import React, { memo } from "react";
 import {
   Box,
   Card,
-  CardMedia,
   CardContent,
   Typography,
   IconButton,
@@ -21,6 +20,7 @@ import {
 } from "../utils/expiryDate";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import AppImage from "./AppImage";
 
 const ProductCard = memo(function ProductCard({
   product,
@@ -105,20 +105,40 @@ const ProductCard = memo(function ProductCard({
         }}
       >
         {product.image ? (
-          <CardMedia
-            component="img"
-            image={resolveMediaUrl(product.image)}
-            alt={locName(product)}
-            loading="lazy"
-            decoding="async"
+          <Box
             sx={{
               width: "100%",
               height: "100%",
-              objectFit: "contain",
-              transition: "transform 0.35s ease",
-              ".MuiCard-root:hover &": { transform: "scale(1.04)" },
+              "& img, & picture": {
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                transition: "transform 0.35s ease",
+              },
+              ".MuiCard-root:hover & img, .MuiCard-root:hover & picture": {
+                transform: "scale(1.04)",
+              },
             }}
-          />
+          >
+            <AppImage
+              src={resolveMediaUrl(product.image)}
+              webpSrc={
+                product.imageUrls?.thumb
+                  ? resolveMediaUrl(product.imageUrls.thumb)
+                  : undefined
+              }
+              alt={locName(product) || ""}
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 600px) 40vw, 200px"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          </Box>
         ) : (
           <Box
             sx={{

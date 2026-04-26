@@ -50,6 +50,7 @@ import {
 import {
   storeAPI,
   productAPI,
+  fetchAllProducts,
   brandAPI,
   companyAPI,
   categoryAPI,
@@ -101,7 +102,7 @@ import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 /** Resolve Mongo id for product create from a store document (populate or raw id). */
 function getStoreTypeIdFromStore(store) {
@@ -913,14 +914,14 @@ const DataEntryForm = () => {
   const fetchProducts = async (storeId) => {
     try {
       if (storeId) {
-        const response = await productAPI.getAll({
+        const list = await fetchAllProducts({
           store: storeId,
           includeAll: true,
         });
-        setProducts(response.data);
+        setProducts(list);
       } else {
-        const response = await productAPI.getAll({ includeAll: true });
-        setProducts(response.data);
+        const list = await fetchAllProducts({ includeAll: true });
+        setProducts(list);
       }
     } catch (err) {
       console.error("Error fetching products:", err);

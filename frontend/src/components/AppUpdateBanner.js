@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { APP_VERSION } from "../version";
 
 function getVersionJsonUrl() {
-  const base = process.env.PUBLIC_URL || "/";
+  const base = import.meta.env.BASE_URL || "/";
   const path = base.endsWith("/") ? base : `${base}/`;
   return `${window.location.origin}${path}version.json`;
 }

@@ -8,7 +8,7 @@ export async function registerAppServiceWorker() {
   }
 
   try {
-    const base = (process.env.PUBLIC_URL || "").replace(/\/$/, "") || "";
+    const base = (import.meta.env.BASE_URL || "").replace(/\/$/, "") || "";
     const swPath = base ? `${base}/sw.js` : "/sw.js";
     const reg = await navigator.serviceWorker.register(swPath, { scope: "/" });
     return reg;

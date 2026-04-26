@@ -1,6 +1,3 @@
-/**
- * Same-origin API base as `frontend/src/services/api.js` (for full-page redirects).
- */
 export function getApiBaseURL() {
   const USE_PROXY = import.meta.env.VITE_USE_PROXY === "true";
   if (USE_PROXY && typeof window !== "undefined") {
@@ -10,3 +7,4 @@ export function getApiBaseURL() {
     .trim()
     .replace(/\/$/, "");
 }
+

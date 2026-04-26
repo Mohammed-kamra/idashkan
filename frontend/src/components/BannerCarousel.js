@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import AppImage from "./AppImage";
 
 const PremiumDots = ({ count, activeIndex }) => (
   <Box
@@ -102,9 +103,11 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
             }}
             onClick={() => onBannerClick && onBannerClick(ad)}
           >
-            <img
+            <AppImage
               src={ad.src || ad}
               alt={`Banner ${index + 1}`}
+              loading={index === activeIndex ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : undefined}
               style={{
                 width: "100%",
                 height: "100%",

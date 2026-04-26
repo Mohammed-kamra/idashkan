@@ -36,7 +36,7 @@ export async function logSearchEvent({
     const id = res?.data?.data?.id || res?.data?.id;
     return id ? String(id) : null;
   } catch (e) {
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.warn("[search-analytics] logSearch failed", e?.message || e);
     }
     return null;
@@ -57,7 +57,7 @@ export async function recordSearchClick(logId, clickedResultId, clickedResultTyp
       clickedResultType,
     });
   } catch (e) {
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.warn("[search-analytics] recordClick failed", e?.message || e);
     }
   }

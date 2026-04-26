@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
-export const LOGO192_SRC = `${process.env.PUBLIC_URL}/logo192.png`;
+export const LOGO192_SRC = `${import.meta.env.BASE_URL}logo192.png`;
 
 const EASE = [0.25, 0.1, 0.25, 1];
 /** At least this long on screen so MainPage can fetch under the overlay */

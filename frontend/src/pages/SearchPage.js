@@ -328,7 +328,7 @@ const SearchPage = () => {
   //         _id: a._id,
   //         src: a.image.startsWith("http")
   //           ? a.image
-  //           : `${process.env.REACT_APP_BACKEND_URL}${a.image}`,
+  //           : `${import.meta.env.VITE_BACKEND_URL}${a.image}`,
   //         brandId: a.brandId,
   //         storeId: a.storeId,
   //         giftId: a.giftId,

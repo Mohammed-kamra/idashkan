@@ -163,13 +163,41 @@ const getProducts = async (req, res) => {
       finalQuery = applyPublishedOnlyToProductQuery(finalQuery);
     }
 
-    const products = await Product.find(finalQuery)
+    const sort = { name: 1 };
+    const cursor = Product.find(finalQuery)
       .populate("brandId", brandList)
       .populate("companyId", companyList)
       .populate("storeId", storeList)
       .populate("categoryId", categoryList)
       .populate("storeTypeId", storeTypeList)
-      .sort({ name: 1 });
+      .sort(sort);
+
+    const limitRaw = req.query.limit;
+    const limitParsed = parseInt(String(limitRaw ?? ""), 10);
+    const hasPagination =
+      limitRaw !== undefined &&
+      limitRaw !== null &&
+      String(limitRaw).trim() !== "" &&
+      !Number.isNaN(limitParsed) &&
+      limitParsed > 0;
+
+    if (hasPagination) {
+      const limit = Math.min(Math.max(limitParsed, 1), 500);
+      const page = Math.max(parseInt(String(req.query.page || "1"), 10) || 1, 1);
+      const skip = (page - 1) * limit;
+      const [products, total] = await Promise.all([
+        cursor.clone().skip(skip).limit(limit),
+        Product.countDocuments(finalQuery),
+      ]);
+      return res.json({
+        items: stripPendingDraftFromDocs(products),
+        total,
+        page,
+        limit,
+      });
+    }
+
+    const products = await cursor;
     res.json(stripPendingDraftFromDocs(products));
   } catch (err) {
     console.error(err.message);

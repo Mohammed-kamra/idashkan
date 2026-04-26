@@ -50,6 +50,7 @@ import {
   resetMainPageScrollPositionInSession,
   scrollWindowToTop,
 } from "../utils/mainPageScrollSession";
+import { prefetchSearchPageChunk } from "../utils/prefetchSearchPage";
 import { useDraftCartDrawer } from "../hooks/useDraftCartDrawer";
 
 const NAV_PATH_CITY = "__nav_city__";
@@ -599,6 +600,11 @@ const BottomNavigationBar = () => {
                     type="button"
                     aria-current={routeActive ? "page" : undefined}
                     aria-label={item.name}
+                    onPointerEnter={
+                      item.path === "/search"
+                        ? () => prefetchSearchPageChunk()
+                        : undefined
+                    }
                     onClick={() => handleRouteNavigate(item)}
                     whileTap={reduceMotion ? undefined : { scale: 0.94 }}
                     whileHover={

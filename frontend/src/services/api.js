@@ -1,10 +1,10 @@
 import axios from "axios";
 
-// Proxy mode: use same-origin /api (avoids CORS, works on mobile). Set REACT_APP_USE_PROXY=true in Vercel.
-const USE_PROXY = process.env.REACT_APP_USE_PROXY === "true";
+// Proxy mode: use same-origin /api (avoids CORS, works on mobile). Set VITE_USE_PROXY=true in Vercel.
+const USE_PROXY = import.meta.env.VITE_USE_PROXY === "true";
 const API_BASE_URL = USE_PROXY
   ? "/api"
-  : process.env.REACT_APP_API_BASE_URL || "http://localhost:5000/api";
+  : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -118,6 +118,33 @@ export const categoryAPI = {
     return res.json();
   },
 };
+
+/**
+ * Loads all products using server pagination (GET /products?page=&limit=).
+ * Falls back to a single response if the server returns a plain array (legacy).
+ */
+export async function fetchAllProducts(filters = {}, pageSize = 500) {
+  const limit = Math.min(Math.max(Number(pageSize) || 500, 1), 500);
+  let page = 1;
+  const out = [];
+  for (;;) {
+    const res = await api.get("/products", {
+      params: { ...filters, page, limit },
+    });
+    const payload = res.data;
+    if (Array.isArray(payload)) {
+      return payload;
+    }
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    out.push(...items);
+    const total = typeof payload?.total === "number" ? payload.total : null;
+    if (items.length < limit) break;
+    if (total != null && out.length >= total) break;
+    if (items.length === 0) break;
+    page += 1;
+  }
+  return out;
+}
 
 // Product API calls
 export const productAPI = {
@@ -340,8 +367,7 @@ export const adminAPI = {
   updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   deleteExpiredProducts: () => api.delete("/admin/products/expired"),
-  translateMissingProducts: () =>
-    api.post("/admin/products/translate-missing"),
+  translateMissingProducts: () => api.post("/admin/products/translate-missing"),
   upsertTranslation: (data) => api.put("/admin/translations", data),
   deleteTranslation: (id) => api.delete(`/admin/translations/${id}`),
   getCities: () => api.get("/admin/cities"),

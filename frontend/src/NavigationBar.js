@@ -101,6 +101,7 @@ import {
   canSeeOwnerNavSection,
 } from "./utils/adminAccess";
 import { getOwnerMyProfileNavPath } from "./utils/ownerEntities";
+import { prefetchSearchPageChunk } from "./utils/prefetchSearchPage";
 import {
   resetMainPageScrollPositionInSession,
   scrollWindowToTop,
@@ -794,7 +795,13 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     </Badge>
                   </IconButton>
                 )}
-                <IconButton component={Link} to="/search" sx={navIconBtnSx}>
+                <IconButton
+                  component={Link}
+                  to="/search"
+                  onPointerEnter={() => prefetchSearchPageChunk()}
+                  sx={navIconBtnSx}
+                  aria-label={t("Search")}
+                >
                   <SearchIcon />
                 </IconButton>
                 <IconButton
@@ -853,6 +860,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 <IconButton
                   component={Link}
                   to="/search"
+                  onPointerEnter={() => prefetchSearchPageChunk()}
                   sx={navIconBtnSx}
                   aria-label={t("Search")}
                 >
@@ -917,8 +925,8 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                     favourites: { to: "/favourites", icon: <FavoriteIcon /> },
                     stores: { to: "/stores", icon: <StoreIcon /> },
                     gifts: { to: "/gifts", icon: giftsIconWithBadge },
-                  shopping: { to: "/shopping", icon: <ShoppingBagIcon /> },
-                  profile: { to: "/profile", icon: <PersonIcon /> },
+                    shopping: { to: "/shopping", icon: <ShoppingBagIcon /> },
+                    profile: { to: "/profile", icon: <PersonIcon /> },
                     brands: { to: "/brands", icon: <BusinessIcon /> },
                     companies: {
                       to: "/companies",
@@ -1030,7 +1038,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                           }}
                         >
                           <Avatar
-                            src={`${process.env.PUBLIC_URL || ""}/logo512.png`}
+                            src={`${import.meta.env.BASE_URL}logo512.png`}
                             alt={NAV_BRAND_TITLE}
                             variant="rounded"
                             sx={{
@@ -1203,7 +1211,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
             <>
               <Box display="flex" alignItems="center" flexShrink={0}>
                 <Avatar
-                  src={`${process.env.PUBLIC_URL || ""}/logo512.png`}
+                  src={`${import.meta.env.BASE_URL}logo512.png`}
                   alt={NAV_BRAND_TITLE}
                   variant="rounded"
                   sx={{
@@ -1280,6 +1288,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                 <Button
                   component={Link}
                   to="/search"
+                  onPointerEnter={() => prefetchSearchPageChunk()}
                   startIcon={<SearchIcon />}
                   sx={desktopNavButtonSx(
                     location.pathname.startsWith("/search"),
@@ -1436,7 +1445,13 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                       location.pathname.startsWith("/pending"),
                     )}
                   >
-                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                      }}
+                    >
                       <span>
                         {t("Pending", {
                           defaultValue: "Pending",

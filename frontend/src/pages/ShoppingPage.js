@@ -573,7 +573,6 @@ const ShoppingPage = () => {
                     textAlign: "center",
                     lineHeight: 1.3,
                     minHeight: "2.6em",
-                    textAlign: "center",
                   }}
                 >
                   {locName(store)}

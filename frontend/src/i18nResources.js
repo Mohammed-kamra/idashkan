@@ -353,7 +353,7 @@ export const resources = {
       "Google sign-in not showing? Tap here":
         "Google sign-in not showing? Tap here",
       googleEnvMissing:
-        "Google sign-in is not configured in this build. Add REACT_APP_GOOGLE_CLIENT_ID to frontend/.env (same value as server GOOGLE_CLIENT_ID), save the file, then stop and run npm start again.",
+        "Google sign-in is not configured in this build. Add VITE_GOOGLE_CLIENT_ID to frontend/.env (same value as server GOOGLE_CLIENT_ID), save the file, then stop and run npm start again.",
       googleWebViewRedirectHint:
         "Google sign-in will continue in this window (full page), then bring you back here.",
       "sign in to sync across devices": "sign in to sync across devices",
@@ -726,7 +726,7 @@ export const resources = {
       "Google sign-in not showing? Tap here":
         "لا يظهر تسجيل الدخول عبر Google؟ اضغط هنا",
       googleEnvMissing:
-        "تسجيل الدخول عبر Google غير مُعدّ في هذا الإصدار. أضف REACT_APP_GOOGLE_CLIENT_ID إلى frontend/.env ثم أعد تشغيل npm start.",
+        "تسجيل الدخول عبر Google غير مُعدّ في هذا الإصدار. أضف VITE_GOOGLE_CLIENT_ID إلى frontend/.env ثم أعد تشغيل npm start.",
       googleWebViewRedirectHint:
         "سيتم متابعة تسجيل الدخول عبر Google في هذه النافذة بالكامل، ثم العودة إلى هنا.",
       "Sign in to sync across devices": "تسجيل الدخول لمزامنة الأجهزة",
@@ -1401,7 +1401,7 @@ export const resources = {
       "Google sign-in not showing? Tap here":
         "چوونەژوورەوەی گووگڵ نابینیت؟ ئێرە دابگرە",
       googleEnvMissing:
-        "چوونەژوورەوەی گووگڵ لەم وەشانەدا ڕێک نەکراوە. REACT_APP_GOOGLE_CLIENT_ID زیاد بکە لە frontend/.env دواتر npm start دووبارە بکەوە.",
+        "چوونەژوورەوەی گووگڵ لەم وەشانەدا ڕێک نەکراوە. VITE_GOOGLE_CLIENT_ID زیاد بکە لە frontend/.env دواتر npm start دووبارە بکەوە.",
       googleWebViewRedirectHint:
         "چوونەژوورەوە لەگەڵ گووگڵ لەم پەنجەرەیەدا بەردەوام دەبێت، دواتر دەگەڕێیتەوە بۆ لێرە.",
       "Sign in to sync across devices": "لەڕێگەى هەژمارەکەتەوە بڕۆ ژوورەوە",

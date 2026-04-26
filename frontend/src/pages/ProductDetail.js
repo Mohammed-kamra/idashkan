@@ -18,7 +18,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
-import { productAPI, categoryAPI } from "../services/api";
+import { productAPI, categoryAPI, fetchAllProducts } from "../services/api";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import BusinessIcon from "@mui/icons-material/Business";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
@@ -181,8 +181,7 @@ const ProductDetail = () => {
     try {
       setRelatedLoading(true);
       // Get all products and filter for related ones
-      const response = await productAPI.getAll();
-      const allProducts = response.data;
+      const allProducts = await fetchAllProducts();
 
       const curCat =
         currentProduct.categoryId?._id || currentProduct.categoryId;
@@ -738,11 +737,13 @@ const ProductDetail = () => {
                           minWidth: { xs: "fit-content", sm: "auto" },
                         }}
                       >
-                          sx={{
-                            color: "text.secondary",
-                            fontSize: { xs: "1rem", sm: "1.2rem" },
-                          }}
-                        />
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {t("Views", { defaultValue: "Views" })}:
+                        </Typography>
                         <Typography
                           variant="body2"
                           color="text.secondary"

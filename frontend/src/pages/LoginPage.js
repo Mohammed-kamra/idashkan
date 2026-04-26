@@ -132,7 +132,7 @@ const LoginPage = () => {
   const googleRenderRef = useRef(null);
 
   const useGoogleOAuthRedirect = useMemo(() => {
-    if (process.env.REACT_APP_GOOGLE_OAUTH_REDIRECT === "true") return true;
+    if (import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT === "true") return true;
     return isEmbeddedWebView();
   }, []);
 
@@ -302,7 +302,7 @@ const LoginPage = () => {
 
   googleHandlerRef.current = handleGoogleCredential;
 
-  const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
+  const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
 
   /** Full-page OAuth return: #google_oauth_token= (preferred) or ?google_oauth_token=; ?google_error= */
   useEffect(() => {

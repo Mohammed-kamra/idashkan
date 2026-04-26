@@ -46,10 +46,11 @@ router.post("/upload-logo", upload.single("logo"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-    const { url: fileUrl } = await uploadImage(req.file, "stores");
+    const { url: fileUrl, urls } = await uploadImage(req.file, "stores");
     res.json({
       message: "File uploaded successfully",
       url: fileUrl,
+      ...(urls ? { urls } : {}),
     });
   } catch (error) {
     console.error("Upload error:", error);
