@@ -676,10 +676,8 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
         ? {
             color: "#f8fafc",
             backgroundColor: "rgba(255,255,255,0.1)",
-            backdropFilter: isAndroidPerfMode ? "none" : "blur(14px) saturate(160%)",
-            WebkitBackdropFilter: isAndroidPerfMode
-              ? "none"
-              : "blur(14px) saturate(160%)",
+            backdropFilter: "blur(14px) saturate(160%)",
+            WebkitBackdropFilter: "blur(14px) saturate(160%)",
             border: "1px solid rgba(255,255,255,0.2)",
             boxShadow: isAndroidPerfMode
               ? "none"
@@ -699,7 +697,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
         : {
             color: "white",
             backgroundColor: "rgba(255,255,255,0.1)",
-            backdropFilter: isAndroidPerfMode ? "none" : "blur(10px)",
+            backdropFilter: "blur(10px)",
             border: "1px solid rgba(255,255,255,0.2)",
             transition: "all 0.3s ease",
             width: 40,
@@ -734,16 +732,12 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
         elevation={0}
         style={navAppBarStyle}
         sx={{
-          backdropFilter: isAndroidPerfMode
-            ? "none"
-            : isDarkNav
-              ? "blur(22px) saturate(170%)"
-              : "blur(20px)",
-          WebkitBackdropFilter: isAndroidPerfMode
-            ? "none"
-            : isDarkNav
-              ? "blur(22px) saturate(170%)"
-              : "blur(20px)",
+          backdropFilter: isDarkNav
+            ? "blur(22px) saturate(170%)"
+            : "blur(20px)",
+          WebkitBackdropFilter: isDarkNav
+            ? "blur(22px) saturate(170%)"
+            : "blur(20px)",
           borderBottom: isDarkNav ? "1px solid rgba(255,255,255,0.12)" : "none",
           boxShadow: isDarkNav
             ? isAndroidPerfMode

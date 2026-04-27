@@ -23,6 +23,9 @@ const AppImage = memo(
   ) {
     const load = loading ?? "lazy";
     const mergedStyle = { display: "block", ...style };
+    const fetchPriorityAttr = fetchPriority
+      ? { fetchpriority: fetchPriority }
+      : {};
     const common = {
       alt,
       decoding,
@@ -47,7 +50,7 @@ const AppImage = memo(
             ref={ref}
             src={src}
             loading={load}
-            fetchPriority={fetchPriority}
+            {...fetchPriorityAttr}
             {...common}
           />
         </picture>
@@ -59,7 +62,7 @@ const AppImage = memo(
         ref={ref}
         src={src}
         loading={load}
-        fetchPriority={fetchPriority}
+        {...fetchPriorityAttr}
         {...common}
       />
     );

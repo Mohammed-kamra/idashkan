@@ -991,6 +991,7 @@ const ProductCategory = () => {
                       gridTemplateColumns: "repeat(2, 1fr)",
                       gap: 1,
                       px: 1,
+                      alignItems: "stretch",
                     }}
                   >
                     {filteredProducts.map((product) => {
@@ -1015,7 +1016,9 @@ const ProductCategory = () => {
                             onClick={() => handleProductClick(product)}
                             sx={{
                               cursor: "pointer",
-                              borderRadius: 3,
+                              width: "100%",
+                              height: "100%",
+                              borderRadius: 1,
                               overflow: "hidden",
                               backgroundColor: cardBg,
                               boxShadow: isDark
@@ -1120,6 +1123,7 @@ const ProductCategory = () => {
                               sx={{
                                 p: 1,
                                 pt: 0.75,
+                                minHeight: 106,
                                 flexGrow: 1,
                                 display: "flex",
                                 flexDirection: "column",
@@ -1131,6 +1135,7 @@ const ProductCategory = () => {
                                   fontWeight: 600,
                                   fontSize: "0.78rem",
                                   lineHeight: 1.3,
+                                  textAlign: "center",
                                   display: "-webkit-box",
                                   WebkitLineClamp: 2,
                                   WebkitBoxOrient: "vertical",

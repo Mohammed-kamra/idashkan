@@ -342,10 +342,8 @@ const BottomNavigationBar = () => {
       boxSizing: "border-box",
       ...(isDark
         ? {
-            backdropFilter: isAndroidPerfMode ? "none" : "blur(22px) saturate(170%)",
-            WebkitBackdropFilter: isAndroidPerfMode
-              ? "none"
-              : "blur(22px) saturate(170%)",
+            backdropFilter: "blur(22px) saturate(170%)",
+            WebkitBackdropFilter: "blur(22px) saturate(170%)",
             border: "1px solid rgba(255,255,255,0.12)",
             borderBottom: "none",
             boxShadow: isAndroidPerfMode
@@ -353,10 +351,8 @@ const BottomNavigationBar = () => {
               : "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
           }
         : {
-            backdropFilter: isAndroidPerfMode ? "none" : "blur(24px) saturate(180%)",
-            WebkitBackdropFilter: isAndroidPerfMode
-              ? "none"
-              : "blur(24px) saturate(180%)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
             border: "1px solid",
             borderColor: "rgba(229,231,235,0.6)",
             boxShadow: isAndroidPerfMode

@@ -17,13 +17,25 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 hydrateDeviceId()
   .catch(() => {})
   .finally(() => {
+    const host =
+      typeof window !== "undefined"
+        ? String(window.location.hostname || "").toLowerCase()
+        : "";
+    const isLocalHost =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host.endsWith(".localhost");
+
     root.render(
       <React.StrictMode>
         <Root />
       </React.StrictMode>,
     );
     mergeRemoteTranslations().catch(() => {});
-    registerAppServiceWorker().catch(() => {});
+    if (import.meta.env.PROD && !isLocalHost) {
+      registerAppServiceWorker().catch(() => {});
+    }
   });
 
 reportWebVitals();

@@ -1562,17 +1562,21 @@ const MainPage = () => {
       const variant = blockIndex % 4;
       if (variant === 0) {
         const offset = blockIndex * 8;
+        const slice = brandsInSelectedCity.slice(offset, offset + 8);
+        if (slice.length === 0) return null;
         return (
           <BrandShowcase
-            brands={brandsInSelectedCity.slice(offset, offset + 8)}
+            brands={slice}
           />
         );
       }
       if (variant === 1) {
         const offset = blockIndex * 8;
+        const slice = companiesInSelectedCity.slice(offset, offset + 8);
+        if (slice.length === 0) return null;
         return (
           <CompanyShowcase
-            companies={companiesInSelectedCity.slice(offset, offset + 8)}
+            companies={slice}
           />
         );
       }
@@ -1587,12 +1591,15 @@ const MainPage = () => {
           );
           randomShowcaseStoresRef.current[blockIndex] = shuffled.slice(0, 20);
         }
+        const storesForShowcase = randomShowcaseStoresRef.current[blockIndex] ?? [];
+        if (storesForShowcase.length === 0) return null;
         return (
           <StoreShowcase
-            stores={randomShowcaseStoresRef.current[blockIndex] ?? []}
+            stores={storesForShowcase}
           />
         );
       }
+      if (!showcaseEligibleGifts.length) return null;
       return <GiftShowcase gifts={showcaseEligibleGifts} />;
     },
     [
@@ -1884,14 +1891,56 @@ const MainPage = () => {
           boxSizing: "border-box",
         }}
       >
-        {/* Banner skeleton */}
+        {/* Fixed For You / Following tabs shell */}
+        <Box
+          sx={{
+            position: "fixed",
+            top: 75,
+            left: 0,
+            right: 0,
+            zIndex: 1090,
+            width: "fit-content",
+            borderRadius: "14px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            margin: "0 auto",
+            px: 1,
+            py: 0.5,
+            backdropFilter: isAndroidPerfMode ? "none" : "blur(12px)",
+            background:
+              theme.palette.mode === "dark"
+                ? isAndroidPerfMode
+                  ? "rgba(15,23,42,0.96)"
+                  : "rgba(15,23,42,0.85)"
+                : isAndroidPerfMode
+                  ? "rgba(255,255,255,0.97)"
+                  : "rgba(255,255,255,0.9)",
+            boxShadow:
+              theme.palette.mode === "dark"
+                ? isAndroidPerfMode
+                  ? "0 2px 8px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06)"
+                  : "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
+                : isAndroidPerfMode
+                  ? "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03)"
+                  : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Skeleton variant="text" width={68} height={28} />
+            <Skeleton variant="text" width={74} height={28} />
+          </Box>
+        </Box>
+
+        {/* Banner skeleton (same region as BannerCarousel) */}
         <Skeleton
           variant="rounded"
           width="100%"
-          height={160}
+          height={168}
           sx={{ mb: 2, borderRadius: "16px" }}
         />
-        {/* Filter chips skeleton ? scroll row, fixed chip widths (matches FilterChips) */}
+
+        {/* Filter chips skeleton */}
         <Box
           sx={{
             display: "flex",
@@ -1905,7 +1954,7 @@ const MainPage = () => {
             "&::-webkit-scrollbar": { display: "none" },
           }}
         >
-          {[80, 100, 90, 110, 80].map((w, i) => (
+          {[120, 95, 110, 130, 90, 88].map((w, i) => (
             <Skeleton
               key={i}
               variant="rounded"
@@ -1915,7 +1964,31 @@ const MainPage = () => {
             />
           ))}
         </Box>
-        {/* Store group skeletons */}
+
+        {/* Deferred top sections (FlashDeals + Jobs) */}
+        <Box
+          sx={{
+            mb: { xs: 1.5, sm: 2 },
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+          }}
+        >
+          <Skeleton
+            variant="rounded"
+            width="100%"
+            height={152}
+            sx={{ borderRadius: "20px" }}
+          />
+          <Skeleton
+            variant="rounded"
+            width="100%"
+            height={124}
+            sx={{ borderRadius: "20px" }}
+          />
+        </Box>
+
+        {/* Store group skeletons (same card proportions as list rows) */}
         {[1, 2, 3].map((idx) => (
           <Box
             key={idx}
@@ -2705,10 +2778,10 @@ const MainPage = () => {
                       <Box
                         aria-hidden
                         sx={{
-                          height: "1px",
-                          overflow: "hidden",
-                          margin: 0,
-                          padding: 0,
+                          minHeight: 24,
+                          width: "100%",
+                          visibility: "hidden",
+                          pointerEvents: "none",
                         }}
                       />
                     );

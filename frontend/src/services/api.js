@@ -2,9 +2,20 @@ import axios from "axios";
 
 // Proxy mode: use same-origin /api (avoids CORS, works on mobile). Set VITE_USE_PROXY=true in Vercel.
 const USE_PROXY = import.meta.env.VITE_USE_PROXY === "true";
+const ENV_API_BASE = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const shouldPreferSameOriginApi = (() => {
+  if (typeof window === "undefined") return false;
+  const host = String(window.location.hostname || "").toLowerCase();
+  const isLocalHost =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host.endsWith(".localhost");
+  return !isLocalHost;
+})();
 const API_BASE_URL = USE_PROXY
   ? "/api"
-  : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  : ENV_API_BASE || (shouldPreferSameOriginApi ? "/api" : "http://localhost:5000/api");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -201,7 +212,7 @@ export const themeAPI = {
 
 // Video/Reels API calls
 export const videoAPI = {
-  getAll: () => api.get("/videos"),
+  getAll: (params = {}) => api.get("/videos", { params }),
   create: (data) =>
     api.post("/videos", data, {
       timeout: 120000,

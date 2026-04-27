@@ -22,7 +22,9 @@ if (workbox) {
   // API: network only — no stale offline data from the SW cache
   workbox.routing.registerRoute(
     ({ url, request }) =>
-      request.method === "GET" && /\/api\//.test(url.pathname),
+      request.method === "GET" &&
+      url.origin === self.location.origin &&
+      /\/api\//.test(url.pathname),
     new workbox.strategies.NetworkOnly(),
   );
 

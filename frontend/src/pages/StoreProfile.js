@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  lazy,
+  Suspense,
+} from "react";
 import {
   getSavedProductLayout,
   saveProductLayout,
@@ -15,55 +23,29 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Avatar,
   Chip,
   Alert,
   useTheme,
-  useMediaQuery,
   Paper,
   Divider,
   IconButton,
-  Fade,
   Snackbar,
   Skeleton,
-  Tooltip,
 } from "@mui/material";
 import {
-  LocationOn,
   Business,
   WhatsApp,
-  Facebook,
-  Instagram,
-  MusicNote,
-  CameraAlt,
   VideoLibrary,
   WorkOutline,
   ArrowForward,
   ArrowBack,
 } from "@mui/icons-material";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import Phone from "@mui/icons-material/Phone";
-import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
-import CloseIcon from "@mui/icons-material/Close";
-import EditIcon from "@mui/icons-material/Edit";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import CategoryIcon from "@mui/icons-material/Category";
-import BusinessIcon from "@mui/icons-material/Business";
-import StarIcon from "@mui/icons-material/Star";
 import {
-  storeAPI,
   productAPI,
-  giftAPI,
-  videoAPI,
-  jobAPI,
   cartOrderLogAPI,
 } from "../services/api";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
@@ -71,11 +53,7 @@ import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArro
 import { useTranslation } from "react-i18next";
 import Loader from "../components/Loader";
 import { useUserTracking } from "../hooks/useUserTracking";
-import JobCardRow from "../components/JobCardRow";
-import ProductViewTracker from "../components/ProductViewTracker";
-import { motion } from "framer-motion";
 import { resolveMediaUrl } from "../utils/mediaUrl";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
   normalizeWhatsAppUrl,
   openWhatsAppLink,
@@ -90,8 +68,6 @@ import {
   expiryGiftCardBg,
   formatExpiryDateDdMmYyyy,
 } from "../utils/expiryDate";
-import ProductDetailDialog from "../components/ProductDetailDialog";
-import AdminProductEditDialog from "../components/AdminProductEditDialog";
 import { useAuth } from "../context/AuthContext";
 import { isAdminEmail } from "../utils/adminAccess";
 import StoreBranchesShowcase from "../components/StoreBranches_Showcase";
@@ -99,11 +75,28 @@ import ProductLayoutToggle from "../components/ProductLayoutToggle";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import {
-  trackOwnerProfileView,
   trackOwnerContactClick,
-  trackOwnerOrderRequest,
   getOwnerAnalyticsSessionId,
 } from "../utils/ownerAnalyticsTrack";
+import StoreTabs from "../components/store/StoreTabs";
+import ProductsTab from "../components/store/ProductsTab";
+import StoreHeader from "../components/store/StoreHeader";
+import StoreProductCard from "../components/store/ProductCard";
+import FloatingCartButton from "../components/store/FloatingCartButton";
+import useStoreProfile from "../hooks/useStoreProfile";
+import useStoreProducts from "../hooks/useStoreProducts";
+import useStoreCart from "../hooks/useStoreCart";
+import useStoreFollow from "../hooks/useStoreFollow";
+import useStoreAnalytics from "../hooks/useStoreAnalytics";
+
+const GiftsTab = lazy(() => import("../components/store/GiftsTab"));
+const ReelsTab = lazy(() => import("../components/store/ReelsTab"));
+const JobsTab = lazy(() => import("../components/store/JobsTab"));
+const CartDrawer = lazy(() => import("../components/store/CartDrawer"));
+const ProductDetailDialog = lazy(() => import("../components/ProductDetailDialog"));
+const AdminProductEditDialog = lazy(() =>
+  import("../components/AdminProductEditDialog"),
+);
 
 const PROFILE_GRID_PAGE_SIZE = 8;
 
@@ -138,7 +131,6 @@ const StoreProfile = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar" || i18n.language === "ku";
   const { locName, locDescription, locTitle, locAddress } =
@@ -152,17 +144,32 @@ const StoreProfile = () => {
   } = useUserTracking();
   const { user } = useAuth();
   const profileAdminEdit = isAdminEmail(user);
-  const [followLoading, setFollowLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const {
+    store,
+    products,
+    setProducts,
+    gifts,
+    reels,
+    jobs,
+    loading,
+    error,
+    loadInitial,
+    loadGifts,
+    loadReels,
+    loadJobs,
+    refreshAll,
+    giftsLoaded,
+    reelsLoaded,
+    jobsLoaded,
+  } = useStoreProfile(id);
+  const { trackProfileView, trackOrderRequest } = useStoreAnalytics();
+  const { followLoading, handleToggleFollow } = useStoreFollow({
+    toggleFollowStore,
+  });
 
-  const [store, setStore] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [gifts, setGifts] = useState([]);
-  const [reels, setReels] = useState([]);
-  const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [tabsPrechecked, setTabsPrechecked] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam === "discounts") return "discounts";
@@ -170,7 +177,7 @@ const StoreProfile = () => {
     if (tabParam === "gifts") return "gifts";
     if (tabParam === "reels") return "reels";
     if (tabParam === "jobs") return "jobs";
-    return "all";
+    return "discounts";
   });
   const [expandedTypes, setExpandedTypes] = useState({});
   const [displayCounts, setDisplayCounts] = useState({});
@@ -187,6 +194,7 @@ const StoreProfile = () => {
   const [selectedGift, setSelectedGift] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState({});
+  const { cartCount } = useStoreCart(cartItems);
   const [cartToast, setCartToast] = useState({ open: false, text: "" });
   const [orderWhatsAppConfirmOpen, setOrderWhatsAppConfirmOpen] =
     useState(false);
@@ -199,9 +207,6 @@ const StoreProfile = () => {
   const cartCloseButtonRef = useRef(null);
   const [cartSyncing, setCartSyncing] = useState(false);
   const [cartHydrated, setCartHydrated] = useState(false);
-
-  // Notification dialog state
-  const [loginNotificationOpen, setLoginNotificationOpen] = useState(false);
 
   // Product detail dialog state
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -255,15 +260,54 @@ const StoreProfile = () => {
 
   useEffect(() => {
     if (id) {
-      fetchStoreData();
+      loadInitial();
     }
-  }, [id]);
+  }, [id, loadInitial]);
 
   useEffect(() => {
     if (store?._id && id) {
-      trackOwnerProfileView("store", id);
+      trackProfileView(id);
     }
-  }, [store?._id, id]);
+  }, [store?._id, id, trackProfileView]);
+
+  useEffect(() => {
+    if (!store) return;
+    setFollowerCount(store?.followerCount ?? 0);
+  }, [store]);
+
+  useEffect(() => {
+    if (activeTabKey === "gifts" && !giftsLoaded) {
+      void loadGifts();
+    } else if (activeTabKey === "reels" && !reelsLoaded) {
+      void loadReels();
+    } else if (activeTabKey === "jobs" && !jobsLoaded) {
+      void loadJobs();
+    }
+  }, [
+    activeTabKey,
+    giftsLoaded,
+    reelsLoaded,
+    jobsLoaded,
+    loadGifts,
+    loadReels,
+    loadJobs,
+  ]);
+
+  useEffect(() => {
+    setTabsPrechecked(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (loading || !store?._id || tabsPrechecked) return;
+    let cancelled = false;
+    (async () => {
+      await Promise.all([loadGifts(), loadReels(), loadJobs()]);
+      if (!cancelled) setTabsPrechecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, store?._id, tabsPrechecked, loadGifts, loadReels, loadJobs]);
 
   // Load/save cart per store (only for delivery stores)
   useEffect(() => {
@@ -316,66 +360,9 @@ const StoreProfile = () => {
     pruneCartUsingProducts(products);
   }, [products, store?.isHasDelivery, cartHydrated, loading]);
 
-  async function fetchStoreData() {
-    try {
-      setLoading(true);
-
-      // Fetch store details
-      const storeResponse = await storeAPI.getById(id);
-      const storeData = storeResponse.data;
-      setStore(storeData);
-      setFollowerCount(storeData?.followerCount ?? 0);
-
-      // Fetch products for this store
-      const productsResponse = await productAPI.getByStore(id);
-      setProducts(productsResponse.data);
-
-      // Fetch gifts for this store
-      const giftsResponse = await giftAPI.getByStore(id);
-      setGifts(giftsResponse.data.data || []);
-
-      // Fetch reels for this store (exclude expired)
-      try {
-        const videosRes = await videoAPI.getAll();
-        const list = Array.isArray(videosRes?.data) ? videosRes.data : [];
-        const filtered = list.filter((v) => {
-          const storeId = v?.storeId?._id || v?.storeId || "";
-          if (String(storeId) !== String(id)) return false;
-          if (!v?.expireDate) return true;
-          return isExpiryStillValid(v.expireDate);
-        });
-        setReels(filtered);
-      } catch {
-        setReels([]);
-      }
-
-      // Fetch jobs for this store (exclude expired)
-      try {
-        const jobsRes = await jobAPI.getAll();
-        const list = Array.isArray(jobsRes?.data) ? jobsRes.data : [];
-        const filtered = list.filter((j) => {
-          const storeId = j?.storeId?._id || j?.storeId || "";
-          if (String(storeId) !== String(id)) return false;
-          if (j?.active === false) return false;
-          if (!j?.expireDate) return true;
-          return isExpiryStillValid(j.expireDate);
-        });
-        setJobs(filtered);
-      } catch {
-        setJobs([]);
-      }
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.response?.data?.msg ||
-          err.message ||
-          "Network error. Please check your connection.",
-      );
-      console.error("Error fetching store data:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetchStoreData = useCallback(async () => {
+    await refreshAll();
+  }, [refreshAll]);
 
   const calculateDiscount = (previousPrice, newPrice) => {
     if (!previousPrice || !newPrice || previousPrice <= newPrice) return 0;
@@ -386,11 +373,6 @@ const StoreProfile = () => {
     if (typeof price !== "number") return `${t("ID")} 0`;
     return ` ${formatPriceDigits(price)} ${t("ID")}`;
   };
-
-  const cartCount = Object.values(cartItems || {}).reduce(
-    (sum, item) => sum + (Number(item?.qty) || 0),
-    0,
-  );
 
   const addToCart = (product, e) => {
     if (e) {
@@ -492,8 +474,6 @@ const StoreProfile = () => {
     };
   };
 
-  const buildWhatsAppOrderText = () => buildWhatsAppOrderPayload().messageText;
-
   const requestOrderWhatsApp = () => {
     const wa = getStoreWhatsAppUrl();
     if (!wa) {
@@ -528,7 +508,7 @@ const StoreProfile = () => {
         sessionId: getOwnerAnalyticsSessionId(),
       })
       .catch(() => {});
-    trackOwnerOrderRequest("store", id, "whatsapp");
+    trackOrderRequest(id, "whatsapp");
     openWhatsAppLink(url, { onClipboardFallback: notifyWhatsAppFallback });
     setOrderWhatsAppConfirmOpen(false);
     setCartOpen(false);
@@ -704,55 +684,13 @@ const StoreProfile = () => {
     return categoryType ? locName(categoryType) : locName(category) || "";
   };
 
-  // Filter products based on current filters
-  const getFilteredProducts = () => {
-    return products.filter((product) => {
-      const matchesName = product.name
-        .toLowerCase()
-        .includes(filters.name.toLowerCase());
-      const matchesBrand =
-        !filters.brand ||
-        (product.brandId &&
-          product.brandId.name &&
-          product.brandId.name
-            .toLowerCase()
-            .includes(filters.brand.toLowerCase()));
-      const matchesBarcode =
-        !filters.barcode ||
-        (product.barcode &&
-          product.barcode
-            .toLowerCase()
-            .includes(filters.barcode.toLowerCase()));
-      const typeName = getProductCategoryTypeName(product);
-      const matchesType =
-        !filters.type ||
-        typeName.toLowerCase().includes(filters.type.toLowerCase());
-
-      return matchesName && matchesBrand && matchesBarcode && matchesType;
+  const { discountedProducts, nonDiscountedProducts, groupProductsByType } =
+    useStoreProducts({
+      products,
+      filters,
+      isDiscountValid,
+      getProductCategoryTypeName,
     });
-  };
-
-  // Separate products into discounted and non-discounted
-  const getDiscountedProducts = () => {
-    return getFilteredProducts().filter((product) => isDiscountValid(product));
-  };
-
-  const getNonDiscountedProducts = () => {
-    return getFilteredProducts().filter((product) => !product.isDiscount);
-  };
-
-  // Group products by category type name
-  const groupProductsByType = (productList) => {
-    const grouped = {};
-    productList.forEach((product) => {
-      const typeName = getProductCategoryTypeName(product);
-      if (!grouped[typeName]) {
-        grouped[typeName] = [];
-      }
-      grouped[typeName].push(product);
-    });
-    return grouped;
-  };
 
   // (tabs are computed later, after discountedProducts is initialized)
 
@@ -826,7 +764,7 @@ const StoreProfile = () => {
   };
 
   // Render gift card
-  const renderGiftCard = (gift) => {
+  const renderGiftCard = useCallback((gift) => {
     const giftExp = getExpiryRemainingInfo(gift.expireDate);
     const isDark = theme.palette.mode === "dark";
 
@@ -984,381 +922,55 @@ const StoreProfile = () => {
         </CardContent>
       </Card>
     );
-  };
+  }, [theme.palette.mode, navigate, locName, t]);
 
   // Render product card — modern premium card
   /** @param {boolean|'ifPresent'} showPriceMode @param {'row'|'grid2'} layoutMode */
-  const renderProductCard = (
-    product,
-    index,
-    showPriceMode = true,
-    layoutMode = "row",
-  ) => {
-    const isGrid = layoutMode === "grid2";
-    const prevNum = parseProductPrice(product.previousPrice);
-    const newNum = parseProductPrice(product.newPrice);
-    const showPriceBlock =
-      showPriceMode === false
-        ? false
-        : showPriceMode === "ifPresent"
-          ? prevNum != null || newNum != null
-          : true;
-    const discount = calculateDiscount(product.previousPrice, product.newPrice);
-    const hasPreviousPrice =
-      prevNum != null && newNum != null && prevNum > newNum;
-    const isDark = theme.palette.mode === "dark";
-    const expInfo = getExpiryRemainingInfo(product.expireDate);
-
-    return (
-      <ProductViewTracker
-        key={product._id}
-        productId={product._id}
-        onVisible={handleProductBecameVisible}
-        recordedIdsRef={productViewRecordedRef}
-      >
-        <Fade in={true} timeout={300 + index * 50}>
-          <Card
-            onClick={() => {
-              setSelectedProduct(product);
-              setProductDialogOpen(true);
-            }}
-            sx={{
-              ...(isGrid
-                ? {
-                    width: "100%",
-                    minWidth: 0,
-                    maxWidth: "100%",
-                    flexShrink: 1,
-                  }
-                : {
-                    width: { xs: 155, sm: 190, md: 230 },
-                    minWidth: { xs: 155, sm: 190, md: 230 },
-                    maxWidth: { xs: 155, sm: 190, md: 230 },
-                    flexShrink: 0,
-                  }),
-              borderRadius: "16px",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              cursor: "pointer",
-              background: isDark
-                ? "linear-gradient(145deg, #1e2a3a, #243040)"
-                : "#ffffff",
-              border: isDark
-                ? "1px solid rgba(255,255,255,0.07)"
-                : "1px solid #f0f2f5",
-              boxShadow: isDark
-                ? "0 4px 16px rgba(0,0,0,0.3)"
-                : "0 2px 12px rgba(0,0,0,0.06)",
-              transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-              "&:hover": {
-                transform: "translateY(-3px)",
-                boxShadow: isDark
-                  ? "0 8px 28px rgba(0,0,0,0.45)"
-                  : "0 8px 28px rgba(30,111,217,0.12)",
-                borderColor: isDark ? "rgba(255,255,255,0.14)" : "#dce8ff",
-              },
-              "&:active": { transform: "translateY(0)" },
-            }}
-          >
-            {/* Product Image */}
-            <Box
-              onClick={() => {
-                setSelectedProduct(product);
-                setProductDialogOpen(true);
-              }}
-              sx={{
-                position: "relative",
-                overflow: "hidden",
-                height: { xs: 140, sm: 160 },
-                flexShrink: 0,
-                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#f8f9fb",
-                cursor: "pointer",
-              }}
-            >
-              {product.image ? (
-                <CardMedia
-                  component="img"
-                  image={resolveMediaUrl(product.image)}
-                  alt={locName(product)}
-                  sx={{
-                    objectFit: "contain",
-                    width: "100%",
-                    height: "100%",
-                    transition: "transform 0.35s ease",
-                    ".MuiCard-root:hover &": { transform: "scale(1.04)" },
-                  }}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    height: "100%",
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <StorefrontIcon
-                    sx={{
-                      fontSize: 44,
-                      color: isDark ? "rgba(255,255,255,0.2)" : "#d1d5db",
-                    }}
-                  />
-                </Box>
-              )}
-
-              {/* Top-left: discount badge; top-right: like */}
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 7,
-                  left: 7,
-                  right: 7,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  zIndex: 2,
-                }}
-              >
-                {hasPreviousPrice ? (
-                  <Chip
-                    icon={
-                      <LocalOfferIcon sx={{ fontSize: "11px !important" }} />
-                    }
-                    label={`-${discount}%`}
-                    size="small"
-                    sx={{
-                      height: 22,
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      background: "linear-gradient(135deg,#ef4444,#dc2626)",
-                      color: "white",
-                      border: "none",
-                      boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
-                      "& .MuiChip-label": { px: 0.6 },
-                      "& .MuiChip-icon": {
-                        color: "white !important",
-                        ml: "4px !important",
-                      },
-                    }}
-                  />
-                ) : (
-                  <Box />
-                )}
-                <Box
-                  sx={{ display: "flex", alignItems: "flex-start", gap: 0.5 }}
-                >
-                  {profileAdminEdit ? (
-                    <Tooltip title={t("Edit Product")}>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAdminEditProduct(product);
-                        }}
-                        sx={{
-                          width: 28,
-                          height: 28,
-                          bgcolor: "rgba(255,255,255,0.92)",
-                          backdropFilter: "blur(8px)",
-                          color: "var(--brand-primary-blue, #1E6FD9)",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                          transition: "all 0.2s ease",
-                          p: 0,
-                          "&:hover": {
-                            bgcolor: "white",
-                            transform: "scale(1.15)",
-                          },
-                        }}
-                      >
-                        <EditIcon sx={{ fontSize: "0.95rem" }} />
-                      </IconButton>
-                    </Tooltip>
-                  ) : null}
-                  <IconButton
-                    size="small"
-                    onClick={(e) => handleLikeClick(product._id, e)}
-                    disabled={likeLoading[product._id]}
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      bgcolor: "rgba(255,255,255,0.92)",
-                      backdropFilter: "blur(8px)",
-                      color:
-                        likeStates[product._id] || isProductLiked(product._id)
-                          ? "#ef4444"
-                          : "#9ca3af",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-                      transition: "all 0.2s ease",
-                      p: 0,
-                      "&:hover": {
-                        bgcolor: "white",
-                        color: "#ef4444",
-                        transform: "scale(1.15)",
-                      },
-                    }}
-                  >
-                    {likeStates[product._id] || isProductLiked(product._id) ? (
-                      <FavoriteIcon sx={{ fontSize: "0.95rem" }} />
-                    ) : (
-                      <FavoriteBorderIcon sx={{ fontSize: "0.95rem" }} />
-                    )}
-                  </IconButton>
-                </Box>
-              </Box>
-              {/* View count badge */}
-              {/* {product.viewCount > 0 && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    bottom: 7,
-                    right: 7,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.4,
-                    bgcolor: "rgba(0,0,0,0.6)",
-                    color: "white",
-                    px: 0.8,
-                    py: 0.3,
-                    borderRadius: 1,
-                    fontSize: "0.65rem",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  <VisibilityIcon sx={{ fontSize: "0.7rem" }} />
-                  <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>
-                    {product.viewCount}
-                  </Typography>
-                </Box>
-              )} */}
-              {/* Expiry chip */}
-              {shouldShowExpiryChip(expInfo) && (
-                <Chip
-                  label={formatExpiryChipLabel(expInfo, t)}
-                  size="small"
-                  sx={{
-                    position: "absolute",
-                    bottom: 7,
-                    left: 7,
-                    zIndex: 2,
-                    pointerEvents: "none",
-                    bgcolor: expiryChipBg(expInfo),
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: "0.62rem",
-                    height: 20,
-                    "& .MuiChip-label": { px: 0.6 },
-                  }}
-                />
-              )}
-            </Box>
-
-            {/* Product Content */}
-            <CardContent
-              sx={{
-                p: "10px 10px 10px !important",
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.4,
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                  lineHeight: 1.35,
-                  color: isDark ? "rgba(255,255,255,0.92)" : "#111827",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  minHeight: "2.7em",
-                }}
-              >
-                {locName(product)}
-              </Typography>
-
-              {showPriceBlock && (
-                <Box sx={{ mt: "auto", pt: 0.5 }}>
-                  {hasPreviousPrice && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        textDecoration: "line-through",
-                        color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af",
-                        fontSize: "0.7rem",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {formatPrice(prevNum)}
-                    </Typography>
-                  )}
-                  {newNum != null && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                        color: "var(--color-secondary, #1E6FD9)",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {formatPrice(newNum)}
-                    </Typography>
-                  )}
-                  {newNum == null && prevNum != null && !hasPreviousPrice && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                        color: "var(--color-secondary, #1E6FD9)",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {formatPrice(prevNum)}
-                    </Typography>
-                  )}
-                </Box>
-              )}
-
-              {store?.isHasDelivery && (
-                <Box sx={{ mt: 0.5 }}>
-                  <IconButton
-                    onClick={(e) => addToCart(product, e)}
-                    size="small"
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      p: 0,
-                      bgcolor: "linear-gradient(135deg, #f59e0b, #d97706)",
-                      background:
-                        "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                      color: "white",
-                      borderRadius: "10px",
-                      boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        transform: "scale(1.1)",
-                        boxShadow: "0 4px 12px rgba(245,158,11,0.5)",
-                      },
-                    }}
-                    aria-label="Add to cart"
-                  >
-                    <AddShoppingCartIcon sx={{ fontSize: "1.1rem" }} />
-                  </IconButton>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Fade>
-      </ProductViewTracker>
-    );
-  };
+  const renderProductCard = useCallback(
+    (product, index, showPriceMode = true, layoutMode = "row") => {
+      return (
+        <StoreProductCard
+          key={product?._id || `${layoutMode}-${index}`}
+          product={product}
+          index={index}
+          layoutMode={layoutMode}
+          showPriceMode={showPriceMode}
+          theme={theme}
+          t={t}
+          locName={locName}
+          parseProductPrice={parseProductPrice}
+          calculateDiscount={calculateDiscount}
+          likeStates={likeStates}
+          likeLoading={likeLoading}
+          isProductLiked={isProductLiked}
+          handleLikeClick={handleLikeClick}
+          profileAdminEdit={profileAdminEdit}
+          setAdminEditProduct={setAdminEditProduct}
+          setSelectedProduct={setSelectedProduct}
+          setProductDialogOpen={setProductDialogOpen}
+          storeHasDelivery={store?.isHasDelivery}
+          addToCart={addToCart}
+          formatPrice={formatPrice}
+          handleProductBecameVisible={handleProductBecameVisible}
+          productViewRecordedRef={productViewRecordedRef}
+        />
+      );
+    },
+    [
+      theme,
+      t,
+      locName,
+      likeStates,
+      likeLoading,
+      isProductLiked,
+      handleLikeClick,
+      profileAdminEdit,
+      store?.isHasDelivery,
+      addToCart,
+      formatPrice,
+      handleProductBecameVisible,
+    ],
+  );
 
   // Render products grouped by type — row scroll (MainPage-style) or 2-column grid
   /** @param {boolean|'ifPresent'} showPriceMode */
@@ -1572,43 +1184,56 @@ const StoreProfile = () => {
     });
   };
 
-  const discountedProducts = getDiscountedProducts();
-  const nonDiscountedProducts = getNonDiscountedProducts();
-
-  // Tabs (hide empty tabs)
-  const tabDefs = [
-    {
-      key: "discounts",
-      count: discountedProducts.length,
-      label: `${t("Discounts")} (${discountedProducts.length})`,
-      icon: <LocalOfferIcon />,
-    },
-    {
-      key: "all",
-      count: nonDiscountedProducts.length,
-      label: `${t("All Products")} (${nonDiscountedProducts.length})`,
-      icon: <StorefrontIcon />,
-    },
-    {
-      key: "gifts",
-      count: gifts.length,
-      label: `${t("Gifts")} (${gifts.length})`,
-      icon: <CardGiftcardIcon />,
-    },
-    {
-      key: "reels",
-      count: reels.length,
-      label: `${t("Reels")} (${reels.length})`,
-      icon: <VideoLibrary />,
-    },
-    {
-      key: "jobs",
-      count: jobs.length,
-      label: `${t("Jobs")} (${jobs.length})`,
-      icon: <WorkOutline />,
-    },
-  ];
-  const visibleTabs = tabDefs.filter((d) => Number(d.count) > 0);
+  const tabDefs = useMemo(
+    () => [
+      {
+        key: "discounts",
+        count: discountedProducts.length,
+        label: `${t("Discounts")} (${discountedProducts.length})`,
+        icon: <LocalOfferIcon />,
+      },
+      {
+        key: "all",
+        count: nonDiscountedProducts.length,
+        label: `${t("All Products")} (${nonDiscountedProducts.length})`,
+        icon: <StorefrontIcon />,
+      },
+      {
+        key: "gifts",
+        count: gifts.length,
+        label: giftsLoaded ? `${t("Gifts")} (${gifts.length})` : t("Gifts"),
+        icon: <CardGiftcardIcon />,
+      },
+      {
+        key: "reels",
+        count: reels.length,
+        label: reelsLoaded ? `${t("Reels")} (${reels.length})` : t("Reels"),
+        icon: <VideoLibrary />,
+      },
+      {
+        key: "jobs",
+        count: jobs.length,
+        label: jobsLoaded ? `${t("Jobs")} (${jobs.length})` : t("Jobs"),
+        icon: <WorkOutline />,
+      },
+    ],
+    [
+      discountedProducts.length,
+      nonDiscountedProducts.length,
+      gifts.length,
+      giftsLoaded,
+      reels.length,
+      reelsLoaded,
+      jobs.length,
+      jobsLoaded,
+      t,
+    ],
+  );
+  const visibleTabs = useMemo(
+    () =>
+      tabDefs.filter((d) => Number(d.count) > 0),
+    [tabDefs],
+  );
 
   useEffect(() => {
     if (visibleTabs.length === 0) {
@@ -1620,17 +1245,39 @@ const StoreProfile = () => {
     }
   }, [activeTabKey, visibleTabs]);
 
-  const activeTabIndex = Math.max(
-    0,
-    visibleTabs.findIndex((d) => d.key === activeTabKey),
+  const handleTabChange = useCallback((nextTabKey) => {
+    setActiveTabKey(nextTabKey || "");
+  }, []);
+  const handleHeaderFollowToggle = useCallback(() => {
+    handleToggleFollow(store?._id, followerCount, setFollowerCount);
+  }, [handleToggleFollow, store?._id, followerCount]);
+  const handleHeaderLocationClick = useCallback(
+    (channel) => trackOwnerContactClick("store", id, channel),
+    [id],
+  );
+  const handleHeaderContactClick = useCallback(
+    (channel) => trackOwnerContactClick("store", id, channel),
+    [id],
+  );
+  const handleHeaderWhatsAppClick = useCallback(
+    (href) => {
+      trackOwnerContactClick("store", id, "whatsapp");
+      openWhatsAppLink(href, {
+        onClipboardFallback: notifyWhatsAppFallback,
+      });
+    },
+    [id, notifyWhatsAppFallback],
+  );
+  const handleFloatingCartOpen = useCallback(
+    async (e) => {
+      e?.currentTarget?.blur?.();
+      await syncCartWithLatestProducts();
+      setCartOpen(true);
+    },
+    [syncCartWithLatestProducts],
   );
 
-  const handleTabChange = (event, newValue) => {
-    const next = visibleTabs[newValue]?.key || "";
-    setActiveTabKey(next);
-  };
-
-  if (loading) {
+  const renderStoreProfileSkeleton = () => {
     const cardW = { xs: 155, sm: 190 };
     return (
       <Box
@@ -1646,20 +1293,46 @@ const StoreProfile = () => {
         {/* Back button skeleton */}
         <Skeleton
           variant="rounded"
-          width={80}
+          width={88}
           height={36}
           sx={{ mb: 2, borderRadius: "999px" }}
         />
-        {/* Hero header skeleton */}
-        <Skeleton
-          variant="rounded"
+        {/* Hero header skeleton (StoreHeader layout) */}
+        <Box
           sx={{
             width: "100%",
-            height: { xs: 200, sm: 240 },
             borderRadius: "20px",
             mb: 3,
+            p: { xs: 2, sm: 2.5 },
+            border: (theme) =>
+              theme.palette.mode === "dark"
+                ? "1px solid rgba(255,255,255,0.09)"
+                : "1px solid rgba(0,0,0,0.05)",
+            background:
+              theme.palette.mode === "dark"
+                ? "linear-gradient(135deg,#1a2840 0%, #244b7f 100%)"
+                : "linear-gradient(135deg,#2a72d9 0%, #4a90e2 100%)",
           }}
-        />
+        >
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", mb: 1.5 }}>
+            <Skeleton variant="rounded" width={74} height={74} sx={{ borderRadius: "18px", flexShrink: 0 }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Skeleton variant="text" width="52%" height={32} />
+              <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5 }}>
+                <Skeleton variant="rounded" width={48} height={22} sx={{ borderRadius: "999px" }} />
+                <Skeleton variant="rounded" width={76} height={22} sx={{ borderRadius: "999px" }} />
+              </Box>
+              <Skeleton variant="text" width="34%" height={18} />
+            </Box>
+          </Box>
+          <Skeleton variant="text" width="66%" height={18} />
+          <Skeleton variant="text" width="42%" height={18} />
+          <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} variant="circular" width={28} height={28} />
+            ))}
+          </Box>
+        </Box>
         {/* Tab bar skeleton — horizontal scroll */}
         <Box
           sx={{
@@ -1673,7 +1346,7 @@ const StoreProfile = () => {
             "&::-webkit-scrollbar": { display: "none" },
           }}
         >
-          {[100, 120, 90, 80].map((w, i) => (
+          {[112, 124, 96, 88, 84].map((w, i) => (
             <Skeleton
               key={i}
               variant="rounded"
@@ -1682,6 +1355,15 @@ const StoreProfile = () => {
               sx={{ borderRadius: "999px", flexShrink: 0 }}
             />
           ))}
+        </Box>
+        {/* Product layout toggle row skeleton */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1.5 }}>
+          <Skeleton
+            variant="rounded"
+            width={84}
+            height={34}
+            sx={{ borderRadius: "999px" }}
+          />
         </Box>
         {/* Category blocks + horizontal product row (matches renderProductsByType) */}
         {[1, 2].map((g) => (
@@ -1697,13 +1379,23 @@ const StoreProfile = () => {
                   : "1px solid #eef0f4",
             }}
           >
-            <Box sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.2, sm: 1.4 } }}>
+            <Box
+              sx={{
+                px: { xs: 1.5, sm: 2 },
+                py: { xs: 1.2, sm: 1.4 },
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <Skeleton variant="rounded" width={30} height={30} sx={{ borderRadius: "9px" }} />
               <Skeleton
                 variant="text"
-                width="55%"
+                width="45%"
                 height={28}
-                sx={{ mb: 0.5 }}
+                sx={{ mb: 0.5, flexShrink: 0 }}
               />
+              <Skeleton variant="rounded" width={28} height={20} sx={{ borderRadius: "999px" }} />
             </Box>
             <Box
               sx={{
@@ -1753,158 +1445,18 @@ const StoreProfile = () => {
         ))}
       </Box>
     );
+  };
+
+  if (loading) {
+    return renderStoreProfileSkeleton();
+  }
+  if (!tabsPrechecked) {
+    return renderStoreProfileSkeleton();
   }
   if (error) return <Loader message={error} />;
   if (!store) return <Alert severity="error">Store not found</Alert>;
   const storeContactInfo = store.contactInfo || {};
-  const storeLocationInfo = store.locationInfo || {};
   const displayPhone = storeContactInfo.phone || store.phone || null;
-  const socialLinks = [
-    { key: "whatsapp", value: storeContactInfo.whatsapp, icon: <WhatsApp /> },
-    { key: "facebook", value: storeContactInfo.facebook, icon: <Facebook /> },
-    {
-      key: "instagram",
-      value: storeContactInfo.instagram,
-      icon: <Instagram />,
-    },
-    { key: "tiktok", value: storeContactInfo.tiktok, icon: <MusicNote /> },
-    { key: "snapchat", value: storeContactInfo.snapchat, icon: <CameraAlt /> },
-  ];
-
-  const normalizeUrl = (url, type) => {
-    if (!url || typeof url !== "string") return null;
-    const trimmed = url.trim();
-    if (type === "whatsapp") {
-      if (/^(https?:\/\/)?(wa\.me|api\.whatsapp\.com)\//i.test(trimmed)) {
-        const withProto = /^https?:\/\//i.test(trimmed)
-          ? trimmed
-          : `https://${trimmed}`;
-        return normalizeWhatsAppUrl(withProto);
-      }
-      const digits = trimmed.replace(/[^\d]/g, "");
-      return digits ? `https://api.whatsapp.com/send?phone=${digits}` : null;
-    }
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  };
-
-  const locationLinks = [
-    {
-      key: "googleMaps",
-      label: "Google Maps",
-      value: storeLocationInfo.googleMaps,
-    },
-    {
-      key: "appleMaps",
-      label: "Apple Maps",
-      value: storeLocationInfo.appleMaps,
-    },
-    { key: "waze", label: "Waze", value: storeLocationInfo.waze },
-  ].filter((item) => Boolean(item.value));
-
-  const renderLocationRow = () => {
-    if (locationLinks.length === 0) return null;
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-          mb: 1,
-        }}
-      >
-        <LocationOn sx={{ fontSize: { xs: 18, md: 24 }, opacity: 0.9 }} />
-        {locationLinks.map((item) => (
-          <Button
-            key={item.key}
-            component="a"
-            href={normalizeUrl(item.value)}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="small"
-            variant="outlined"
-            sx={{
-              color: "white",
-              borderColor: "rgba(255,255,255,0.45)",
-              textTransform: "none",
-              whiteSpace: "nowrap",
-              "&:hover": {
-                borderColor: "white",
-                backgroundColor: "rgba(255,255,255,0.15)",
-              },
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </Box>
-    );
-  };
-
-  const renderContactRow = () => {
-    const socialItems = socialLinks.filter((item) => Boolean(item.value));
-    if (socialItems.length === 0) return null;
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 1,
-          flexWrap: "nowrap",
-          overflowX: "auto",
-        }}
-      >
-        {socialItems.map((item) => {
-          const href = normalizeUrl(item.value, item.key);
-          if (item.key === "whatsapp" && href) {
-            return (
-              <IconButton
-                key={item.key}
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  trackOwnerContactClick("store", id, "whatsapp");
-                  openWhatsAppLink(href, {
-                    onClipboardFallback: notifyWhatsAppFallback,
-                  });
-                }}
-                size="small"
-                sx={{
-                  color: "white",
-                  bgcolor: "rgba(255,255,255,0.15)",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-                  flexShrink: 0,
-                }}
-              >
-                {item.icon}
-              </IconButton>
-            );
-          }
-          return (
-            <IconButton
-              key={item.key}
-              component="a"
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="small"
-              onClick={() => trackOwnerContactClick("store", id, item.key)}
-              sx={{
-                color: "white",
-                bgcolor: "rgba(255,255,255,0.15)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-                flexShrink: 0,
-              }}
-            >
-              {item.icon}
-            </IconButton>
-          );
-        })}
-      </Box>
-    );
-  };
 
   const isDark = theme.palette.mode === "dark";
 
@@ -1916,353 +1468,38 @@ const StoreProfile = () => {
         pb: { xs: 10, sm: 4 },
       }}
     >
-      {store?.isHasDelivery && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: { xs: 76, md: 24 },
-            left: 12,
-            right: 12,
-            zIndex: 1200,
-            pointerEvents: "none",
-          }}
-        >
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <motion.div
-              key={cartPulseKey}
-              initial={{ scale: 1 }}
-              animate={
-                cartPulseKey > 0
-                  ? { scale: [1, 1.14, 0.97, 1.06, 1] }
-                  : { scale: 1 }
-              }
-              transition={{ duration: 0.55, ease: [0.34, 1.3, 0.64, 1] }}
-              style={{
-                display: "inline-block",
-                pointerEvents: "auto",
-                borderRadius: 9999,
-                overflow: "visible",
-              }}
-            >
-              <Button
-                variant="contained"
-                startIcon={<ShoppingCartIcon />}
-                disabled={cartCount <= 0}
-                ref={cartButtonRef}
-                onClick={async (e) => {
-                  // Prevent focus from staying on a now aria-hidden background element.
-                  e?.currentTarget?.blur?.();
-                  await syncCartWithLatestProducts();
-                  setCartOpen(true);
-                }}
-                sx={{
-                  pointerEvents: "auto",
-                  borderRadius: 999,
-                  px: 2.25,
-                  py: 1,
-                  fontWeight: 900,
-                }}
-              >
-                {t("Cart")} ({cartCount})
-              </Button>
-            </motion.div>
-          </Box>
-        </Box>
-      )}
+      <FloatingCartButton
+        visible={Boolean(store?.isHasDelivery)}
+        cartCount={cartCount}
+        cartPulseKey={cartPulseKey}
+        buttonRef={cartButtonRef}
+        label={t("Cart")}
+        onClick={handleFloatingCartOpen}
+      />
 
-      {/* Back Button */}
-      <Button
-        startIcon={
+      <StoreHeader
+        store={store}
+        isDark={isDark}
+        t={t}
+        locName={locName}
+        locAddress={locAddress}
+        followerCount={followerCount}
+        isStoreFollowed={isStoreFollowed(store?._id)}
+        followLoading={followLoading}
+        onFollowToggle={handleHeaderFollowToggle}
+        onBack={() => navigate(-1)}
+        backIcon={
           isRtl ? (
             <ArrowForward sx={{ fontSize: "1rem !important" }} />
           ) : (
             <ArrowBack sx={{ fontSize: "1rem !important" }} />
           )
         }
-        onClick={() => navigate(-1)}
-        size="small"
-        sx={{
-          mb: 2,
-          borderRadius: "999px",
-          textTransform: "none",
-          fontWeight: 600,
-          fontSize: "0.85rem",
-          color: isDark ? "rgba(255,255,255,0.7)" : "#374151",
-          bgcolor: isDark ? "rgba(255,255,255,0.07)" : "#f3f4f6",
-          border: isDark
-            ? "1px solid rgba(255,255,255,0.1)"
-            : "1px solid #e5e7eb",
-          px: 2,
-          py: 0.6,
-          "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.12)" : "#e9ecf0" },
-        }}
-      >
-        {t("Back")}
-      </Button>
-      {/* Store Hero Header */}
-      <Box
-        sx={{
-          mb: 3,
-          borderRadius: "20px",
-          overflow: "hidden",
-          background:
-            "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 60%, #5ba4f5 100%)",
-          boxShadow: isDark
-            ? "0 8px 32px rgba(0,0,0,0.45)"
-            : "0 8px 32px rgba(30,111,217,0.28)",
-          position: "relative",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            top: "-40%",
-            right: "-10%",
-            width: 280,
-            height: 280,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.06)",
-            pointerEvents: "none",
-          },
-        }}
-      >
-        <Box
-          sx={{
-            p: { xs: "18px 16px", sm: "24px 28px", md: "28px 36px" },
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {/* Logo + Name + Follow row */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: { xs: 1.5, sm: 2.5 },
-              mb: 1.5,
-            }}
-          >
-            <Avatar
-              src={store.logo ? resolveMediaUrl(store.logo) : undefined}
-              alt={locName(store)}
-              sx={{
-                width: { xs: 64, sm: 88, md: 110 },
-                height: { xs: 64, sm: 88, md: 110 },
-                border: "3px solid rgba(255,255,255,0.3)",
-                boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
-                bgcolor: "rgba(255,255,255,0.15)",
-                borderRadius: "18px",
-                flexShrink: 0,
-              }}
-            >
-              {!store.logo && (
-                <Business
-                  sx={{
-                    fontSize: { xs: 32, sm: 44 },
-                    color: "rgba(255,255,255,0.85)",
-                  }}
-                />
-              )}
-            </Avatar>
-
-            <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  flexWrap: "wrap",
-                  mb: 0.8,
-                }}
-              >
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: { xs: "1.15rem", sm: "1.5rem", md: "1.8rem" },
-                    color: "white",
-                    textShadow: "0 2px 6px rgba(0,0,0,0.25)",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {locName(store)}
-                </Typography>
-                {store.isVip && (
-                  <Chip
-                    label={t("VIP")}
-                    size="small"
-                    sx={{
-                      height: 22,
-                      fontSize: "0.65rem",
-                      fontWeight: 800,
-                      bgcolor: "#f59e0b",
-                      color: "white",
-                      border: "none",
-                      boxShadow: "0 2px 6px rgba(245,158,11,0.5)",
-                      "& .MuiChip-label": { px: 0.8 },
-                    }}
-                  />
-                )}
-                {store.isHasDelivery && (
-                  <Chip
-                    label={t("Delivery")}
-                    size="small"
-                    sx={{
-                      height: 22,
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      bgcolor: "rgba(239,68,68,0.75)",
-                      color: "white",
-                      border: "none",
-                      "& .MuiChip-label": { px: 0.8 },
-                    }}
-                  />
-                )}
-              </Box>
-
-              {/* Followers + Follow button */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  flexWrap: "wrap",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "rgba(255,255,255,0.85)",
-                    fontWeight: 600,
-                    fontSize: "0.82rem",
-                  }}
-                >
-                  {followerCount} {t("Followers")}
-                </Typography>
-                <Button
-                  size="small"
-                  disabled={followLoading}
-                  onClick={async () => {
-                    setFollowLoading(true);
-                    try {
-                      const result = await toggleFollowStore(store._id);
-                      if (result?.success && result?.data != null) {
-                        setFollowerCount(
-                          Math.max(
-                            0,
-                            result.data.followerCount ?? followerCount,
-                          ),
-                        );
-                      }
-                    } finally {
-                      setFollowLoading(false);
-                    }
-                  }}
-                  startIcon={
-                    isStoreFollowed(store._id) ? (
-                      <PersonAddDisabledIcon
-                        sx={{ fontSize: "0.9rem !important" }}
-                      />
-                    ) : (
-                      <PersonAddIcon sx={{ fontSize: "0.9rem !important" }} />
-                    )
-                  }
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 700,
-                    borderRadius: "999px",
-                    px: 1.5,
-                    py: 0.4,
-                    fontSize: "0.8rem",
-                    lineHeight: 1.5,
-                    ...(isStoreFollowed(store._id)
-                      ? {
-                          bgcolor: "rgba(239,68,68,0.8)",
-                          color: "white",
-                          "&:hover": { bgcolor: "rgba(239,68,68,1)" },
-                        }
-                      : {
-                          bgcolor: "rgba(34,197,94,0.85)",
-                          color: "white",
-                          "&:hover": { bgcolor: "rgba(34,197,94,1)" },
-                        }),
-                  }}
-                >
-                  {isStoreFollowed(store._id) ? t("Unfollow") : t("Follow")}
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Info row: address, maps, phone, socials */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.8 }}>
-            {locAddress(store) && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                <LocationOn
-                  sx={{
-                    fontSize: { xs: 16, md: 18 },
-                    color: "rgba(255,255,255,0.8)",
-                  }}
-                />
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "rgba(255,255,255,0.85)",
-                    fontSize: { xs: "0.78rem", sm: "0.875rem" },
-                    textOverflow: "ellipsis",
-                    maxWidth: { xs: 280, sm: 450 },
-                  }}
-                >
-                  {locAddress(store)}
-                </Typography>
-              </Box>
-            )}
-            {(locationLinks.length > 0 || displayPhone) && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  flexWrap: "wrap",
-                }}
-              >
-                {displayPhone && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Phone
-                      sx={{ fontSize: 15, color: "rgba(255,255,255,0.7)" }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "rgba(255,255,255,0.85)",
-                        fontFamily: "monospace",
-                        fontWeight: 600,
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {displayPhone}
-                    </Typography>
-                  </Box>
-                )}
-                {renderLocationRow()}
-              </Box>
-            )}
-            {renderContactRow()}
-            {store.description && (
-              <Typography
-                variant="body2"
-                sx={{
-                  textAlign: "center",
-                  color: "rgba(255,255,255,0.75)",
-                  fontSize: "0.8rem",
-                  lineHeight: 1.5,
-                  mt: 0.5,
-                }}
-              >
-                {store.description}
-              </Typography>
-            )}
-          </Box>
-        </Box>
-      </Box>
+        displayPhone={displayPhone}
+        onLocationClick={handleHeaderLocationClick}
+        onContactClick={handleHeaderContactClick}
+        onWhatsAppClick={handleHeaderWhatsAppClick}
+      />
 
       {/* Enhanced Products Section with Tabs */}
       <Box sx={{ mb: 4 }}>
@@ -2295,67 +1532,12 @@ const StoreProfile = () => {
         {/* Filter Section */}
         {/* {renderFilters()} */}
 
-        {/* Tabs — pill style */}
-        {visibleTabs.length > 0 && (
-          <Box
-            sx={{
-              mb: 2.5,
-              display: "flex",
-              gap: 0.8,
-              overflowX: "auto",
-              overflowY: "hidden",
-              scrollbarWidth: "none",
-              "&::-webkit-scrollbar": { display: "none" },
-              pb: 0.5,
-            }}
-          >
-            {visibleTabs.map((tab, idx) => {
-              const isActive = idx === activeTabIndex;
-              return (
-                <Chip
-                  key={tab.key}
-                  icon={React.cloneElement(tab.icon, {
-                    sx: { fontSize: "0.9rem !important" },
-                  })}
-                  label={tab.label}
-                  onClick={() => handleTabChange(null, idx)}
-                  sx={{
-                    height: 36,
-                    fontSize: "0.78rem",
-                    fontWeight: isActive ? 700 : 500,
-                    flexShrink: 0,
-                    transition: "all 0.2s ease",
-                    ...(isActive
-                      ? {
-                          background:
-                            "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)",
-                          color: "white",
-                          border: "none",
-                          boxShadow: "0 3px 10px rgba(30,111,217,0.4)",
-                          "& .MuiChip-icon": {
-                            color: "rgba(255,255,255,0.9) !important",
-                          },
-                        }
-                      : {
-                          background: isDark
-                            ? "rgba(255,255,255,0.07)"
-                            : "#f3f4f6",
-                          color: isDark ? "rgba(255,255,255,0.7)" : "#374151",
-                          border: isDark
-                            ? "1px solid rgba(255,255,255,0.1)"
-                            : "1px solid #e5e7eb",
-                          "&:hover": {
-                            background: isDark
-                              ? "rgba(255,255,255,0.12)"
-                              : "#e9ecf0",
-                          },
-                        }),
-                  }}
-                />
-              );
-            })}
-          </Box>
-        )}
+        <StoreTabs
+          tabs={visibleTabs}
+          activeTabKey={activeTabKey}
+          onChange={handleTabChange}
+          isDark={isDark}
+        />
 
         {(activeTabKey === "discounts" || activeTabKey === "all") && (
           <Box
@@ -2376,110 +1558,33 @@ const StoreProfile = () => {
         {/* Tab Content */}
 
         {activeTabKey === "discounts" && (
-          <Box>{renderProductsByType(discountedProducts)}</Box>
+          <ProductsTab>{renderProductsByType(discountedProducts)}</ProductsTab>
         )}
         {activeTabKey === "all" && (
-          <Box>{renderProductsByType(nonDiscountedProducts, "ifPresent")}</Box>
+          <ProductsTab>
+            {renderProductsByType(nonDiscountedProducts, "ifPresent")}
+          </ProductsTab>
         )}
         {activeTabKey === "gifts" && (
-          <Box>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr" },
-                gap: 3,
-                width: "100%",
-              }}
-            >
-              {gifts.map((gift) => (
-                <Box key={gift._id} sx={{ display: "flex" }}>
-                  {renderGiftCard(gift)}
-                </Box>
-              ))}
-            </Box>
-          </Box>
+          <Suspense fallback={<Skeleton variant="rounded" height={180} />}>
+            <GiftsTab gifts={gifts} renderGiftCard={renderGiftCard} />
+          </Suspense>
         )}
 
         {activeTabKey === "reels" && (
-          <Box>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                gap: 2,
-                width: "100%",
-              }}
-            >
-              {reels.map((reel) => {
-                const src = resolveMediaUrl(reel?.videoUrl || "");
-
-                return (
-                  <Card
-                    key={reel._id}
-                    sx={{
-                      borderRadius: 3,
-                      overflow: "hidden",
-                      cursor: "pointer",
-                      border: `1px solid ${theme.palette.divider}`,
-                      "&:hover": { boxShadow: 6 },
-                    }}
-                    onClick={() => navigate(`/reels/${reel._id}`)}
-                  >
-                    <Box
-                      sx={{ position: "relative", backgroundColor: "black" }}
-                    >
-                      <video
-                        src={src}
-                        muted
-                        playsInline
-                        preload="metadata"
-                        style={{
-                          width: "100%",
-                          height: 220,
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                      {reel?.title ? (
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            p: 1,
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.65), rgba(0,0,0,0))",
-                          }}
-                        >
-                          <Typography
-                            sx={{ color: "white", fontWeight: 700 }}
-                            noWrap
-                          >
-                            {reel.title}
-                          </Typography>
-                        </Box>
-                      ) : null}
-                    </Box>
-                  </Card>
-                );
-              })}
-            </Box>
-          </Box>
+          <Suspense fallback={<Skeleton variant="rounded" height={220} />}>
+            <ReelsTab
+              reels={reels}
+              theme={theme}
+              onOpenReel={(reel) => navigate(`/reels/${reel._id}`)}
+            />
+          </Suspense>
         )}
 
         {activeTabKey === "jobs" && (
-          <Box>
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 1.5 }}>
-              {jobs.map((job) => (
-                <JobCardRow
-                  key={job._id}
-                  job={job}
-                  onClick={() => setSelectedJob(job)}
-                />
-              ))}
-            </Box>
-          </Box>
+          <Suspense fallback={<Skeleton variant="rounded" height={120} />}>
+            <JobsTab jobs={jobs} onSelectJob={setSelectedJob} />
+          </Suspense>
         )}
       </Box>
 
@@ -2538,30 +1643,32 @@ const StoreProfile = () => {
           </Typography>
         </DialogContent>
       </Dialog>
-      {/* Product Detail Dialog */}
-      <ProductDetailDialog
-        open={productDialogOpen}
-        onClose={() => {
-          setProductDialogOpen(false);
-          setSelectedProduct(null);
-        }}
-        product={selectedProduct}
-        candidateProducts={products}
-        onProductChange={setSelectedProduct}
-        storeCityById={
-          store?._id
-            ? {
-                [String(store._id)]: store.storecity || store.city || "",
-              }
-            : undefined
-        }
-      />
-      <AdminProductEditDialog
-        open={Boolean(adminEditProduct)}
-        product={adminEditProduct}
-        onClose={() => setAdminEditProduct(null)}
-        onSaved={fetchStoreData}
-      />
+      <Suspense fallback={null}>
+        {/* Product Detail Dialog */}
+        <ProductDetailDialog
+          open={productDialogOpen}
+          onClose={() => {
+            setProductDialogOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          candidateProducts={products}
+          onProductChange={setSelectedProduct}
+          storeCityById={
+            store?._id
+              ? {
+                  [String(store._id)]: store.storecity || store.city || "",
+                }
+              : undefined
+          }
+        />
+        <AdminProductEditDialog
+          open={Boolean(adminEditProduct)}
+          product={adminEditProduct}
+          onClose={() => setAdminEditProduct(null)}
+          onSaved={fetchStoreData}
+        />
+      </Suspense>
 
       {/* Gift Details Dialog */}
       <Dialog
@@ -2647,174 +1754,23 @@ const StoreProfile = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Login Notification Dialog */}
-      <Dialog
-        open={loginNotificationOpen}
-        onClose={() => setLoginNotificationOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <Box display="flex" alignItems="center" gap={1}>
-          <Typography variant="h6" component="span">
-            {t("Login Required")}
-          </Typography>
-        </Box>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {t("You must login to like products. Do you want to login?")}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setLoginNotificationOpen(false)}
-            variant="outlined"
-            color="primary"
-          >
-            {t("No")}
-          </Button>
-          <Button
-            onClick={() => {
-              setLoginNotificationOpen(false);
-              navigate("/login");
-            }}
-            variant="contained"
-            color="primary"
-          >
-            {t("Yes")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Cart Dialog (delivery stores only) */}
-      <Dialog
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        TransitionProps={{
-          onEntered: () => {
-            cartCloseButtonRef.current?.focus?.();
-          },
-          onExited: () => {
-            cartButtonRef.current?.focus?.();
-          },
-        }}
-      >
-        {t("Cart")} ({cartCount})
-        <DialogContent sx={{ overflowX: "hidden" }}>
-          {cartSyncing ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>
-              {t("Loading...")}
-            </Typography>
-          ) : cartCount <= 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2 }}>
-              {t("Cart is empty")}
-            </Typography>
-          ) : (
-            <Box sx={{ display: "grid", gap: 1.25, py: 1 }}>
-              {Object.values(cartItems || {})
-                .filter((i) => (Number(i?.qty) || 0) > 0 && i?.product?._id)
-                .map((item) => (
-                  <Paper
-                    key={item.product._id}
-                    variant="outlined"
-                    sx={{ p: 1.25, borderRadius: 2 }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
-                        gap: 1,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography
-                          sx={{
-                            fontWeight: 700,
-                            overflowWrap: "anywhere",
-                            wordBreak: "break-word",
-                            whiteSpace: "normal",
-                          }}
-                        >
-                          {locName(item.product)}
-                        </Typography>
-                        {typeof item.product.newPrice === "number" && (
-                          <Typography variant="caption" color="text.secondary">
-                            {formatPrice(item.product.newPrice)}
-                          </Typography>
-                        )}
-                      </Box>
-
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <IconButton
-                          onClick={() =>
-                            updateCartQty(
-                              item.product._id,
-                              (Number(item.qty) || 0) - 1,
-                            )
-                          }
-                          size="small"
-                        >
-                          <RemoveIcon />
-                        </IconButton>
-                        <Typography
-                          sx={{
-                            fontWeight: 900,
-                            minWidth: 22,
-                            textAlign: "center",
-                          }}
-                        >
-                          {Number(item.qty) || 0}
-                        </Typography>
-                        <IconButton
-                          onClick={() =>
-                            updateCartQty(
-                              item.product._id,
-                              (Number(item.qty) || 0) + 1,
-                            )
-                          }
-                          size="small"
-                        >
-                          <AddIcon />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                  </Paper>
-                ))}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={clearCart} disabled={cartCount <= 0}>
-            {t("Clear")}
-          </Button>
-          <Button
-            onClick={() => setCartOpen(false)}
-            variant="outlined"
-            autoFocus
-            ref={cartCloseButtonRef}
-          >
-            {t("Close")}
-          </Button>
-          <Button
-            onClick={requestOrderWhatsApp}
-            variant="contained"
-            startIcon={<WhatsApp />}
-            disabled={cartCount <= 0}
-          >
-            {t("Order")}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Suspense fallback={null}>
+        <CartDrawer
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          cartCount={cartCount}
+          cartSyncing={cartSyncing}
+          cartItems={cartItems}
+          locName={locName}
+          formatPrice={formatPrice}
+          updateCartQty={updateCartQty}
+          clearCart={clearCart}
+          requestOrderWhatsApp={requestOrderWhatsApp}
+          t={t}
+          closeButtonRef={cartCloseButtonRef}
+          buttonRefOnExit={cartButtonRef}
+        />
+      </Suspense>
 
       <Dialog
         open={orderWhatsAppConfirmOpen}
