@@ -52,6 +52,7 @@ import {
 } from "../utils/mainPageScrollSession";
 import { prefetchSearchPageChunk } from "../utils/prefetchSearchPage";
 import { useDraftCartDrawer } from "../hooks/useDraftCartDrawer";
+import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
 const NAV_PATH_CITY = "__nav_city__";
 const NAV_PATH_LANG = "__nav_language__";
@@ -94,6 +95,8 @@ const BottomNavigationBar = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const reduceMotion = useReducedMotion();
+  const isAndroidPerfMode = useMemo(() => isAndroidPerformanceMode(), []);
+  const useLayoutAnimations = !reduceMotion && !isAndroidPerfMode;
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -339,22 +342,29 @@ const BottomNavigationBar = () => {
       boxSizing: "border-box",
       ...(isDark
         ? {
-            backdropFilter: "blur(22px) saturate(170%)",
-            WebkitBackdropFilter: "blur(22px) saturate(170%)",
+            backdropFilter: isAndroidPerfMode ? "none" : "blur(22px) saturate(170%)",
+            WebkitBackdropFilter: isAndroidPerfMode
+              ? "none"
+              : "blur(22px) saturate(170%)",
             border: "1px solid rgba(255,255,255,0.12)",
             borderBottom: "none",
-            boxShadow:
-              "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+            boxShadow: isAndroidPerfMode
+              ? "0 2px 10px rgba(0,0,0,0.35)"
+              : "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
           }
         : {
-            backdropFilter: "blur(24px) saturate(180%)",
-            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            backdropFilter: isAndroidPerfMode ? "none" : "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: isAndroidPerfMode
+              ? "none"
+              : "blur(24px) saturate(180%)",
             border: "1px solid",
             borderColor: "rgba(229,231,235,0.6)",
-            boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+            boxShadow: isAndroidPerfMode
+              ? "0 2px 10px rgba(0,0,0,0.08)"
+              : "0 8px 30px rgba(0,0,0,0.12)",
           }),
     }),
-    [isDark],
+    [isDark, isAndroidPerfMode],
   );
 
   const bottomNavSurfaceStyle = useMemo(
@@ -416,7 +426,7 @@ const BottomNavigationBar = () => {
           maxWidth: "100%",
         }}
       >
-        <LayoutGroup id="floating-bottom-nav">
+        <LayoutGroup id={useLayoutAnimations ? "floating-bottom-nav" : undefined}>
           <Box
             component="nav"
             sx={glassNavSx}
@@ -476,8 +486,8 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={(e) => setCityMenuAnchor(e.currentTarget)}
-                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
+                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -500,8 +510,8 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={(e) => setLangMenuAnchor(e.currentTarget)}
-                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
+                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -527,8 +537,8 @@ const BottomNavigationBar = () => {
                         setNotifMenuAnchor(e.currentTarget);
                         fetchNotifications?.();
                       }}
-                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
+                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -553,8 +563,8 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={() => openDraftCart()}
-                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
+                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -577,8 +587,8 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={handleBottomNavRefresh}
-                      whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-                      whileHover={reduceMotion ? undefined : { scale: 1.06 }}
+                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
+                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -606,9 +616,9 @@ const BottomNavigationBar = () => {
                         : undefined
                     }
                     onClick={() => handleRouteNavigate(item)}
-                    whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                    whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
                     whileHover={
-                      reduceMotion
+                      !useLayoutAnimations
                         ? undefined
                         : routeActive
                           ? { scale: 1.02 }
@@ -641,7 +651,9 @@ const BottomNavigationBar = () => {
                     >
                       {routeActive && (
                         <motion.div
-                          layoutId="bottom-nav-active-pill"
+                          layoutId={
+                            useLayoutAnimations ? "bottom-nav-active-pill" : undefined
+                          }
                           transition={pillTransition}
                           style={{
                             position: "absolute",
@@ -650,7 +662,9 @@ const BottomNavigationBar = () => {
                             borderRadius: 9999,
                             background:
                               "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
-                            boxShadow: "0 10px 28px rgba(249,115,22,0.45)",
+                            boxShadow: isAndroidPerfMode
+                              ? "0 2px 8px rgba(249,115,22,0.35)"
+                              : "0 10px 28px rgba(249,115,22,0.45)",
                             willChange: "transform",
                             pointerEvents: "none",
                           }}

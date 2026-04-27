@@ -86,6 +86,7 @@ import {
   getSavedProductLayout,
   saveProductLayout,
 } from "../utils/productLayoutPreference";
+import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
 /** Restore For You / Following tab from session before first paint (must not run in scroll restore effect — that aborted async scroll). */
 function getInitialMainPageTabFromSession() {
@@ -163,6 +164,7 @@ function productCategoryIdString(product, getID) {
 const MainPage = () => {
   const theme = useTheme();
   const isMobile = useIsMobileLayout();
+  const isAndroidPerfMode = useMemo(() => isAndroidPerformanceMode(), []);
   const navigate = useNavigate();
   const { locName, locDescription } = useLocalizedContent();
   const { refreshKey } = useContentRefresh();
@@ -803,6 +805,7 @@ const MainPage = () => {
     return cityCanonicalMap[normalized] || normalized;
   };
   const selectedCityCanonical = toCanonicalCity(selectedCity);
+  const normalizedSearch = useMemo(() => search.trim().toLowerCase(), [search]);
   const doesCityMatch = (candidateCity) =>
     toCanonicalCity(candidateCity) === selectedCityCanonical;
 
@@ -957,24 +960,24 @@ const MainPage = () => {
   }, [allProducts, storeIdsInCity, priceRange, showOnlyDiscount]);
 
   const finalFilteredStoresForStoreTypeChips = useMemo(() => {
-    const storeIdsWithProducts = [
-      ...new Set(
-        filteredProductsForStoreTypeChips.map((p) =>
-          String(getID(p.storeId)),
-        ),
-      ),
-    ];
+    const storeIdsWithProducts = new Set(
+      filteredProductsForStoreTypeChips.map((p) => String(getID(p.storeId))),
+    );
     return stores.filter((store) => {
       const storeID = getID(store._id);
-      const hasMatchingProducts = storeIdsWithProducts.includes(
-        String(storeID),
-      );
+      const hasMatchingProducts = storeIdsWithProducts.has(String(storeID));
       const storeNameMatch =
-        search && store.name?.toLowerCase().includes(search.toLowerCase());
+        normalizedSearch &&
+        store.name?.toLowerCase().includes(normalizedSearch);
       const cityMatch = storeMatchesSelectedCity(store, selectedCity);
       return (hasMatchingProducts || storeNameMatch) && cityMatch;
     });
-  }, [filteredProductsForStoreTypeChips, stores, search, selectedCity]);
+  }, [
+    filteredProductsForStoreTypeChips,
+    stores,
+    normalizedSearch,
+    selectedCity,
+  ]);
 
   const visibleStoreTypes = useMemo(() => {
     const ids = new Set(
@@ -1158,18 +1161,17 @@ const MainPage = () => {
       // Filter by Search:
       // - direct product-name match, OR
       // - parent store-name match (so searching a store still shows its products)
-      if (search) {
-        const searchQuery = search.trim().toLowerCase();
+      if (normalizedSearch) {
         const parentStore =
           storeById[String(getID(product.storeId))] || product.storeId;
         const productNameMatch = String(locName(product) || product.name || "")
           .toLowerCase()
-          .includes(searchQuery);
+          .includes(normalizedSearch);
         const storeNameMatch = String(
           locName(parentStore) || parentStore?.name || "",
         )
           .toLowerCase()
-          .includes(searchQuery);
+          .includes(normalizedSearch);
 
         if (!productNameMatch && !storeNameMatch) {
           return false;
@@ -1185,7 +1187,7 @@ const MainPage = () => {
     selectedStoreTypeId,
     selectedCategory,
     selectedCategoryType,
-    search,
+    normalizedSearch,
     priceRange,
     showOnlyDiscount,
     locName,
@@ -1295,11 +1297,9 @@ const MainPage = () => {
   // 2. Memoize the final list of stores to display
   const finalFilteredStores = useMemo(() => {
     // Get unique store IDs from the already filtered products
-    const storeIdsWithFilteredProducts = [
-      ...new Set(
-        filteredProducts.map((p) => String(getID(p.storeId))),
-      ),
-    ];
+    const storeIdsWithFilteredProducts = new Set(
+      filteredProducts.map((p) => String(getID(p.storeId))),
+    );
 
     // Filter the stores themselves
     return stores.filter((store) => {
@@ -1307,11 +1307,12 @@ const MainPage = () => {
 
       // Store must have products that passed the filters
       const hasMatchingProducts =
-        storeIdsWithFilteredProducts.includes(String(storeID));
+        storeIdsWithFilteredProducts.has(String(storeID));
 
       // Or the store name itself matches the search
       const storeNameMatch =
-        search && store.name?.toLowerCase().includes(search.toLowerCase());
+        normalizedSearch &&
+        store.name?.toLowerCase().includes(normalizedSearch);
 
       // And the store must match the type filter
       const storeTypeMatch =
@@ -1325,7 +1326,13 @@ const MainPage = () => {
         (hasMatchingProducts || storeNameMatch) && storeTypeMatch && cityMatch
       );
     });
-  }, [filteredProducts, stores, search, selectedStoreTypeId, selectedCity]);
+  }, [
+    filteredProducts,
+    stores,
+    normalizedSearch,
+    selectedStoreTypeId,
+    selectedCity,
+  ]);
 
   const sortedFilteredStores = useMemo(() => {
     const baseStores = [...finalFilteredStores];
@@ -1409,6 +1416,68 @@ const MainPage = () => {
     selectedCity,
   ]);
 
+  const filterFollowedStoreProducts = useCallback(
+    (store, rawProducts, storeNameMatch) =>
+      rawProducts.filter((product) => {
+        if (
+          selectedStoreTypeId !== "all" &&
+          String(getID(store.storeTypeId ?? product.storeTypeId)) !==
+            String(selectedStoreTypeId)
+        ) {
+          return false;
+        }
+        if (selectedCategory) {
+          const want = String(getID(selectedCategory._id));
+          const have = productCategoryIdString(product, getID);
+          if (want === UNCATEGORIZED_CATEGORY_ID) {
+            if (have != null) return false;
+          } else if (have !== want) {
+            return false;
+          }
+        }
+        if (
+          selectedCategoryType &&
+          getID(product.categoryTypeId) !== getID(selectedCategoryType._id)
+        ) {
+          return false;
+        }
+        const price = product.newPrice ?? product.price ?? 0;
+        if (price < priceRange[0] || price > priceRange[1]) {
+          return false;
+        }
+        const hasPriceDiscount =
+          product.previousPrice &&
+          product.newPrice &&
+          product.previousPrice > product.newPrice;
+        if (showOnlyDiscount) {
+          const isDiscounted = product.isDiscount || hasPriceDiscount;
+          if (!isDiscounted || !isDiscountValid(product)) {
+            return false;
+          }
+        }
+        if (
+          normalizedSearch &&
+          !product.name?.toLowerCase().includes(normalizedSearch) &&
+          !storeNameMatch
+        ) {
+          return false;
+        }
+        if (product.expireDate && !isExpiryStillValid(product.expireDate)) {
+          return false;
+        }
+        return true;
+      }),
+    [
+      selectedStoreTypeId,
+      selectedCategory,
+      selectedCategoryType,
+      priceRange,
+      showOnlyDiscount,
+      normalizedSearch,
+      getID,
+    ],
+  );
+
   // Filtered followed stores and their products for Following tab
   const filteredFollowedStoresWithProducts = useMemo(() => {
     return followedStores
@@ -1426,126 +1495,36 @@ const MainPage = () => {
         }
         // Store name search match (if search, store can show if name matches)
         const storeNameMatch =
-          search && store.name?.toLowerCase().includes(search.toLowerCase());
+          normalizedSearch &&
+          store.name?.toLowerCase().includes(normalizedSearch);
 
         // Get products for this store
         const rawProducts = productsByFollowedStore[store._id] || [];
-        const filteredProds = rawProducts.filter((product) => {
-          if (
-            selectedStoreTypeId !== "all" &&
-            String(getID(store.storeTypeId ?? product.storeTypeId)) !==
-              String(selectedStoreTypeId)
-          ) {
-            return false;
-          }
-          if (selectedCategory) {
-            const want = String(getID(selectedCategory._id));
-            const have = productCategoryIdString(product, getID);
-            if (want === UNCATEGORIZED_CATEGORY_ID) {
-              if (have != null) return false;
-            } else if (have !== want) {
-              return false;
-            }
-          }
-          if (
-            selectedCategoryType &&
-            getID(product.categoryTypeId) !== getID(selectedCategoryType._id)
-          ) {
-            return false;
-          }
-          const price = product.newPrice ?? product.price ?? 0;
-          if (price < priceRange[0] || price > priceRange[1]) {
-            return false;
-          }
-          const hasPriceDiscount =
-            product.previousPrice &&
-            product.newPrice &&
-            product.previousPrice > product.newPrice;
-          if (showOnlyDiscount) {
-            const isDiscounted = product.isDiscount || hasPriceDiscount;
-            if (!isDiscounted || !isDiscountValid(product)) {
-              return false;
-            }
-          }
-          if (
-            search &&
-            !product.name?.toLowerCase().includes(search.toLowerCase()) &&
-            !storeNameMatch
-          ) {
-            return false;
-          }
-          if (product.expireDate && !isExpiryStillValid(product.expireDate)) {
-            return false;
-          }
-          return true;
-        });
+        const filteredProds = filterFollowedStoreProducts(
+          store,
+          rawProducts,
+          storeNameMatch,
+        );
 
         return storeNameMatch || filteredProds.length > 0;
       })
       .map((store) => {
         const rawProducts = productsByFollowedStore[store._id] || [];
-        const filteredProds = rawProducts.filter((product) => {
-          if (
-            selectedStoreTypeId !== "all" &&
-            String(getID(store.storeTypeId ?? product.storeTypeId)) !==
-              String(selectedStoreTypeId)
-          ) {
-            return false;
-          }
-          if (selectedCategory) {
-            const want = String(getID(selectedCategory._id));
-            const have = productCategoryIdString(product, getID);
-            if (want === UNCATEGORIZED_CATEGORY_ID) {
-              if (have != null) return false;
-            } else if (have !== want) {
-              return false;
-            }
-          }
-          if (
-            selectedCategoryType &&
-            getID(product.categoryTypeId) !== getID(selectedCategoryType._id)
-          ) {
-            return false;
-          }
-          const price = product.newPrice ?? product.price ?? 0;
-          if (price < priceRange[0] || price > priceRange[1]) {
-            return false;
-          }
-          const hasPriceDiscount =
-            product.previousPrice &&
-            product.newPrice &&
-            product.previousPrice > product.newPrice;
-          if (showOnlyDiscount) {
-            const isDiscounted = product.isDiscount || hasPriceDiscount;
-            if (!isDiscounted || !isDiscountValid(product)) {
-              return false;
-            }
-          }
-          const storeNameMatch =
-            search && store.name?.toLowerCase().includes(search.toLowerCase());
-          if (
-            search &&
-            !product.name?.toLowerCase().includes(search.toLowerCase()) &&
-            !storeNameMatch
-          ) {
-            return false;
-          }
-          if (product.expireDate && !isExpiryStillValid(product.expireDate)) {
-            return false;
-          }
-          return true;
-        });
+        const storeNameMatch =
+          normalizedSearch &&
+          store.name?.toLowerCase().includes(normalizedSearch);
+        const filteredProds = filterFollowedStoreProducts(
+          store,
+          rawProducts,
+          storeNameMatch,
+        );
         return { store, products: filteredProds };
       });
   }, [
     followedStores,
     productsByFollowedStore,
-    selectedStoreTypeId,
-    selectedCategory,
-    selectedCategoryType,
-    search,
-    priceRange,
-    showOnlyDiscount,
+    filterFollowedStoreProducts,
+    normalizedSearch,
     selectedCity,
   ]);
 
@@ -2055,21 +2034,31 @@ const MainPage = () => {
           justifyContent: "center",
           alignItems: "center",
           margin: "0 auto",
-          backdropFilter: "blur(12px)",
+          backdropFilter: isAndroidPerfMode ? "none" : "blur(12px)",
           background:
             theme.palette.mode === "dark"
-              ? "rgba(15,23,42,0.85)"
-              : "rgba(255,255,255,0.9)",
+              ? isAndroidPerfMode
+                ? "rgba(15,23,42,0.96)"
+                : "rgba(15,23,42,0.85)"
+              : isAndroidPerfMode
+                ? "rgba(255,255,255,0.97)"
+                : "rgba(255,255,255,0.9)",
           boxShadow:
             theme.palette.mode === "dark"
-              ? "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
-              : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+              ? isAndroidPerfMode
+                ? "0 2px 8px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06)"
+                : "0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.07)"
+              : isAndroidPerfMode
+                ? "0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03)"
+                : "0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
           transform: !isMobile
             ? "translateY(0)"
             : showMainTabs
               ? "translateY(0)"
               : "translateY(-160%)",
-          transition: "transform 280ms cubic-bezier(0.4,0,0.2,1)",
+          transition: isAndroidPerfMode
+            ? "none"
+            : "transform 280ms cubic-bezier(0.4,0,0.2,1)",
           willChange: "transform",
         }}
       >

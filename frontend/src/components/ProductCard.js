@@ -21,6 +21,7 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import AppImage from "./AppImage";
+import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
 const ProductCard = memo(function ProductCard({
   product,
@@ -36,6 +37,7 @@ const ProductCard = memo(function ProductCard({
   const theme = useTheme();
   const { locName } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isAndroidPerfMode = isAndroidPerformanceMode();
 
   const hasPreviousPrice =
     product.previousPrice &&
@@ -78,19 +80,29 @@ const ProductCard = memo(function ProductCard({
           ? "1px solid rgba(255,255,255,0.07)"
           : "1px solid #f0f2f5",
         boxShadow: isDark
-          ? "0 4px 16px rgba(0,0,0,0.3)"
-          : "0 2px 12px rgba(0,0,0,0.06)",
-        transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+          ? isAndroidPerfMode
+            ? "0 1px 6px rgba(0,0,0,0.24)"
+            : "0 4px 16px rgba(0,0,0,0.3)"
+          : isAndroidPerfMode
+            ? "0 1px 6px rgba(0,0,0,0.05)"
+            : "0 2px 12px rgba(0,0,0,0.06)",
+        transition: isAndroidPerfMode
+          ? "none"
+          : "all 0.25s cubic-bezier(0.4,0,0.2,1)",
         display: "flex",
         flexDirection: "column",
         "&:hover": {
-          transform: "translateY(-3px)",
+          transform: isAndroidPerfMode ? "none" : "translateY(-3px)",
           boxShadow: isDark
-            ? "0 8px 28px rgba(0,0,0,0.45)"
-            : "0 8px 28px rgba(30,111,217,0.14)",
+            ? isAndroidPerfMode
+              ? "0 1px 6px rgba(0,0,0,0.24)"
+              : "0 8px 28px rgba(0,0,0,0.45)"
+            : isAndroidPerfMode
+              ? "0 1px 6px rgba(0,0,0,0.05)"
+              : "0 8px 28px rgba(30,111,217,0.14)",
           borderColor: isDark ? "rgba(255,255,255,0.14)" : "#dce8ff",
         },
-        "&:active": { transform: "translateY(0)" },
+        "&:active": { transform: "none" },
       }}
     >
       {/* Image area */}
@@ -113,10 +125,10 @@ const ProductCard = memo(function ProductCard({
                 width: "100%",
                 height: "100%",
                 objectFit: "contain",
-                transition: "transform 0.35s ease",
+                transition: isAndroidPerfMode ? "none" : "transform 0.35s ease",
               },
               ".MuiCard-root:hover & img, .MuiCard-root:hover & picture": {
-                transform: "scale(1.04)",
+                transform: isAndroidPerfMode ? "none" : "scale(1.04)",
               },
             }}
           >
@@ -182,7 +194,9 @@ const ProductCard = memo(function ProductCard({
                 background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                 color: "white",
                 border: "none",
-                boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
+                boxShadow: isAndroidPerfMode
+                  ? "none"
+                  : "0 2px 6px rgba(239,68,68,0.4)",
                 "& .MuiChip-label": { px: 0.7 },
                 "& .MuiChip-icon": {
                   color: "white !important",
@@ -205,16 +219,16 @@ const ProductCard = memo(function ProductCard({
               width: 28,
               height: 28,
               bgcolor: "rgba(255,255,255,0.92)",
-              backdropFilter: "blur(4px)",
+              backdropFilter: isAndroidPerfMode ? "none" : "blur(4px)",
               color: isLiked ? "#ef4444" : "#9ca3af",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-              transition: "all 0.2s ease",
+              boxShadow: isAndroidPerfMode ? "none" : "0 2px 8px rgba(0,0,0,0.12)",
+              transition: isAndroidPerfMode ? "none" : "all 0.2s ease",
               "&:hover": {
                 bgcolor: "white",
                 color: "#ef4444",
-                transform: "scale(1.15)",
+                transform: isAndroidPerfMode ? "none" : "scale(1.15)",
               },
-              "&:active": { transform: "scale(0.95)" },
+              "&:active": { transform: "none" },
               p: 0,
             }}
           >

@@ -112,6 +112,7 @@ import {
   normalizeWhatsAppUrl,
   openWhatsAppLink,
 } from "./utils/openWhatsAppLink";
+import { isAndroidPerformanceMode } from "./utils/androidPerformance";
 
 // Enable notification center (bell + menu)
 const NOTIFICATIONS_CENTER_ENABLED = true;
@@ -134,6 +135,7 @@ const HOME_DOUBLE_TAP_MS = 450;
 const NavigationBar = ({ darkMode, setDarkMode }) => {
   const theme = useTheme();
   const isDarkNav = theme.palette.mode === "dark";
+  const isAndroidPerfMode = useMemo(() => isAndroidPerformanceMode(), []);
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, logout, deactivate, updateProfile } = useAuth();
@@ -674,34 +676,40 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
         ? {
             color: "#f8fafc",
             backgroundColor: "rgba(255,255,255,0.1)",
-            backdropFilter: "blur(14px) saturate(160%)",
-            WebkitBackdropFilter: "blur(14px) saturate(160%)",
+            backdropFilter: isAndroidPerfMode ? "none" : "blur(14px) saturate(160%)",
+            WebkitBackdropFilter: isAndroidPerfMode
+              ? "none"
+              : "blur(14px) saturate(160%)",
             border: "1px solid rgba(255,255,255,0.2)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.28)",
+            boxShadow: isAndroidPerfMode
+              ? "none"
+              : "inset 0 1px 0 rgba(255,255,255,0.28)",
             transition: "all 0.25s ease",
             width: 40,
             height: 40,
             "&:hover": {
               backgroundColor: "rgba(255,255,255,0.2)",
-              transform: "scale(1.06)",
+              transform: isAndroidPerfMode ? "none" : "scale(1.06)",
               boxShadow:
-                "0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
+                isAndroidPerfMode
+                  ? "none"
+                  : "0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
             },
           }
         : {
             color: "white",
             backgroundColor: "rgba(255,255,255,0.1)",
-            backdropFilter: "blur(10px)",
+            backdropFilter: isAndroidPerfMode ? "none" : "blur(10px)",
             border: "1px solid rgba(255,255,255,0.2)",
             transition: "all 0.3s ease",
             width: 40,
             height: 40,
             "&:hover": {
               backgroundColor: "rgba(255,255,255,0.2)",
-              transform: "scale(1.1)",
+              transform: isAndroidPerfMode ? "none" : "scale(1.1)",
             },
           },
-    [isDarkNav],
+    [isDarkNav, isAndroidPerfMode],
   );
 
   const navBrandTitleSx = useMemo(
@@ -726,16 +734,24 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
         elevation={0}
         style={navAppBarStyle}
         sx={{
-          backdropFilter: isDarkNav
-            ? "blur(22px) saturate(170%)"
-            : "blur(20px)",
-          WebkitBackdropFilter: isDarkNav
-            ? "blur(22px) saturate(170%)"
-            : "blur(20px)",
+          backdropFilter: isAndroidPerfMode
+            ? "none"
+            : isDarkNav
+              ? "blur(22px) saturate(170%)"
+              : "blur(20px)",
+          WebkitBackdropFilter: isAndroidPerfMode
+            ? "none"
+            : isDarkNav
+              ? "blur(22px) saturate(170%)"
+              : "blur(20px)",
           borderBottom: isDarkNav ? "1px solid rgba(255,255,255,0.12)" : "none",
           boxShadow: isDarkNav
-            ? "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)"
-            : "0 8px 32px rgba(0,0,0,0.1)",
+            ? isAndroidPerfMode
+              ? "0 2px 10px rgba(0,0,0,0.35)"
+              : "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)"
+            : isAndroidPerfMode
+              ? "0 2px 10px rgba(0,0,0,0.08)"
+              : "0 8px 32px rgba(0,0,0,0.1)",
           transform: isSmUp
             ? "translateY(0)"
             : hideMobileNavOnReels
@@ -743,7 +759,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
               : showMobileNavbar
                 ? "translateY(0)"
                 : "translateY(-110%)",
-          transition: "transform 260ms ease",
+          transition: isAndroidPerfMode ? "none" : "transform 260ms ease",
           willChange: "transform",
         }}
       >

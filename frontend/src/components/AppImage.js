@@ -22,12 +22,13 @@ const AppImage = memo(
     ref,
   ) {
     const load = loading ?? "lazy";
+    const mergedStyle = { display: "block", ...style };
     const common = {
       alt,
       decoding,
       sizes,
       className,
-      style,
+      style: mergedStyle,
       onClick,
       ...rest,
     };

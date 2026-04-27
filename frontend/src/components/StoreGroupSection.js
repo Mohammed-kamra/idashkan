@@ -23,10 +23,11 @@ import { useTranslation } from "react-i18next";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductCard from "./ProductCard";
+import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
 const PRODUCT_CHUNK = 8;
 
-const showMoreCardSx = (isDark) => ({
+const showMoreCardSx = (isDark, isAndroidPerfMode) => ({
   flexShrink: 0,
   width: { xs: 148, sm: 190, md: 240 },
   minWidth: { xs: 148, sm: 190, md: 240 },
@@ -44,12 +45,16 @@ const showMoreCardSx = (isDark) => ({
     ? "1px dashed rgba(74,144,226,0.45)"
     : "1px dashed rgba(30,111,217,0.35)",
   boxShadow: "none",
-  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  transition: isAndroidPerfMode ? "none" : "transform 0.2s ease, box-shadow 0.2s ease",
   "&:hover": {
-    transform: "translateY(-2px)",
+    transform: isAndroidPerfMode ? "none" : "translateY(-2px)",
     boxShadow: isDark
-      ? "0 8px 24px rgba(0,0,0,0.35)"
-      : "0 8px 24px rgba(30,111,217,0.15)",
+      ? isAndroidPerfMode
+        ? "none"
+        : "0 8px 24px rgba(0,0,0,0.35)"
+      : isAndroidPerfMode
+        ? "none"
+        : "0 8px 24px rgba(30,111,217,0.15)",
   },
 });
 
@@ -71,6 +76,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
   const { t, i18n } = useTranslation();
   const { locName, locAddress } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isAndroidPerfMode = isAndroidPerformanceMode();
   const isRtl = i18n.language === "ar" || i18n.language === "ku";
 
   const [visibleCount, setVisibleCount] = useState(PRODUCT_CHUNK);
@@ -105,7 +111,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
       elevation={0}
       aria-label={t("See more")}
       sx={{
-        ...showMoreCardSx(isDark),
+        ...showMoreCardSx(isDark, isAndroidPerfMode),
         border: "none",
         font: "inherit",
         color: "inherit",
@@ -163,14 +169,22 @@ const StoreGroupSection = memo(function StoreGroupSection({
           ? "1px solid rgba(255,255,255,0.07)"
           : "1px solid #eef0f4",
         boxShadow: isDark
-          ? "0 4px 20px rgba(0,0,0,0.35)"
-          : "0 2px 16px rgba(0,0,0,0.06)",
+          ? isAndroidPerfMode
+            ? "0 1px 8px rgba(0,0,0,0.26)"
+            : "0 4px 20px rgba(0,0,0,0.35)"
+          : isAndroidPerfMode
+            ? "0 1px 8px rgba(0,0,0,0.06)"
+            : "0 2px 16px rgba(0,0,0,0.06)",
         mb: { xs: 1.5, sm: 2 },
-        transition: "box-shadow 0.25s ease",
+        transition: isAndroidPerfMode ? "none" : "box-shadow 0.25s ease",
         "&:hover": {
           boxShadow: isDark
-            ? "0 8px 32px rgba(0,0,0,0.5)"
-            : "0 6px 28px rgba(30,111,217,0.1)",
+            ? isAndroidPerfMode
+              ? "0 1px 8px rgba(0,0,0,0.26)"
+              : "0 8px 32px rgba(0,0,0,0.5)"
+            : isAndroidPerfMode
+              ? "0 1px 8px rgba(0,0,0,0.06)"
+              : "0 6px 28px rgba(30,111,217,0.1)",
         },
       }}
     >
@@ -186,7 +200,9 @@ const StoreGroupSection = memo(function StoreGroupSection({
             : "linear-gradient(135deg, #1E6FD9 0%, #4A90E2 100%)",
           position: "relative",
           overflow: "hidden",
-          "&::after": {
+          "&::after": isAndroidPerfMode
+            ? undefined
+            : {
             content: '""',
             position: "absolute",
             top: "-30%",
@@ -196,7 +212,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
             borderRadius: "50%",
             background: "rgba(255,255,255,0.05)",
             pointerEvents: "none",
-          },
+            },
         }}
       >
         {/* Logo */}
@@ -219,10 +235,10 @@ const StoreGroupSection = memo(function StoreGroupSection({
               borderRadius: "14px",
               border: "2.5px solid rgba(255,255,255,0.3)",
               background: "rgba(255,255,255,0.15)",
-              backdropFilter: "blur(10px)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-              transition: "transform 0.2s ease",
-              "&:hover": { transform: "scale(1.06)" },
+              backdropFilter: isAndroidPerfMode ? "none" : "blur(10px)",
+              boxShadow: isAndroidPerfMode ? "none" : "0 4px 12px rgba(0,0,0,0.2)",
+              transition: isAndroidPerfMode ? "none" : "transform 0.2s ease",
+              "&:hover": { transform: isAndroidPerfMode ? "none" : "scale(1.06)" },
             }}
           >
             {!store.logo && (
@@ -267,7 +283,9 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 sx={{
                   fontSize: 18,
                   color: "#fbbf24",
-                  filter: "drop-shadow(0 1px 3px rgba(251,191,36,0.6))",
+                  filter: isAndroidPerfMode
+                    ? "none"
+                    : "drop-shadow(0 1px 3px rgba(251,191,36,0.6))",
                 }}
               />
             )}
@@ -284,13 +302,13 @@ const StoreGroupSection = memo(function StoreGroupSection({
                   ? "rgba(34,197,94,0.8)"
                   : "rgba(255,255,255,0.18)",
                 border: "1px solid rgba(255,255,255,0.25)",
-                backdropFilter: "blur(4px)",
-                transition: "all 0.2s ease",
+                backdropFilter: isAndroidPerfMode ? "none" : "blur(4px)",
+                transition: isAndroidPerfMode ? "none" : "all 0.2s ease",
                 "&:hover": {
                   bgcolor: followed
                     ? "rgba(34,197,94,1)"
                     : "rgba(255,255,255,0.3)",
-                  transform: "scale(1.1)",
+                  transform: isAndroidPerfMode ? "none" : "scale(1.1)",
                 },
                 p: 0,
               }}
@@ -342,7 +360,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
                   bgcolor: "rgba(255,255,255,0.18)",
                   color: "white",
                   border: "1px solid rgba(255,255,255,0.2)",
-                  backdropFilter: "blur(4px)",
+                  backdropFilter: isAndroidPerfMode ? "none" : "blur(4px)",
                   "& .MuiChip-label": { px: 0.8 },
                 }}
               />
@@ -387,7 +405,7 @@ const StoreGroupSection = memo(function StoreGroupSection({
                 py: 0.2,
                 minHeight: 0,
                 lineHeight: 1.5,
-                backdropFilter: "blur(4px)",
+                backdropFilter: isAndroidPerfMode ? "none" : "blur(4px)",
                 "&:hover": { bgcolor: "rgba(255,255,255,0.22)" },
               }}
             >

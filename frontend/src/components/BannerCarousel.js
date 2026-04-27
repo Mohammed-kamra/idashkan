@@ -2,6 +2,7 @@
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import AppImage from "./AppImage";
+import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
 const PremiumDots = ({ count, activeIndex }) => (
   <Box
@@ -40,14 +41,15 @@ const PremiumDots = ({ count, activeIndex }) => (
 const BannerCarousel = ({ banners, onBannerClick }) => {
   const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
+  const isAndroidPerfMode = isAndroidPerformanceMode();
 
   useEffect(() => {
-    if (!banners || banners.length <= 1) return undefined;
+    if (!banners || banners.length <= 1 || isAndroidPerfMode) return undefined;
     const id = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % banners.length);
     }, 4000);
     return () => window.clearInterval(id);
-  }, [banners]);
+  }, [banners, isAndroidPerfMode]);
 
   if (!banners || banners.length === 0) {
     return (
@@ -76,8 +78,12 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
         overflow: "hidden",
         boxShadow:
           theme.palette.mode === "dark"
-            ? "0 8px 32px rgba(0,0,0,0.4)"
-            : "0 8px 32px rgba(30,111,217,0.15)",
+            ? isAndroidPerfMode
+              ? "0 2px 8px rgba(0,0,0,0.28)"
+              : "0 8px 32px rgba(0,0,0,0.4)"
+            : isAndroidPerfMode
+              ? "0 2px 8px rgba(30,111,217,0.1)"
+              : "0 8px 32px rgba(30,111,217,0.15)",
         mb: 2,
         position: "relative",
         height: { xs: "160px", sm: "220px", md: "280px" },
@@ -106,7 +112,7 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
             <AppImage
               src={ad.src || ad}
               alt={`Banner ${index + 1}`}
-              loading={index === activeIndex ? "eager" : "lazy"}
+              loading={index === 0 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : undefined}
               style={{
                 width: "100%",

@@ -1,3 +1,5 @@
+import { isAndroidPerformanceMode } from "./androidPerformance";
+
 /**
  * Default lazy loading for <img> in the SPA. Skips images that opt out via
  * loading="eager" or fetchPriority="high" (e.g. splash logo).
@@ -30,6 +32,13 @@ export function installGlobalImageLazyLoading() {
     root.querySelectorAll?.("img").forEach(apply);
   };
 
+  scan(document.body);
+
+  // Avoid global subtree observer on Android where DOM churn can impact scroll.
+  if (isAndroidPerformanceMode()) {
+    return () => {};
+  }
+
   const obs = new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (const n of m.addedNodes || []) {
@@ -38,7 +47,6 @@ export function installGlobalImageLazyLoading() {
     }
   });
 
-  scan(document.body);
   obs.observe(document.body, { childList: true, subtree: true });
   return () => obs.disconnect();
 }
