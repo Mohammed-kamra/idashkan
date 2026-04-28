@@ -1,10 +1,10 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import AppImage from "./AppImage";
 import { isAndroidPerformanceMode } from "../utils/androidPerformance";
 
-const PremiumDots = ({ count, activeIndex }) => (
+const PremiumDots = ({ count, activeIndex, onSelect }) => (
   <Box
     sx={{
       display: "flex",
@@ -15,7 +15,7 @@ const PremiumDots = ({ count, activeIndex }) => (
       bottom: 12,
       left: 0,
       right: 0,
-      pointerEvents: "none",
+      pointerEvents: "auto",
     }}
   >
     {Array.from({ length: count }).map((_, i) => {
@@ -23,7 +23,13 @@ const PremiumDots = ({ count, activeIndex }) => (
       return (
         <Box
           key={i}
+          component="button"
+          type="button"
+          onClick={() => onSelect?.(i)}
+          aria-label={`Show banner ${i + 1}`}
           sx={{
+            border: 0,
+            p: 0,
             width: isActive ? 20 : 6,
             height: 6,
             borderRadius: 999,
@@ -31,6 +37,7 @@ const PremiumDots = ({ count, activeIndex }) => (
               ? "white"
               : "rgba(255,255,255,0.45)",
             transition: "width 0.35s ease, background-color 0.35s ease",
+            cursor: "pointer",
           }}
         />
       );
@@ -41,15 +48,58 @@ const PremiumDots = ({ count, activeIndex }) => (
 const BannerCarousel = ({ banners, onBannerClick }) => {
   const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartXRef = useRef(null);
+  const touchDeltaXRef = useRef(0);
   const isAndroidPerfMode = isAndroidPerformanceMode();
 
+  const bannerCount = banners?.length ?? 0;
+
   useEffect(() => {
-    if (!banners || banners.length <= 1 || isAndroidPerfMode) return undefined;
-    const id = window.setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % banners.length);
-    }, 4000);
-    return () => window.clearInterval(id);
-  }, [banners, isAndroidPerfMode]);
+    if (bannerCount <= 0) {
+      setActiveIndex(0);
+      return;
+    }
+    setActiveIndex((prev) => (prev >= bannerCount ? 0 : prev));
+  }, [bannerCount]);
+
+  useEffect(() => {
+    if (bannerCount <= 1) return undefined;
+    const delay = isAndroidPerfMode ? 5200 : 4000;
+    const id = window.setTimeout(() => {
+      setActiveIndex((prev) => (prev + 1) % bannerCount);
+    }, delay);
+    return () => window.clearTimeout(id);
+  }, [activeIndex, bannerCount, isAndroidPerfMode]);
+
+  const goToBanner = (nextIndex) => {
+    if (bannerCount <= 0) return;
+    const normalized = ((nextIndex % bannerCount) + bannerCount) % bannerCount;
+    setActiveIndex(normalized);
+  };
+
+  const handleTouchStart = (event) => {
+    if (bannerCount <= 1) return;
+    touchStartXRef.current = event.touches?.[0]?.clientX ?? null;
+    touchDeltaXRef.current = 0;
+  };
+
+  const handleTouchMove = (event) => {
+    if (touchStartXRef.current == null) return;
+    const currentX = event.touches?.[0]?.clientX ?? touchStartXRef.current;
+    touchDeltaXRef.current = currentX - touchStartXRef.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartXRef.current == null || bannerCount <= 1) return;
+    const threshold = 35;
+    if (touchDeltaXRef.current <= -threshold) {
+      goToBanner(activeIndex + 1);
+    } else if (touchDeltaXRef.current >= threshold) {
+      goToBanner(activeIndex - 1);
+    }
+    touchStartXRef.current = null;
+    touchDeltaXRef.current = 0;
+  };
 
   if (!banners || banners.length === 0) {
     return (
@@ -88,6 +138,10 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
         position: "relative",
         height: { xs: "160px", sm: "220px", md: "280px" },
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {banners.map((ad, index) => (
         <Box
@@ -125,7 +179,11 @@ const BannerCarousel = ({ banners, onBannerClick }) => {
         </Box>
       ))}
 
-      <PremiumDots count={banners.length} activeIndex={activeIndex} />
+      <PremiumDots
+        count={banners.length}
+        activeIndex={activeIndex}
+        onSelect={goToBanner}
+      />
     </Box>
   );
 };

@@ -45,9 +45,9 @@ if (workbox) {
   workbox.routing.registerRoute(
     ({ request, url }) =>
       request.destination === "image" ||
-      /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(url.pathname),
+      /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname),
     new workbox.strategies.CacheFirst({
-      cacheName: "images-cache-v2",
+      cacheName: "images-cache-v3",
       plugins: [
         new workbox.expiration.ExpirationPlugin({
           maxEntries: 2000,

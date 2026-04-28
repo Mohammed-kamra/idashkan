@@ -365,6 +365,10 @@ export const cartOrderLogAPI = {
   log: (body) => api.post("/cart-orders/log", body),
 };
 
+export const feedbackAPI = {
+  create: (body) => api.post("/feedback", body),
+};
+
 // Admin API calls
 export const adminAPI = {
   getStats: () => api.get("/admin/stats"),
@@ -418,6 +422,7 @@ export const adminAPI = {
 
   getCartOrderLogs: (params = {}) =>
     api.get("/admin/cart-order-logs", { params }),
+  getFeedback: (params = {}) => api.get("/admin/feedback", { params }),
 
   getVisitorsReportDaily: (params = {}) =>
     api.get("/admin/visitors-report/daily", { params }),

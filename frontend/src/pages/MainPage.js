@@ -559,12 +559,7 @@ const MainPage = () => {
       // the payload and would change non‑VIP order (shuffle is reload-only) or fight scroll restore.
       skipInitialSilentRefreshRef.current = true;
     }
-  }, [
-    refreshKey,
-    applyMainPagePayload,
-    mainPageBootstrapPayload,
-    queryClient,
-  ]);
+  }, [refreshKey, applyMainPagePayload, mainPageBootstrapPayload, queryClient]);
 
   useEffect(() => {
     const cached = readMainPageCache(refreshKey);
@@ -1306,8 +1301,9 @@ const MainPage = () => {
       const storeID = getID(store._id);
 
       // Store must have products that passed the filters
-      const hasMatchingProducts =
-        storeIdsWithFilteredProducts.has(String(storeID));
+      const hasMatchingProducts = storeIdsWithFilteredProducts.has(
+        String(storeID),
+      );
 
       // Or the store name itself matches the search
       const storeNameMatch =
@@ -1564,21 +1560,13 @@ const MainPage = () => {
         const offset = blockIndex * 8;
         const slice = brandsInSelectedCity.slice(offset, offset + 8);
         if (slice.length === 0) return null;
-        return (
-          <BrandShowcase
-            brands={slice}
-          />
-        );
+        return <BrandShowcase brands={slice} />;
       }
       if (variant === 1) {
         const offset = blockIndex * 8;
         const slice = companiesInSelectedCity.slice(offset, offset + 8);
         if (slice.length === 0) return null;
-        return (
-          <CompanyShowcase
-            companies={slice}
-          />
-        );
+        return <CompanyShowcase companies={slice} />;
       }
       if (variant === 2) {
         const prevList = randomShowcaseStoresRef.current[blockIndex];
@@ -1591,13 +1579,10 @@ const MainPage = () => {
           );
           randomShowcaseStoresRef.current[blockIndex] = shuffled.slice(0, 20);
         }
-        const storesForShowcase = randomShowcaseStoresRef.current[blockIndex] ?? [];
+        const storesForShowcase =
+          randomShowcaseStoresRef.current[blockIndex] ?? [];
         if (storesForShowcase.length === 0) return null;
-        return (
-          <StoreShowcase
-            stores={storesForShowcase}
-          />
-        );
+        return <StoreShowcase stores={storesForShowcase} />;
       }
       if (!showcaseEligibleGifts.length) return null;
       return <GiftShowcase gifts={showcaseEligibleGifts} />;
@@ -1712,10 +1697,7 @@ const MainPage = () => {
     // Full refresh: skip session restore only on the first MainPage mount after a
     // document reload. `navigation.type` stays "reload" for the whole SPA session,
     // so we must not run this on every subsequent Home visit.
-    if (
-      !mainPageReloadScrollResetConsumed &&
-      isBrowserReloadNavigation()
-    ) {
+    if (!mainPageReloadScrollResetConsumed && isBrowserReloadNavigation()) {
       mainPageReloadScrollResetConsumed = true;
       resetMainPageScrollPositionInSession();
       applyWindowScrollY(0);

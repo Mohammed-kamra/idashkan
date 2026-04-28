@@ -99,6 +99,7 @@ const BottomNavigationBar = () => {
   const useLayoutAnimations = !reduceMotion && !isAndroidPerfMode;
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const hideNavigationOnProfile = /^\/profile(\/|$)/.test(location.pathname);
   const navigate = useNavigate();
   const isMobile = useIsMobileLayout();
   const { navConfig } = useActiveTheme();
@@ -396,6 +397,10 @@ const BottomNavigationBar = () => {
   };
 
   if (!isMobile) {
+    return null;
+  }
+
+  if (hideNavigationOnProfile) {
     return null;
   }
 

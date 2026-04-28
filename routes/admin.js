@@ -26,6 +26,7 @@ const requireDataEntry = require("../middleware/requireDataEntry");
 const searchAnalyticsController = require("../controllers/searchAnalyticsController");
 const { getVisitorsReportDaily } = require("../controllers/appVisitController");
 const { listCartOrderLogs } = require("../controllers/cartOrderLogController");
+const { listFeedback } = require("../controllers/userFeedbackController");
 
 // GET /api/admin/stats
 router.get("/stats", getStats);
@@ -165,5 +166,8 @@ router.get(
   requireDataEntry,
   listCartOrderLogs,
 );
+
+// User submitted suggestions / problem reports
+router.get("/feedback", protect, requireDataEntry, listFeedback);
 
 module.exports = router;

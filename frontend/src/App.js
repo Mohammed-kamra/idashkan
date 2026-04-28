@@ -42,6 +42,7 @@ const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
 const AdminCitiesPage = lazy(() => import("./pages/AdminCitiesPage"));
 const AdminSearchAnalyticsPage = lazy(() => import("./pages/AdminSearchAnalyticsPage"));
 const AdminVisitorsReportPage = lazy(() => import("./pages/AdminVisitorsReportPage"));
+const AdminFeedbackPage = lazy(() => import("./pages/AdminFeedbackPage"));
 const CustomizationPage = lazy(() => import("./pages/CustomizationPage"));
 const TranslationPage = lazy(() => import("./pages/TranslationPage"));
 import NavigationBar from "./NavigationBar";
@@ -117,29 +118,6 @@ function getOrCreateVisitSessionId() {
     return `vs_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   }
 }
-
-// Footer component remains the same
-const Footer = () => (
-  <Box
-    component="footer"
-    sx={{
-      py: 2,
-      px: 2,
-      mt: "auto",
-      backgroundColor: (theme) =>
-        theme.palette.mode === "light"
-          ? theme.palette.grey[200]
-          : theme.palette.grey[800],
-      textAlign: "right",
-      borderTop: "1px solid",
-      borderColor: (theme) => theme.palette.divider,
-    }}
-  >
-    <Typography variant="body2" color="text.secondary">
-      Powered By iDashkan2026
-    </Typography>
-  </Box>
-);
 
 function AppContent() {
   const location = useLocation();
@@ -460,6 +438,20 @@ function AppContent() {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="/admin/feedback"
+                    element={
+                      <ProtectedRoute
+                        allowedEmails={[
+                          "mshexani45@gmail.com",
+                          "admin@gmail.com",
+                        ]}
+                        allowSupportRole
+                      >
+                        <AdminFeedbackPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -495,7 +487,6 @@ function AppContent() {
               </Suspense>
             </Container>
           </Box>
-          <Footer />
           <BottomNavigationBar />
           {false && <NotificationEnableBanner />}
         </Box>

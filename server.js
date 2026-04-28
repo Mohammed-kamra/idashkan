@@ -113,6 +113,7 @@ app.use("/api/owner-dashboard", require("./routes/ownerDashboard"));
 app.use("/api/owner-analytics", require("./routes/ownerAnalytics"));
 app.use("/api/app-visits", require("./routes/appVisits"));
 app.use("/api/cart-orders", require("./routes/cartOrders"));
+app.use("/api/feedback", require("./routes/feedback"));
 
 const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

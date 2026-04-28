@@ -64,6 +64,7 @@ import {
   BrightnessAutoRounded,
   PrivacyTip as PrivacyTipIcon,
   Block as BlockIcon,
+  Feedback as FeedbackIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
   WhatsApp as WhatsAppIcon,
@@ -166,6 +167,7 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
   const { dataLanguage } = useDataLanguage();
   const { openDraftCart } = useDraftCartDrawer();
   const location = useLocation();
+  const hideNavigationOnProfile = /^\/profile(\/|$)/.test(location.pathname);
   /** Full-screen reels on mobile: keep top bar off (also /reels/:videoId). */
   const hideMobileNavOnReels =
     !isSmUp && /^\/reels(\/|$)/.test(location.pathname);
@@ -724,6 +726,10 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
     }),
     [],
   );
+
+  if (hideNavigationOnProfile) {
+    return null;
+  }
 
   return (
     <>
@@ -1689,6 +1695,21 @@ const NavigationBar = ({ darkMode, setDarkMode }) => {
                             <BarChartIcon fontSize="small" />
                           </ListItemIcon>
                           <ListItemText primary={t("Visitors report")} />
+                        </MenuItem>
+                        <MenuItem
+                          component={Link}
+                          to="/admin/feedback"
+                          onClick={handleAdminMenuClose}
+                          selected={location.pathname === "/admin/feedback"}
+                        >
+                          <ListItemIcon>
+                            <FeedbackIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={t("User feedback", {
+                              defaultValue: "User feedback",
+                            })}
+                          />
                         </MenuItem>
                         <MenuItem
                           component={Link}

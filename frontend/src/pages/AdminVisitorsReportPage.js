@@ -224,25 +224,8 @@ const AdminVisitorsReportPage = () => {
           {t("visitorsReportUtcNote")}
         </Typography>
 
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            flexWrap: { md: "wrap" },
-            gap: 2,
-            mb: 3,
-            alignItems: { xs: "stretch", md: "center" },
-          }}
-        >
-          {/* Row 1 on mobile: From + To; inline with controls from md */}
-          <Box
-            sx={{
-              display: "flex",
-              gap: 2,
-              width: { xs: "100%", md: "auto" },
-              minWidth: 0,
-            }}
-          >
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               label={t("visitorsReportFrom")}
               type="date"
@@ -256,13 +239,13 @@ const AdminVisitorsReportPage = () => {
               disabled={isTodayPreset}
               InputLabelProps={{ shrink: true }}
               sx={{
-                flex: { xs: 1, md: "0 0 auto" },
-                minWidth: { md: 160 },
                 "& .MuiOutlinedInput-root": {
                   bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
                 },
               }}
             />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               label={t("visitorsReportTo")}
               type="date"
@@ -276,25 +259,13 @@ const AdminVisitorsReportPage = () => {
               disabled={isTodayPreset}
               InputLabelProps={{ shrink: true }}
               sx={{
-                flex: { xs: 1, md: "0 0 auto" },
-                minWidth: { md: 160 },
                 "& .MuiOutlinedInput-root": {
                   bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
                 },
               }}
             />
-          </Box>
-          {/* Row 2 on mobile: granularity + Apply + Reset */}
-          <Box
-            sx={{
-              display: "flex",
-              gap: { xs: 1, md: 2 },
-              width: { xs: "100%", md: "auto" },
-              minWidth: 0,
-              alignItems: "center",
-              flex: { md: "1 1 auto" },
-            }}
-          >
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               select
               label={t("visitorsReportTrendGranularity")}
@@ -312,9 +283,6 @@ const AdminVisitorsReportPage = () => {
                 }
               }}
               sx={{
-                flex: { xs: 1, md: "0 1 auto" },
-                minWidth: { xs: 0, md: 180 },
-                maxWidth: { md: 320 },
                 "& .MuiOutlinedInput-root": {
                   bgcolor: isDark ? "rgba(255,255,255,0.04)" : "background.paper",
                 },
@@ -325,24 +293,35 @@ const AdminVisitorsReportPage = () => {
               <MenuItem value="week">{t("visitorsReportGranularityWeek")}</MenuItem>
               <MenuItem value="month">{t("visitorsReportGranularityMonth")}</MenuItem>
             </TextField>
-            <Button
-              variant="contained"
-              onClick={() => load()}
-              disabled={loading}
-              sx={{ flexShrink: 0, px: { xs: 1.5, sm: 2 } }}
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1.5,
+                justifyContent: { xs: "stretch", md: isRtl ? "flex-start" : "flex-end" },
+                flexDirection: { xs: "column", sm: "row" },
+              }}
             >
-              {t("visitorsReportApply")}
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleReset}
-              disabled={loading}
-              sx={{ flexShrink: 0, px: { xs: 1.5, sm: 2 } }}
-            >
-              {t("visitorsReportReset")}
-            </Button>
-          </Box>
-        </Box>
+              <Button
+                variant="contained"
+                onClick={() => load()}
+                disabled={loading}
+                sx={{ flex: { xs: "1 1 auto", sm: "0 0 auto" }, minWidth: 112 }}
+              >
+                {t("visitorsReportApply")}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleReset}
+                disabled={loading}
+                sx={{ flex: { xs: "1 1 auto", sm: "0 0 auto" }, minWidth: 112 }}
+              >
+                {t("visitorsReportReset")}
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
 
         {error ? (
           <Alert severity="error" sx={{ mb: 2 }}>
