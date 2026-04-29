@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import BusinessIcon from "@mui/icons-material/Business";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import { useTheme } from "@mui/material/styles";
 import "slick-carousel/slick/slick.css";
@@ -15,9 +16,10 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const StoreShowcase = memo(function StoreShowcase({ stores }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { locName } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = i18n.dir() === "rtl";
 
   if (!stores || stores.length === 0) return null;
 
@@ -131,11 +133,7 @@ const StoreShowcase = memo(function StoreShowcase({ stores }) {
           component={Link}
           to="/stores"
           size="small"
-          endIcon={
-            <ArrowForwardIosIcon
-              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
-            />
-          }
+         
           sx={{
             textTransform: "none",
             fontWeight: 600,

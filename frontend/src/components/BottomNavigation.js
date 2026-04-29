@@ -414,7 +414,7 @@ const BottomNavigationBar = () => {
         width: "100%",
         zIndex: 1000,
         pointerEvents: "none",
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+        paddingBottom: "max(1px, env(safe-area-inset-bottom))",
         paddingLeft: "env(safe-area-inset-left, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
         boxSizing: "border-box",
@@ -427,12 +427,10 @@ const BottomNavigationBar = () => {
           maxWidth: "100%",
         }}
       >
-        <LayoutGroup id={useLayoutAnimations ? "floating-bottom-nav" : undefined}>
-          <Box
-            component="nav"
-            sx={glassNavSx}
-            style={bottomNavSurfaceStyle}
-          >
+        <LayoutGroup
+          id={useLayoutAnimations ? "floating-bottom-nav" : undefined}
+        >
+          <Box component="nav" sx={glassNavSx} style={bottomNavSurfaceStyle}>
             {isDark ? (
               <Box
                 aria-hidden
@@ -477,7 +475,9 @@ const BottomNavigationBar = () => {
                 const Icon = item.Icon;
                 const isRouteTab = !item.kind;
                 const routeActive =
-                  isRouteTab && activeValue !== false && activeValue === item.path;
+                  isRouteTab &&
+                  activeValue !== false &&
+                  activeValue === item.path;
 
                 if (item.kind === "city") {
                   return (
@@ -487,8 +487,12 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={(e) => setCityMenuAnchor(e.currentTarget)}
-                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
-                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
+                      whileTap={
+                        useLayoutAnimations ? { scale: 0.94 } : undefined
+                      }
+                      whileHover={
+                        useLayoutAnimations ? { scale: 1.06 } : undefined
+                      }
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -511,8 +515,12 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={(e) => setLangMenuAnchor(e.currentTarget)}
-                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
-                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
+                      whileTap={
+                        useLayoutAnimations ? { scale: 0.94 } : undefined
+                      }
+                      whileHover={
+                        useLayoutAnimations ? { scale: 1.06 } : undefined
+                      }
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -538,8 +546,12 @@ const BottomNavigationBar = () => {
                         setNotifMenuAnchor(e.currentTarget);
                         fetchNotifications?.();
                       }}
-                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
-                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
+                      whileTap={
+                        useLayoutAnimations ? { scale: 0.94 } : undefined
+                      }
+                      whileHover={
+                        useLayoutAnimations ? { scale: 1.06 } : undefined
+                      }
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -564,8 +576,12 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={() => openDraftCart()}
-                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
-                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
+                      whileTap={
+                        useLayoutAnimations ? { scale: 0.94 } : undefined
+                      }
+                      whileHover={
+                        useLayoutAnimations ? { scale: 1.06 } : undefined
+                      }
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -588,8 +604,12 @@ const BottomNavigationBar = () => {
                       type="button"
                       aria-label={item.name}
                       onClick={handleBottomNavRefresh}
-                      whileTap={useLayoutAnimations ? { scale: 0.94 } : undefined}
-                      whileHover={useLayoutAnimations ? { scale: 1.06 } : undefined}
+                      whileTap={
+                        useLayoutAnimations ? { scale: 0.94 } : undefined
+                      }
+                      whileHover={
+                        useLayoutAnimations ? { scale: 1.06 } : undefined
+                      }
                       sx={{
                         ...tabBtnBaseSx,
                         color: inactiveIconColor,
@@ -653,7 +673,9 @@ const BottomNavigationBar = () => {
                       {routeActive && (
                         <motion.div
                           layoutId={
-                            useLayoutAnimations ? "bottom-nav-active-pill" : undefined
+                            useLayoutAnimations
+                              ? "bottom-nav-active-pill"
+                              : undefined
                           }
                           transition={pillTransition}
                           style={{

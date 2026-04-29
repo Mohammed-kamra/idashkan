@@ -33,6 +33,53 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { adminAPI, translationAPI } from "../services/api";
 import { mergeRemoteTranslations } from "../mergeRemoteTranslations";
+import { resources } from "../i18nResources";
+
+function buildMergedTranslationRows(dbRows = []) {
+  const bundledEn = resources?.en?.translation || {};
+  const bundledAr = resources?.ar?.translation || {};
+  const bundledKu = resources?.ku?.translation || {};
+
+  const byKey = new Map();
+
+  const putBundled = (key) => {
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey || byKey.has(normalizedKey)) return;
+    byKey.set(normalizedKey, {
+      key: normalizedKey,
+      en: bundledEn[normalizedKey] || "",
+      ar: bundledAr[normalizedKey] || "",
+      ku: bundledKu[normalizedKey] || "",
+      source: "bundled",
+    });
+  };
+
+  Object.keys(bundledEn).forEach(putBundled);
+  Object.keys(bundledAr).forEach(putBundled);
+  Object.keys(bundledKu).forEach(putBundled);
+
+  for (const row of dbRows) {
+    const normalizedKey = String(row?.key || "").trim();
+    if (!normalizedKey) continue;
+    const existing = byKey.get(normalizedKey) || {
+      key: normalizedKey,
+      en: "",
+      ar: "",
+      ku: "",
+      source: "database",
+    };
+    byKey.set(normalizedKey, {
+      ...existing,
+      _id: row?._id,
+      en: typeof row?.en === "string" && row.en.length > 0 ? row.en : existing.en,
+      ar: typeof row?.ar === "string" && row.ar.length > 0 ? row.ar : existing.ar,
+      ku: typeof row?.ku === "string" && row.ku.length > 0 ? row.ku : existing.ku,
+      source: existing.source === "bundled" ? "merged" : "database",
+    });
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => a.key.localeCompare(b.key));
+}
 
 const TranslationPage = () => {
   const { t, i18n } = useTranslation();
@@ -61,7 +108,7 @@ const TranslationPage = () => {
     try {
       const res = await translationAPI.getAll();
       if (res.data?.success) {
-        setRows(res.data.data || []);
+        setRows(buildMergedTranslationRows(res.data.data || []));
         setError("");
       } else {
         setError(res.data?.message || t("translationPage.loadError"));
@@ -281,6 +328,9 @@ const TranslationPage = () => {
           <TableHead>
             <TableRow>
               <TableCell>{t("translationPage.colKey")}</TableCell>
+              <TableCell width={120}>
+                {t("translationPage.colSource", { defaultValue: "Source" })}
+              </TableCell>
               <TableCell>{t("English")}</TableCell>
               <TableCell>{t("Arabic")}</TableCell>
               <TableCell>{t("Kurdish")}</TableCell>
@@ -292,7 +342,7 @@ const TranslationPage = () => {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <Typography color="text.secondary" sx={{ py: 2 }}>
                     {t("translationPage.empty")}
                   </Typography>
@@ -300,9 +350,14 @@ const TranslationPage = () => {
               </TableRow>
             ) : (
               paginatedRows.map((row) => (
-                <TableRow key={row._id} hover>
+                <TableRow key={row._id || row.key} hover>
                   <TableCell sx={{ maxWidth: 220, wordBreak: "break-word" }}>
                     {row.key}
+                  </TableCell>
+                  <TableCell>
+                    {t(`translationPage.source.${row.source}`, {
+                      defaultValue: row.source,
+                    })}
                   </TableCell>
                   <TableCell sx={{ maxWidth: 200, wordBreak: "break-word" }}>
                     {row.en}
@@ -324,14 +379,17 @@ const TranslationPage = () => {
                       </IconButton>
                     </Tooltip>
                     <Tooltip title={t("Delete")}>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => setDeleteTarget(row)}
-                        aria-label={t("Delete")}
-                      >
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => row._id && setDeleteTarget(row)}
+                          aria-label={t("Delete")}
+                          disabled={!row._id}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>

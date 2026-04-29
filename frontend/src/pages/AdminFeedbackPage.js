@@ -34,7 +34,8 @@ const AdminFeedbackPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +112,12 @@ const AdminFeedbackPage = () => {
             mb: 2,
           }}
         >
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
+          <Button
+            startIcon={
+              <ArrowBackIcon sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />
+            }
+            onClick={() => navigate(-1)}
+          >
             {t("Back")}
           </Button>
           <Typography variant="h5" fontWeight={800}>

@@ -3,7 +3,7 @@ export const resources = {
     translation: {
       "Discount Center": "iDashkan",
       Stores: "Stores",
-      Categories: "Categories",
+      Categories: "Category",
       Home: "Home",
       Admin: "Admin",
       "Main Page": "Main Page",
@@ -657,6 +657,122 @@ export const resources = {
       "translationPage.filterIncomplete": "Missing Arabic or Kurdish",
       "translationPage.rowsPerPage": "Rows per page",
       "translationPage.displayedRows": "{{from}}–{{to}} of {{count}}",
+      "about.heroBadge": "Built for modern local commerce",
+      "about.heroTitle":
+        "Meet iDashkan: real discounts, trusted stores, one smart app",
+      "about.heroSubtitle":
+        "iDashkan connects users with nearby offers and helps businesses grow with measurable visibility and daily engagement.",
+      "about.heroPrimaryCta": "Discover offers",
+      "about.heroSecondaryCta": "Grow your business",
+      "about.whatIs.title": "What is iDashkan?",
+      "about.whatIs.body":
+        "iDashkan is a local discovery platform that brings discounts, stores, brands, jobs, gifts, reels, and ordering into one premium mobile experience. Users discover what matters faster, and businesses reach people who are ready to buy.",
+      "about.features.title": "Everything users and businesses need",
+      "about.features.discounts.title": "Live Discounts",
+      "about.features.discounts.desc":
+        "Fresh offers from trusted stores with clear pricing and urgency.",
+      "about.features.stores.title": "Stores Directory",
+      "about.features.stores.desc":
+        "Explore local stores, categories, and profiles in one place.",
+      "about.features.brands.title": "Brands & Companies",
+      "about.features.brands.desc":
+        "Discover official brand pages, products, and campaign highlights.",
+      "about.features.jobs.title": "Jobs",
+      "about.features.jobs.desc":
+        "Businesses publish openings and candidates apply with confidence.",
+      "about.features.gifts.title": "Gifts",
+      "about.features.gifts.desc":
+        "Reward-driven campaigns that increase loyalty and repeat visits.",
+      "about.features.reels.title": "Reels",
+      "about.features.reels.desc":
+        "Short-form visual discovery that turns browsing into action.",
+      "about.features.ordering.title": "Ordering",
+      "about.features.ordering.desc":
+        "Simple order flow that helps customers buy without friction.",
+      "about.business.title": "Why businesses join iDashkan",
+      "about.business.reason1":
+        "Reach high-intent local customers ready to purchase.",
+      "about.business.reason2":
+        "Publish offers, products, and announcements in minutes.",
+      "about.business.reason3":
+        "Gain visibility through discovery feeds and reels placement.",
+      "about.business.reason4":
+        "Track performance and improve campaigns with clear signals.",
+      "about.users.title": "Why users love iDashkan",
+      "about.users.reason1":
+        "Find real nearby discounts from trusted stores and brands.",
+      "about.users.reason2":
+        "Browse by category, price, popularity, and relevance.",
+      "about.users.reason3":
+        "Enjoy a clean, fast experience designed for daily use.",
+      "about.users.reason4":
+        "Discover jobs, gifts, reels, and ordering in one app.",
+      "about.pricing.title": "Simple plans for every growth stage",
+      "about.pricing.recommended": "Most popular",
+      "about.pricing.starter.name": "Starter",
+      "about.pricing.starter.price": "$0 / month",
+      "about.pricing.starter.desc": "Perfect for new local businesses.",
+      "about.pricing.starter.point1": "Business profile and contact info",
+      "about.pricing.starter.point2": "Basic offer publishing",
+      "about.pricing.starter.point3": "Standard listing visibility",
+      "about.pricing.growth.name": "Growth",
+      "about.pricing.growth.price": "$29 / month",
+      "about.pricing.growth.desc": "For teams scaling awareness and sales.",
+      "about.pricing.growth.point1": "Priority placement in discovery",
+      "about.pricing.growth.point2": "Advanced offer scheduling",
+      "about.pricing.growth.point3": "Performance insights dashboard",
+      "about.pricing.pro.name": "Pro",
+      "about.pricing.pro.price": "$99 / month",
+      "about.pricing.pro.desc": "Enterprise-grade visibility and support.",
+      "about.pricing.pro.point1": "Premium reels and campaign boosts",
+      "about.pricing.pro.point2": "Multi-branch management tools",
+      "about.pricing.pro.point3": "Dedicated support and strategy reviews",
+      "about.blog.title": "From the iDashkan blog",
+      "about.blog.post1.tag": "Growth",
+      "about.blog.post1.meta": "4 min read",
+      "about.blog.post1.title":
+        "How local brands grow faster with short-form content",
+      "about.blog.post1.excerpt":
+        "A practical framework to turn reels into real customer actions.",
+      "about.blog.post2.tag": "Commerce",
+      "about.blog.post2.meta": "5 min read",
+      "about.blog.post2.title": "Designing offers people trust and redeem",
+      "about.blog.post2.excerpt":
+        "Best practices for clear pricing, urgency, and conversion-ready copy.",
+      "about.blog.post3.tag": "Product",
+      "about.blog.post3.meta": "3 min read",
+      "about.blog.post3.title":
+        "What makes a premium local shopping experience",
+      "about.blog.post3.excerpt":
+        "Speed, relevance, and confidence: the three pillars users expect.",
+      "about.faq.title": "Frequently asked questions",
+      "about.faq.q1": "Is iDashkan free for users?",
+      "about.faq.q1.a":
+        "Yes. Users can discover discounts, stores, brands, jobs, gifts, and reels for free.",
+      "about.faq.q2": "How do businesses start?",
+      "about.faq.q2.a":
+        "Create a business profile, publish your first offer, and optimize visibility from your dashboard.",
+      "about.faq.q3": "Can I order products through iDashkan ?",
+      "about.faq.q3.a":
+        "Yes. Some stores support ordering and delivery. Availability depends on the store.",
+      "about.faq.q4": "Does iDashkan sell products directly?",
+      "about.faq.q4.a":
+        "No. iDashkan connects users with stores and businesses that publish offers and products.",
+      "about.faq.q5": "Does iDashkan sell products directly?",
+      "about.faq.q5.a":
+        "No. iDashkan connects users with stores and businesses that publish offers and products.",
+      "about.faq.q6": "How do I report a wrong discount or issue?",
+      "about.faq.q6.a":
+        "Use the report or contact option inside the app to let us know.",
+      "about.contact.title": "Contact iDashkan",
+      "about.contact.subtitle":
+        "Have a partnership idea, press request, or business question? We would love to hear from you.",
+      "about.contact.name": "Full name",
+      "about.contact.email": "Work email",
+      "about.contact.message": "How can we help?",
+      "about.contact.note":
+        "Our team typically replies within one business day.",
+      "about.contact.send": "Send message",
       "Suggestion / Report a problem": "Suggestion / Report a problem",
       "Send us your note": "Send us your note",
       "Please enter your note.": "Please enter your note.",
@@ -1310,6 +1426,111 @@ export const resources = {
       "Save Settings": "حفظ الإعدادات",
       "Settings saved successfully": "تم حفظ الإعدادات بنجاح",
       "Failed to save settings": "فشل في حفظ الإعدادات",
+      "about.heroBadge": "مصمم للتجارة المحلية الحديثة",
+      "about.heroTitle":
+        "تعرّف على iDashkan: خصومات حقيقية ومتاجر موثوقة في تطبيق واحد",
+      "about.heroSubtitle":
+        "يربط iDashkan المستخدمين بأفضل العروض القريبة، ويساعد الشركات على النمو عبر ظهور أقوى وتفاعل يومي.",
+      "about.heroPrimaryCta": "اكتشف العروض",
+      "about.heroSecondaryCta": "نمِّ أعمالك",
+      "about.whatIs.title": "ما هو iDashkan؟",
+      "about.whatIs.body":
+        "iDashkan منصة اكتشاف محلية تجمع الخصومات والمتاجر والعلامات والوظائف والهدايا والريلز والطلبات في تجربة جوال واحدة احترافية. المستخدم يكتشف بسرعة، والشركة تصل إلى عملاء جاهزين للشراء.",
+      "about.features.title": "كل ما يحتاجه المستخدمون والشركات",
+      "about.features.discounts.title": "خصومات مباشرة",
+      "about.features.discounts.desc":
+        "عروض متجددة من متاجر موثوقة مع أسعار واضحة.",
+      "about.features.stores.title": "دليل المتاجر",
+      "about.features.stores.desc":
+        "استكشف المتاجر المحلية والفئات والملفات التعريفية بسهولة.",
+      "about.features.brands.title": "العلامات والشركات",
+      "about.features.brands.desc":
+        "اكتشف صفحات العلامات الرسمية ومنتجاتها وحملاتها.",
+      "about.features.jobs.title": "الوظائف",
+      "about.features.jobs.desc":
+        "تنشر الشركات الوظائف ويتقدم المرشحون بثقة وسرعة.",
+      "about.features.gifts.title": "الهدايا",
+      "about.features.gifts.desc": "حملات مكافآت تزيد الولاء وتكرار الزيارات.",
+      "about.features.reels.title": "الريلز",
+      "about.features.reels.desc":
+        "اكتشاف بصري قصير يحول التصفح إلى إجراء فعلي.",
+      "about.features.ordering.title": "الطلبات",
+      "about.features.ordering.desc":
+        "رحلة طلب سلسة تساعد العميل على الشراء بدون تعقيد.",
+      "about.business.title": "لماذا تنضم الشركات إلى iDashkan؟",
+      "about.business.reason1": "الوصول إلى عملاء محليين جاهزين للشراء.",
+      "about.business.reason2": "نشر العروض والمنتجات خلال دقائق.",
+      "about.business.reason3": "زيادة الظهور عبر صفحات الاكتشاف والريلز.",
+      "about.business.reason4": "متابعة الأداء وتحسين الحملات بوضوح.",
+      "about.users.title": "لماذا يحب المستخدمون iDashkan؟",
+      "about.users.reason1": "خصومات حقيقية قريبة من متاجر وعلامات موثوقة.",
+      "about.users.reason2": "تصفح حسب الفئة والسعر والشعبية.",
+      "about.users.reason3": "تجربة سريعة ونظيفة ومصممة للاستخدام اليومي.",
+      "about.users.reason4": "خصومات ووظائف وهدايا وريلز وطلبات في مكان واحد.",
+      "about.pricing.title": "خطط بسيطة لكل مرحلة نمو",
+      "about.pricing.recommended": "الأكثر اختياراً",
+      "about.pricing.starter.name": "Starter",
+      "about.pricing.starter.price": "$0 / شهرياً",
+      "about.pricing.starter.desc": "مناسبة للشركات المحلية الجديدة.",
+      "about.pricing.starter.point1": "ملف أعمال ومعلومات تواصل",
+      "about.pricing.starter.point2": "نشر عروض أساسي",
+      "about.pricing.starter.point3": "ظهور قياسي في القوائم",
+      "about.pricing.growth.name": "Growth",
+      "about.pricing.growth.price": "$29 / شهرياً",
+      "about.pricing.growth.desc": "للشركات التي تزيد الوعي والمبيعات.",
+      "about.pricing.growth.point1": "أولوية الظهور في الاكتشاف",
+      "about.pricing.growth.point2": "جدولة متقدمة للعروض",
+      "about.pricing.growth.point3": "لوحة مؤشرات الأداء",
+      "about.pricing.pro.name": "Pro",
+      "about.pricing.pro.price": "$99 / شهرياً",
+      "about.pricing.pro.desc": "ظهور احترافي ودعم متقدم.",
+      "about.pricing.pro.point1": "تعزيز حملات والريلز",
+      "about.pricing.pro.point2": "إدارة متعددة للفروع",
+      "about.pricing.pro.point3": "دعم مخصص ومراجعات استراتيجية",
+      "about.blog.title": "من مدونة iDashkan",
+      "about.blog.post1.tag": "النمو",
+      "about.blog.post1.meta": "4 دقائق قراءة",
+      "about.blog.post1.title":
+        "كيف تنمو العلامات المحلية أسرع عبر الفيديو القصير",
+      "about.blog.post1.excerpt":
+        "إطار عملي لتحويل الريلز إلى أفعال حقيقية من العملاء.",
+      "about.blog.post2.tag": "التجارة",
+      "about.blog.post2.meta": "5 دقائق قراءة",
+      "about.blog.post2.title": "تصميم عروض موثوقة تزيد التحويل",
+      "about.blog.post2.excerpt":
+        "أفضل الممارسات للأسعار الواضحة والرسائل المؤثرة.",
+      "about.blog.post3.tag": "المنتج",
+      "about.blog.post3.meta": "3 دقائق قراءة",
+      "about.blog.post3.title": "ما الذي يصنع تجربة تسوق محلية مميزة؟",
+      "about.blog.post3.excerpt":
+        "السرعة والملاءمة والثقة هي أساس تجربة المستخدم.",
+      "about.faq.title": "الأسئلة الشائعة",
+      "about.faq.q1": "هل iDashkan مجاني للمستخدمين؟",
+      "about.faq.q1.a":
+        "نعم، يمكن للمستخدمين اكتشاف الخصومات والمتاجر والعلامات والوظائف والهدايا والريلز مجاناً.",
+      "about.faq.q2": "كيف تبدأ الشركات؟",
+      "about.faq.q2.a":
+        "أنشئ ملف عملك، وانشر أول عرض، ثم حسّن الظهور من لوحة التحكم.",
+      "about.faq.q3": "هل يمكنني طلب المنتجات عبر iDashkan؟",
+      "about.faq.q3.a":
+        "نعم. بعض المتاجر تدعم الطلب والتوصيل، ويعتمد ذلك على المتجر.",
+      "about.faq.q4": "هل يبيع iDashkan المنتجات بشكل مباشر؟",
+      "about.faq.q4.a":
+        "لا. iDashkan يربط المستخدمين بالمتاجر والشركات التي تنشر العروض والمنتجات.",
+      "about.faq.q5": "هل يبيع iDashkan المنتجات بشكل مباشر؟",
+      "about.faq.q5.a":
+        "لا. iDashkan يربط المستخدمين بالمتاجر والشركات التي تنشر العروض والمنتجات.",
+      "about.faq.q6": "كيف أبلغ عن خصم خاطئ أو مشكلة؟",
+      "about.faq.q6.a":
+        "استخدم خيار الإبلاغ أو التواصل داخل التطبيق لإبلاغنا بالمشكلة.",
+      "about.contact.title": "تواصل مع iDashkan",
+      "about.contact.subtitle":
+        "لديك فكرة شراكة أو استفسار إعلامي أو سؤال تجاري؟ يسعدنا التواصل معك.",
+      "about.contact.name": "الاسم الكامل",
+      "about.contact.email": "البريد المهني",
+      "about.contact.message": "كيف يمكننا مساعدتك؟",
+      "about.contact.note": "عادة نرد خلال يوم عمل واحد.",
+      "about.contact.send": "إرسال الرسالة",
       "Suggestion / Report a problem": "اقتراح / الإبلاغ عن مشكلة",
       "Send us your note": "أرسل لنا ملاحظتك",
       "Please enter your note.": "يرجى كتابة ملاحظتك.",
@@ -2096,13 +2317,123 @@ export const resources = {
         "جۆری بڕاند بە سەرکەوتوویی نوێکرایەوە",
       "Failed to update brand type.":
         "نوێکردنەوەی جۆری بڕاند سەرکەوتوو نەبوو. تکایە دووبارە هەوڵبدەرەوە.",
-      "Suggestion / Report a problem": "پێشنیار / ڕاپۆرتی کێشە",
+      "about.heroBadge": "بۆ بازرگانیی ناوخۆیی نوێ دروستکراوە",
+      "about.heroTitle":
+        "iDashkan بناسە: داشکاندنی ڕاستەقینە و فرۆشگای متمانەپێکراو لە یەک ئەپدا",
+      "about.heroSubtitle":
+        "iDashkan بەکارهێنەران بە باشترین داشکاندنی نزیک دەگەیەنێت و یارمەتی بیزنسەکان دەدات بە گەشەکردن.",
+      "about.heroPrimaryCta": "داشکاندنەکان ببینە",
+      "about.heroSecondaryCta": "بیزنسەکەت گەشەپێبدە",
+      "about.whatIs.title": "iDashkan چییە؟",
+      "about.whatIs.body":
+        "iDashkan پلاتفۆرمێکی دۆزینەوەی ناوخۆییە کە داشکاندن، فرۆشگا، بڕاند، کار، دیاری، ریلز و داواکاری لە یەک ئەزمووندا کۆدەکاتەوە.",
+      "about.features.title": "هەموو شتێک بۆ بەکارهێنەر و بیزنس",
+      "about.features.discounts.title": "داشکاندنی زیندوو",
+      "about.features.discounts.desc":
+        "ئۆفەری نوێ لە فرۆشگاکانی متمانەپێکراو بە نرخێکی ڕوون.",
+      "about.features.stores.title": "دیرێکتۆری فرۆشگا",
+      "about.features.stores.desc":
+        "فرۆشگای ناوخۆیی و پۆڵێنەکان بە ئاسانی بدۆزەوە.",
+      "about.features.brands.title": "بڕاند و کۆمپانیاکان",
+      "about.features.brands.desc":
+        "پەڕەی فەرمی بڕاندەکان و بەرهەمەکانیان ببینە.",
+      "about.features.jobs.title": "هەلی کار",
+      "about.features.jobs.desc":
+        "کۆمپانیاکان کار بڵاودەکەنەوە و داواکاران بە خێرایی دایدەنێن.",
+      "about.features.gifts.title": "دیاری",
+      "about.features.gifts.desc":
+        "کەمپەینی دیاری بۆ زیادکردنی دڵسۆزی و گەڕانەوەی کڕیار.",
+      "about.features.reels.title": "ڕیلز",
+      "about.features.reels.desc":
+        "دۆزینەوەی ڤیدیۆی کورت کە سەردانی بەکارهێنەر دەگۆڕێت بۆ کردار.",
+      "about.features.ordering.title": "داواکاری",
+      "about.features.ordering.desc": "ڕێگایەکی ئاسان بۆ داواکردن بەبێ ئاڵۆزی.",
+      "about.business.title": "بۆچی بیزنسەکان دێنە iDashkan؟",
+      "about.business.reason1":
+        "گەیشتن بە کڕیارانی ناوخۆیی کە ئامادەن بۆ کڕین.",
+      "about.business.reason2":
+        "بڵاوکردنەوەی ئۆفەر و بەرهەم لە ماوەی چەند خولەکێکدا.",
+      "about.business.reason3": "زیادکردنی دیاریکراوی لە بەشی دۆزینەوە و ڕیلز.",
+      "about.business.reason4":
+        "چاودێریکردنی ئەنجام و باشترکردنی کەمپەین بە ئامار.",
+      "about.users.title": "بۆچی بەکارهێنەران iDashkan خۆشدەوێنن؟",
+      "about.users.reason1":
+        "داشکاندنی ڕاستەقینە لە شوێنی نزیک لە فرۆشگای متمانەپێکراو.",
+      "about.users.reason2": "گەڕان بە پێی پۆڵێن، نرخ، بەناوبانگی و گرنگی.",
+      "about.users.reason3": "ئەزموونێکی خێرا و پاک بۆ بەکارهێنانی ڕۆژانە.",
+      "about.users.reason4":
+        "داشکاندن، کار، دیاری، ریلز و داواکاری لە یەک شوێن.",
+      "about.pricing.title": "پلانی سادە بۆ هەموو قۆناغێکی گەشە",
+      "about.pricing.recommended": "زۆرترین هەڵبژێردراو",
+      "about.pricing.starter.name": "Starter",
+      "about.pricing.starter.price": "$0 / مانگانە",
+      "about.pricing.starter.desc": "گونجاو بۆ بیزنسی ناوخۆیی نوێ.",
+      "about.pricing.starter.point1": "پڕۆفایلی بیزنس و زانیاری پەیوەندی",
+      "about.pricing.starter.point2": "بڵاوکردنەوەی سەرەتایی ئۆفەر",
+      "about.pricing.starter.point3": "دیاریکراوی ئاسایی لە لیستەکاندا",
+      "about.pricing.growth.name": "Growth",
+      "about.pricing.growth.price": "$29 / مانگانە",
+      "about.pricing.growth.desc": "بۆ بیزنسە گەشەکارەکان.",
+      "about.pricing.growth.point1": "پێشەنگی لە دۆزینەوەدا",
+      "about.pricing.growth.point2": "کات‌بەندی پێشکەوتوو بۆ ئۆفەر",
+      "about.pricing.growth.point3": "داشبۆردی ئاماری کارایی",
+      "about.pricing.pro.name": "Pro",
+      "about.pricing.pro.price": "$99 / مانگانە",
+      "about.pricing.pro.desc": "دیاریکراوی بەرز و پشتگیری تایبەت.",
+      "about.pricing.pro.point1": "هێزپێدانی کەمپەین و ڕیلز",
+      "about.pricing.pro.point2": "ئامرازەکانی بەڕێوەبردنی چەند لق",
+      "about.pricing.pro.point3": "پشتگیری تایبەت و هەڵسەنگاندنی ستراتیجی",
+      "about.blog.title": "لە بلۆگی iDashkan",
+      "about.blog.post1.tag": "گەشە",
+      "about.blog.post1.meta": "4 خولەکی خوێندنەوە",
+      "about.blog.post1.title":
+        "چۆن بڕاندە ناوخۆییەکان بە ڤیدیۆی کورت خێراتر گەشە دەکەن",
+      "about.blog.post1.excerpt":
+        "ڕێبازێکی کرداری بۆ گۆڕینی ڕیلز بۆ کرداری ڕاستەقینەی کڕیار.",
+      "about.blog.post2.tag": "بازاڕ",
+      "about.blog.post2.meta": "5 خولەکی خوێندنەوە",
+      "about.blog.post2.title": "چۆن ئۆفەری متمانەپێکراو دابنێین",
+      "about.blog.post2.excerpt":
+        "باشترین ڕێنمایی بۆ نرخێکی ڕوون و پەیامی کارا.",
+      "about.blog.post3.tag": "بەرهەم",
+      "about.blog.post3.meta": "3 خولەکی خوێندنەوە",
+      "about.blog.post3.title":
+        "چی ئەزموونی کڕینی ناوخۆیی پڕیمیۆم دروست دەکات؟",
+      "about.blog.post3.excerpt": "خێرایی، گونجان، و متمانە سێ بنەمای سەرەکین.",
+      "about.faq.title": "پرسیارە باوەکان",
+      "about.faq.q1": "ئایا iDashkan بۆ بەکارهێنەران بەخۆڕاییە؟",
+      "about.faq.q1.a":
+        "بەڵێ، بەکارهێنەران دەتوانن داشکاندن و فرۆشگا و بڕاند بەخۆڕایی بدۆزنەوە.",
+      "about.faq.q2": "بیزنسەکان چۆن دەست پێبکەن؟",
+      "about.faq.q2.a":
+        "پڕۆفایلی بیزنس دروست بکە، یەکەم ئۆفەر بڵاو بکەوە، پاشان لە داشبۆرد کارا بکە.",
+      "about.faq.q3": "ئایا دەتوانم لە ڕێگەی iDashkan کاڵا داوا بکەم؟",
+      "about.faq.q3.a":
+        "بەڵێ. هەندێک فرۆشگا پشتگیریی داواکاری و گەیاندن دەکەن، بەڵام بە فرۆشگا بستراوە.",
+      "about.faq.q4": "ئایا iDashkan خۆی کاڵا دەفرۆشێت؟",
+      "about.faq.q4.a":
+        "نەخێر. iDashkan بەکارهێنەران بە فرۆشگا و بیزنسەکان دەبەستێتەوە کە ئۆفەر و کاڵا بڵاودەکەنەوە.",
+      "about.faq.q5": "ئایا iDashkan خۆی کاڵا دەفرۆشێت؟",
+      "about.faq.q5.a":
+        "نەخێر. iDashkan بەکارهێنەران بە فرۆشگا و بیزنسەکان دەبەستێتەوە کە ئۆفەر و کاڵا بڵاودەکەنەوە.",
+      "about.faq.q6": "چۆن دەتوانم داشکاندنێکی هەڵە یان کێشەیەک ڕاپۆرت بکەم؟",
+      "about.faq.q6.a":
+        "لە ناو ئەپدا هەڵبژاردەی ڕاپۆرت یان پەیوەندی بەکاربهێنە بۆ ئاگادارکردنەوەمان.",
+      "about.contact.title": "پەیوەندی بە iDashkan",
+      "about.contact.subtitle":
+        "ئەگەر بیرۆکەی هاوبەشی یان پرسیارێکی بازرگانی هەیە، بەخێرهاتن بۆ پەیوەندی.",
+      "about.contact.name": "ناوی تەواو",
+      "about.contact.email": "ئیمەیڵی کار",
+      "about.contact.message": "چۆن یارمەتی بدەین؟",
+      "about.contact.note": "زۆرجار لە ماوەی یەک ڕۆژی کاریدا وەڵام دەدرێتەوە.",
+      "about.contact.send": "ناردنی پەیام",
+      "Suggestion / Report a problem": "پێشنیار / هەبوونی کێشە",
       "Send us your note": "تێبینیەکەت بۆمان بنێرە",
       "Please enter your note.": "تکایە تێبینیەکەت بنووسە.",
       "Thanks! Your note was sent.": "سوپاس! تێبینیەکەت نێردرا.",
       "Failed to send note.": "ناردنی تێبینی سەرکەوتوو نەبوو.",
       Suggestion: "پێشنیار",
-      "Report a problem": "ڕاپۆرتی کێشە",
+      "Report a problem": "هەبوونی کێشە",
       "Write your note here...": "تێبینیەکەت لێرە بنووسە...",
       "User feedback": "تێبینیی بەکارهێنەران",
       "Failed to load feedback": "بارکردنی تێبینیەکان سەرکەوتوو نەبوو",

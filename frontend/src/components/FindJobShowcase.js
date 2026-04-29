@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import BusinessIcon from "@mui/icons-material/Business";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -30,9 +31,10 @@ const genderLabel = (t, g) => {
 
 const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { locName, locTitle } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = i18n.dir() === "rtl";
 
   const displayJobs = Array.isArray(jobs) ? jobs.slice(-5) : [];
   if (displayJobs.length === 0) return null;
@@ -126,11 +128,6 @@ const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
           component={Link}
           to="/findjob"
           size="small"
-          endIcon={
-            <ArrowForwardIosIcon
-              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
-            />
-          }
           sx={{
             textTransform: "none",
             fontWeight: 700,
@@ -141,7 +138,11 @@ const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
             borderRadius: "10px",
             bgcolor: isDark ? "rgba(16,185,129,0.12)" : "rgba(16,185,129,0.08)",
             border: "1px solid rgba(16,185,129,0.25)",
-            "&:hover": { bgcolor: isDark ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.14)" },
+            "&:hover": {
+              bgcolor: isDark
+                ? "rgba(16,185,129,0.2)"
+                : "rgba(16,185,129,0.14)",
+            },
           }}
         >
           {t("See All")}
@@ -208,7 +209,9 @@ const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
                       <WorkOutlineIcon
                         sx={{
                           fontSize: 64,
-                          color: isDark ? "rgba(52,211,153,0.6)" : "rgba(16,185,129,0.5)",
+                          color: isDark
+                            ? "rgba(52,211,153,0.6)"
+                            : "rgba(16,185,129,0.5)",
                         }}
                       />
                     </Box>
@@ -266,11 +269,7 @@ const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
                         <Chip
                           size="small"
                           icon={
-                            ownerIsBrand ? (
-                              <BusinessIcon />
-                            ) : (
-                              <StorefrontIcon />
-                            )
+                            ownerIsBrand ? <BusinessIcon /> : <StorefrontIcon />
                           }
                           label={ownerName}
                           sx={{
@@ -282,7 +281,11 @@ const FindJobShowcase = memo(function FindJobShowcase({ jobs }) {
                             border: "1px solid rgba(16,185,129,0.4)",
                             backdropFilter: "blur(4px)",
                             maxWidth: 160,
-                            "& .MuiChip-label": { px: 0.6, overflow: "hidden", textOverflow: "ellipsis" },
+                            "& .MuiChip-label": {
+                              px: 0.6,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            },
                             "& .MuiChip-icon": {
                               color: "rgba(255,255,255,0.85)",
                               fontSize: "0.8rem",

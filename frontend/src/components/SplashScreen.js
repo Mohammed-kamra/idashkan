@@ -1,239 +1,309 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box } from "@mui/material";
 import { motion, useReducedMotion } from "framer-motion";
-import { useTranslation } from "react-i18next";
 
 export const LOGO192_SRC = `${import.meta.env.BASE_URL}logo192.png`;
 
 const EASE = [0.25, 0.1, 0.25, 1];
-/** At least this long on screen so MainPage can fetch under the overlay */
-const MIN_SPLASH_MS = 5600;
-/** Do not block longer than this waiting for the logo */
-const LOGO_WAIT_MAX_MS = 11000;
+const EXIT_MS = 520;
+const MIN_VISIBLE_MS = 1700;
+
+const PARTICLES = [
+  { left: "8%", top: "20%", size: 7, delay: 0.1, duration: 3.2 },
+  { left: "18%", top: "65%", size: 5, delay: 0.6, duration: 3.8 },
+  { left: "30%", top: "30%", size: 6, delay: 1.2, duration: 3.1 },
+  { left: "42%", top: "78%", size: 4, delay: 0.9, duration: 4.1 },
+  { left: "58%", top: "22%", size: 8, delay: 0.3, duration: 3.6 },
+  { left: "66%", top: "58%", size: 6, delay: 1.4, duration: 3.5 },
+  { left: "74%", top: "36%", size: 5, delay: 0.5, duration: 3.4 },
+  { left: "85%", top: "72%", size: 7, delay: 1.1, duration: 3.9 },
+  { left: "90%", top: "18%", size: 4, delay: 1.6, duration: 4.2 },
+  { left: "12%", top: "84%", size: 6, delay: 0.8, duration: 3.3 },
+];
 
 /**
- * Waits for logo (or timeout), ensures MIN_SPLASH_MS total, then onComplete.
- * Main app should mount underneath (see App.js) so home data loads during this window.
+ * Premium launch splash.
  */
-function scheduleSplashFinish(onComplete, prefersReducedMotion) {
-  if (prefersReducedMotion) {
-    const t = window.setTimeout(onComplete, 700);
-    return () => window.clearTimeout(t);
-  }
-
-  let cancelled = false;
-  const t0 = Date.now();
-
-  const logoReady = new Promise((resolve) => {
-    const img = new Image();
-    const done = () => resolve();
-    img.onload = done;
-    img.onerror = done;
-    img.src = LOGO192_SRC;
-    window.setTimeout(done, LOGO_WAIT_MAX_MS);
-  });
-
-  logoReady.then(() => {
-    if (cancelled) return;
-    const elapsed = Date.now() - t0;
-    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
-    window.setTimeout(() => {
-      if (!cancelled) onComplete();
-    }, remaining);
-  });
-
-  return () => {
-    cancelled = true;
-  };
-}
-
-/**
- * First-launch intro — Middle East–inspired palette, app logo.
- */
-const SplashScreen = ({ onComplete, darkMode = false }) => {
-  const { t } = useTranslation();
+const SplashScreen = ({ onComplete, darkMode = false, appReady = false }) => {
   const prefersReducedMotion = useReducedMotion();
+  const [isExiting, setIsExiting] = useState(false);
+  const [progress, setProgress] = useState(0.06);
+  const particles = useMemo(() => PARTICLES, []);
+  const bgGradient = darkMode
+    ? "linear-gradient(135deg, #0B1120 0%, #1E3A8A 36%, #C2410C 74%, #F59E0B 100%)"
+    : "linear-gradient(135deg, #1E3A8A 0%, #2563EB 35%, #F97316 72%, #FBBF24 100%)";
+  const glowOverlay = darkMode
+    ? "radial-gradient(circle at 12% 24%, rgba(255,255,255,0.12), transparent 28%), radial-gradient(circle at 82% 72%, rgba(251,191,36,0.14), transparent 32%)"
+    : "radial-gradient(circle at 12% 24%, rgba(255,255,255,0.2), transparent 28%), radial-gradient(circle at 82% 72%, rgba(251,191,36,0.18), transparent 32%)";
 
-  useEffect(
-    () => scheduleSplashFinish(onComplete, prefersReducedMotion),
-    [onComplete, prefersReducedMotion],
-  );
+  useEffect(() => {
+    const startAt = Date.now();
+    let done = false;
+    let progressTimer;
+    let holdTimer;
+    let completeTimer;
 
-  const pageBg = darkMode
-    ? "linear-gradient(168deg, #12100e 0%, #1a1814 42%, #0f2320 100%)"
-    : "linear-gradient(168deg, #faf6ef 0%, #f3ebe0 40%, #e8f0ec 100%)";
+    const beginExit = () => {
+      if (done) return;
+      done = true;
+      setProgress(1);
+      setIsExiting(true);
+      completeTimer = window.setTimeout(
+        () => onComplete(),
+        prefersReducedMotion ? 180 : EXIT_MS,
+      );
+    };
 
-  const orbStyle = darkMode
-    ? {
-        background:
-          "radial-gradient(ellipse 90% 70% at 50% 20%, rgba(201, 162, 39, 0.14) 0%, transparent 55%), radial-gradient(ellipse 80% 60% at 80% 85%, rgba(13, 92, 77, 0.18) 0%, transparent 50%), radial-gradient(ellipse 60% 50% at 10% 90%, rgba(114, 47, 55, 0.08) 0%, transparent 45%)",
+    const maybeExit = () => {
+      if (!appReady) return;
+      const elapsed = Date.now() - startAt;
+      if (elapsed >= MIN_VISIBLE_MS) {
+        beginExit();
+      } else {
+        holdTimer = window.setTimeout(beginExit, MIN_VISIBLE_MS - elapsed);
       }
-    : {
-        background:
-          "radial-gradient(ellipse 90% 70% at 50% 15%, rgba(201, 162, 39, 0.12) 0%, transparent 55%), radial-gradient(ellipse 80% 60% at 85% 80%, rgba(13, 92, 77, 0.10) 0%, transparent 50%), radial-gradient(ellipse 55% 45% at 12% 88%, rgba(178, 74, 90, 0.06) 0%, transparent 45%)",
+    };
+
+    if (prefersReducedMotion) {
+      progressTimer = window.setTimeout(() => setProgress(1), 260);
+      maybeExit();
+      return () => {
+        window.clearTimeout(progressTimer);
+        window.clearTimeout(holdTimer);
+        window.clearTimeout(completeTimer);
       };
+    }
 
-  const titleStyle = {
-    margin: 0,
-    fontSize: "clamp(1.9rem, 7vw, 2.85rem)",
-    fontWeight: 700,
-    lineHeight: 1.2,
-    textAlign: "center",
-    fontFamily:
-      '"Amiri", "Noto Naskh Arabic", Georgia, "Times New Roman", serif',
-    letterSpacing: "0.04em",
-    background: darkMode
-      ? "linear-gradient(100deg, #e8d48b 0%, #f5e9c8 35%, #7ec4b8 70%, #c9a227 100%)"
-      : "linear-gradient(100deg, #7a4a1a 0%, #c9a227 30%, #0d5c4d 65%, #1a4d45 100%)",
-    backgroundClip: "text",
-    WebkitBackgroundClip: "text",
-    color: "transparent",
-    WebkitFontSmoothing: "antialiased",
-  };
+    progressTimer = window.setInterval(() => {
+      setProgress((prev) => {
+        if (done) return 1;
+        const target = appReady ? 0.985 : 0.92;
+        const step = appReady ? 0.14 : 0.05;
+        return Math.min(target, prev + (target - prev) * step);
+      });
+    }, 110);
 
-  const taglineColor = darkMode
-    ? "rgba(232, 212, 163, 0.55)"
-    : "rgba(61, 47, 38, 0.55)";
+    maybeExit();
 
-  if (prefersReducedMotion) {
-    return (
-      <Box
-        role="presentation"
-        sx={{
-          position: "fixed",
-          inset: 0,
-          zIndex: (theme) => theme.zIndex.modal + 10,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: pageBg,
-        }}
-      >
-        <Box
-          component="img"
-          src={LOGO192_SRC}
-          alt=""
-          fetchpriority="high"
-          decoding="async"
-          sx={{ width: { xs: 88, sm: 100 }, height: "auto", mb: 2 }}
-        />
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          style={titleStyle}
-        >
-          iDashkan
-        </motion.h1>
-      </Box>
-    );
-  }
+    return () => {
+      window.clearInterval(progressTimer);
+      window.clearTimeout(holdTimer);
+      window.clearTimeout(completeTimer);
+    };
+  }, [appReady, onComplete, prefersReducedMotion]);
 
   return (
-    <Box
+    <motion.div
       role="presentation"
       aria-hidden="true"
-      sx={{
+      initial={false}
+      animate={
+        isExiting
+          ? { opacity: 0, scale: 1.035, filter: "blur(8px)" }
+          : { opacity: 1, scale: 1, filter: "blur(0px)" }
+      }
+      transition={{ duration: prefersReducedMotion ? 0.2 : 0.52, ease: EASE }}
+      style={{
         position: "fixed",
         inset: 0,
-        zIndex: (theme) => theme.zIndex.modal + 10,
+        zIndex: 1400,
         overflow: "hidden",
-        background: pageBg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: 2,
+        padding: "0 1rem",
       }}
     >
+      <motion.div
+        animate={
+          prefersReducedMotion
+            ? undefined
+            : { backgroundPosition: ["0% 30%", "100% 60%", "0% 30%"] }
+        }
+        transition={
+          prefersReducedMotion
+            ? undefined
+            : { duration: 12, ease: "linear", repeat: Infinity }
+        }
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: bgGradient,
+          backgroundSize: "180% 180%",
+        }}
+      />
       <Box
         sx={{
           position: "absolute",
           inset: 0,
-          pointerEvents: "none",
-          ...orbStyle,
-          opacity: 0.95,
+          background: glowOverlay,
         }}
       />
 
-      {/* Short entrance only — total time is driven by scheduleSplashFinish (logo + min hold) */}
+      {!prefersReducedMotion &&
+        particles.map((p, idx) => (
+          <motion.span
+            key={`particle-${idx}`}
+            animate={{
+              y: [-4, -16, -4],
+              opacity: [0.18, 0.62, 0.18],
+              scale: [0.9, 1.2, 0.9],
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{
+              position: "absolute",
+              left: p.left,
+              top: p.top,
+              width: p.size,
+              height: p.size,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.9)",
+              boxShadow: darkMode
+                ? "0 0 12px rgba(255,255,255,0.75), 0 0 24px rgba(249,115,22,0.42)"
+                : "0 0 12px rgba(255,255,255,0.85), 0 0 24px rgba(37,99,235,0.45)",
+              willChange: "transform, opacity",
+            }}
+          />
+        ))}
+
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.85, ease: EASE }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: EASE }}
         style={{
           position: "relative",
+          zIndex: 2,
+          width: "100%",
+          maxWidth: 360,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "1.35rem",
-          maxWidth: "min(100%, 420px)",
+          gap: "0.95rem",
         }}
       >
         <motion.div
-          initial={{ scale: 0.94, y: 8 }}
-          animate={{ scale: 1, y: 0 }}
+          initial={{ scale: 0.84, opacity: 0 }}
+          animate={
+            prefersReducedMotion
+              ? { scale: 1, opacity: 1 }
+              : {
+                  scale: [0.84, 1.04, 1],
+                  opacity: [0, 1, 1],
+                  boxShadow: [
+                    "0 0 0 rgba(251,191,36,0)",
+                    "0 0 48px rgba(251,191,36,0.45)",
+                    "0 0 22px rgba(37,99,235,0.45)",
+                  ],
+                }
+          }
           transition={{
-            delay: 0.06,
-            duration: 0.8,
+            delay: 0.12,
+            duration: prefersReducedMotion ? 0.35 : 1.1,
             ease: EASE,
           }}
-          style={{ willChange: "transform" }}
+          style={{
+            borderRadius: 18,
+            padding: 4,
+            background: darkMode
+              ? "linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05))"
+              : "linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.06))",
+            backdropFilter: "blur(6px)",
+          }}
         >
           <Box
             component="img"
             src={LOGO192_SRC}
-            alt=""
+            alt="iDashkan logo"
             fetchpriority="high"
             decoding="async"
             sx={{
-              width: { xs: 100, sm: 112 },
+              width: { xs: 88, sm: 96 },
               height: "auto",
               display: "block",
-              borderRadius: 2,
-              boxShadow: darkMode
-                ? "0 8px 32px rgba(0,0,0,0.45)"
-                : "0 12px 40px rgba(26, 77, 69, 0.12)",
+              borderRadius: "14px",
             }}
           />
         </motion.div>
 
         <motion.h1
-          style={{ ...titleStyle, maxWidth: "100%" }}
-          initial={{ y: 10, letterSpacing: "0.22em" }}
-          animate={{ y: 0, letterSpacing: "0.04em" }}
-          transition={{
-            delay: 0.16,
-            duration: 0.82,
-            ease: EASE,
+          initial={{ opacity: 0, y: 8, letterSpacing: "0.14em" }}
+          animate={{ opacity: 1, y: 0, letterSpacing: "0.045em" }}
+          transition={{ delay: 0.2, duration: 0.8, ease: EASE }}
+          style={{
+            margin: 0,
+            fontSize: "clamp(2rem, 10vw, 2.65rem)",
+            fontWeight: 800,
+            lineHeight: 1.1,
+            textAlign: "center",
+            fontFamily: '"Inter", "SF Pro Display", "Segoe UI", sans-serif',
+            background:
+              "linear-gradient(100deg, #FFFFFF 0%, #DBEAFE 35%, #FBBF24 80%, #FFFFFF 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            textShadow: "0 10px 30px rgba(15,23,42,0.25)",
           }}
         >
           iDashkan
         </motion.h1>
 
         <motion.p
-          initial={{ y: 8 }}
-          animate={{ y: 0 }}
-          transition={{
-            delay: 0.38,
-            duration: 0.55,
-            ease: EASE,
-          }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 0.96, y: 0 }}
+          transition={{ delay: 0.34, duration: 0.7, ease: EASE }}
           style={{
             margin: 0,
-            fontSize: "clamp(0.72rem, 2.8vw, 0.88rem)",
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            color: taglineColor,
-            fontFamily: '"Noto Naskh Arabic", serif',
-            textAlign: "center",
-            lineHeight: 1.5,
+            fontSize: "clamp(0.82rem, 3.2vw, 0.92rem)",
+            letterSpacing: "0.08em",
+            color: "rgba(255,255,255,0.93)",
+            fontWeight: 500,
+            textTransform: "uppercase",
+            fontFamily: '"Inter", "Segoe UI", sans-serif',
           }}
         >
-          {t("Offers · Discounts · Near You")}
+          Discover Real Discounts
         </motion.p>
+
       </motion.div>
-    </Box>
+      <Box
+        sx={{
+          position: "absolute",
+          zIndex: 3,
+          left: 22,
+          right: 22,
+          bottom: { xs: 36, sm: 44 },
+          height: 4,
+          borderRadius: 999,
+          overflow: "hidden",
+          background: "rgba(255,255,255,0.22)",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <motion.div
+          initial={false}
+          animate={{ scaleX: progress }}
+          transition={{
+            duration: prefersReducedMotion ? 0.18 : 0.28,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: 999,
+            transformOrigin: "left center",
+            background:
+              "linear-gradient(90deg, #2563EB 0%, #FFFFFF 45%, #F97316 100%)",
+            boxShadow: "0 0 18px rgba(251,191,36,0.45)",
+            willChange: "transform, opacity",
+          }}
+        />
+      </Box>
+    </motion.div>
   );
 };
 

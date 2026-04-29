@@ -4020,11 +4020,16 @@ const DataEntryForm = () => {
             border: "1px solid",
             borderColor: "divider",
             borderRadius: 1,
-            overflow: "hidden",
+            overflowX: "auto",
+            overflowY: "hidden",
+            WebkitOverflowScrolling: "touch",
             bgcolor:
               theme.palette.mode === "dark"
                 ? "rgba(255,255,255,0.03)"
                 : undefined,
+          },
+          "& .MuiTable-root": {
+            minWidth: { xs: 980, sm: "100%" },
           },
           "& .MuiTableBody .MuiTableRow-root:nth-of-type(even)": {
             bgcolor:

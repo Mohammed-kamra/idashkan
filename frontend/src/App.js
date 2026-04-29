@@ -61,6 +61,7 @@ const OwnerDataEntryPage = lazy(() => import("./pages/OwnerDataEntryPage"));
 const PendingPage = lazy(() => import("./pages/PendingPage"));
 const FindJob = lazy(() => import("./pages/FindJob"));
 const ShoppingPage = lazy(() => import("./pages/ShoppingPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 import ProtectedRoute, {
   ProtectedAdminOnlyRoute,
   ProtectedOwnerRoute,
@@ -140,6 +141,7 @@ function AppContent() {
 
   /** Shown on every cold load (browser tab or WebView) — no one-time skip. */
   const [splashFinished, setSplashFinished] = useState(false);
+  const [appReadySignal, setAppReadySignal] = useState(false);
 
   const handleSplashComplete = useCallback(() => {
     setSplashFinished(true);
@@ -147,6 +149,47 @@ function AppContent() {
 
   useEffect(() => {
     return installGlobalImageLazyLoading();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const waitForWindowLoad = () =>
+      new Promise((resolve) => {
+        if (document.readyState === "complete") {
+          resolve();
+          return;
+        }
+        const handleLoad = () => {
+          window.removeEventListener("load", handleLoad);
+          resolve();
+        };
+        window.addEventListener("load", handleLoad, { once: true });
+      });
+
+    const waitForFonts = async () => {
+      try {
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
+      } catch {
+        // ignore font readiness failures
+      }
+    };
+
+    void (async () => {
+      await Promise.all([waitForWindowLoad(), waitForFonts()]);
+      if (cancelled) return;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!cancelled) setAppReadySignal(true);
+        });
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -221,9 +264,20 @@ function AppContent() {
         <DraftCartDrawerProvider>
         <CssBaseline />
         {!splashFinished ? (
-          <SplashScreen darkMode={darkMode} onComplete={handleSplashComplete} />
+          <SplashScreen
+            darkMode={darkMode}
+            appReady={appReadySignal}
+            onComplete={handleSplashComplete}
+          />
         ) : null}
         {splashFinished ? <FirstVisitCityDialog /> : null}
+        <Box
+          sx={{
+            minHeight: "100vh",
+            backgroundColor: (t) => t.palette.background.default,
+            transition: "background-color 0.25s ease-out",
+          }}
+        >
         <Box
           aria-hidden={!splashFinished}
           sx={{
@@ -482,6 +536,7 @@ function AppContent() {
                   />
                   <Route path="/findjob" element={<FindJob />} />
                   <Route path="/shopping" element={<ShoppingPage />} />
+                  <Route path="/about" element={<AboutPage />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
                 </Routes>
               </Suspense>
@@ -489,6 +544,7 @@ function AppContent() {
           </Box>
           <BottomNavigationBar />
           {false && <NotificationEnableBanner />}
+        </Box>
         </Box>
         </DraftCartDrawerProvider>
       </ThemeProvider>

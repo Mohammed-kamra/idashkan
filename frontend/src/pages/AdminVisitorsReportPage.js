@@ -209,7 +209,9 @@ const AdminVisitorsReportPage = () => {
           }}
         >
           <Button
-            startIcon={<ArrowBackIcon />}
+            startIcon={
+              <ArrowBackIcon sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />
+            }
             onClick={() => navigate(-1)}
             sx={{ alignSelf: "flex-start" }}
           >

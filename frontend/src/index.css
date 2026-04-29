@@ -3,13 +3,20 @@
 
 body {
   margin: 0;
-  font-family: "NRT", "Noto Sans Kurdish", "Scheherazade New", "Arial",
-    sans-serif;
+  font-family:
+    "NRT", "Noto Sans Kurdish", "Scheherazade New", "Arial", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: #0f172a;
+}
+
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }

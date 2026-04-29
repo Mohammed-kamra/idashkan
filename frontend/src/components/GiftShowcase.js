@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import BusinessIcon from "@mui/icons-material/Business";
 import { useTheme } from "@mui/material/styles";
 import "slick-carousel/slick/slick.css";
@@ -22,7 +23,8 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const GiftShowcase = memo(function GiftShowcase({ gifts }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
   const { locName, locDescription } = useLocalizedContent();
 
   const displayGifts = Array.isArray(gifts) ? gifts.slice(-5) : [];
@@ -90,7 +92,6 @@ const GiftShowcase = memo(function GiftShowcase({ gifts }) {
           sx={{ textTransform: "none" }}
         >
           {t("See All")}{" "}
-          <ArrowForwardIcon sx={{ transform: "rotate(180deg)", fontSize: "1rem" }} />
         </Button>
       </Box>
 

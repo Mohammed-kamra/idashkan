@@ -3,6 +3,7 @@ import { Box, Typography, Avatar, Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { useTheme } from "@mui/material/styles";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -13,9 +14,10 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const BrandShowcase = memo(function BrandShowcase({ brands }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { locName } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = i18n.dir() === "rtl";
 
   if (!brands || brands.length === 0) return null;
 
@@ -126,14 +128,6 @@ const BrandShowcase = memo(function BrandShowcase({ brands }) {
           component={Link}
           to="/brands"
           size="small"
-          endIcon={
-            <ArrowForwardIosIcon
-              sx={{
-                fontSize: "0.6rem !important",
-                transform: "rotate(180deg)",
-              }}
-            />
-          }
           sx={{
             textTransform: "none",
             fontWeight: 600,

@@ -2,10 +2,14 @@ import React from "react";
 import { Box, Typography, Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { useTheme } from "@mui/material/styles";
+import { useTranslation } from "react-i18next";
 
 const SectionHeader = ({ title, subtitle, seeAllTo, icon: Icon, action }) => {
   const theme = useTheme();
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
 
   return (
     <Box
@@ -53,7 +57,11 @@ const SectionHeader = ({ title, subtitle, seeAllTo, icon: Icon, action }) => {
           {subtitle && (
             <Typography
               variant="caption"
-              sx={{ color: "text.secondary", display: "block", lineHeight: 1.3 }}
+              sx={{
+                color: "text.secondary",
+                display: "block",
+                lineHeight: 1.3,
+              }}
             >
               {subtitle}
             </Typography>
@@ -66,9 +74,6 @@ const SectionHeader = ({ title, subtitle, seeAllTo, icon: Icon, action }) => {
           component={Link}
           to={seeAllTo}
           size="small"
-          endIcon={
-            <ArrowForwardIosIcon sx={{ fontSize: "0.65rem !important", transform: "rotate(180deg)" }} />
-          }
           sx={{
             textTransform: "none",
             fontWeight: 600,

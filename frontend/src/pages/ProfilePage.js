@@ -59,6 +59,7 @@ import {
   Call as ViberIcon,
   Telegram as TelegramIcon,
   Language as LanguageIcon,
+  InfoOutlined as InfoOutlinedIcon,
   LightModeOutlined,
   DarkModeOutlined,
   BrightnessAutoRounded,
@@ -1215,9 +1216,6 @@ const ProfilePage = () => {
                   primary={t("Suggestion / Report a problem", {
                     defaultValue: "Suggestion / Report a problem",
                   })}
-                  secondary={t("Send us your note", {
-                    defaultValue: "Send us your note",
-                  })}
                 />
               </ListItemButton>
             </Box>
@@ -1288,50 +1286,28 @@ const ProfilePage = () => {
             <ListItem sx={{ py: 1 }}>
               <ListItemText primary={t("Contact Us")} />
             </ListItem>
-            {contactItems.length > 0 && (
-              <Box
-                sx={{
-                  px: 2,
-                  pb: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  flexWrap: "nowrap",
-                  overflowX: "auto",
-                }}
-              >
-                {contactItems.map((item) => {
-                  const href = normalizeUrl(item.value, item.key);
-                  if (item.key === "whatsapp" && href) {
-                    return (
-                      <Button
-                        key={item.key}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          openWhatsAppLink(href);
-                        }}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          minWidth: 36,
-                          px: 1,
-                          color: "text.primary",
-                          borderColor: "divider",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {item.icon}
-                      </Button>
-                    );
-                  }
+            <Box
+              sx={{
+                px: 2,
+                pb: 1.5,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+              }}
+            >
+              {contactItems.map((item) => {
+                const href = normalizeUrl(item.value, item.key);
+                if (item.key === "whatsapp" && href) {
                   return (
                     <Button
                       key={item.key}
-                      component="a"
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        openWhatsAppLink(href);
+                      }}
                       size="small"
                       variant="outlined"
                       sx={{
@@ -1345,9 +1321,41 @@ const ProfilePage = () => {
                       {item.icon}
                     </Button>
                   );
-                })}
-              </Box>
-            )}
+                }
+                return (
+                  <Button
+                    key={item.key}
+                    component="a"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      minWidth: 36,
+                      px: 1,
+                      color: "text.primary",
+                      borderColor: "divider",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.icon}
+                  </Button>
+                );
+              })}
+            </Box>
+            <Divider />
+            <ListItemButton
+              onClick={() => navigate("/about")}
+              sx={{ px: 2, py: 1 }}
+            >
+              <ListItemIcon>
+                <InfoOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary={t("About the app", { defaultValue: "About the app" })}
+              />
+            </ListItemButton>
             <ListItemButton component={Link} to="/privacy-policy">
               <ListItemIcon>
                 <PrivacyTipIcon fontSize="small" />

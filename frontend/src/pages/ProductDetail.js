@@ -51,7 +51,8 @@ const ProductDetail = () => {
   const [, setCategories] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
   const { locName } = useLocalizedContent();
   const theme = useTheme();
 
@@ -289,7 +290,7 @@ const ProductDetail = () => {
     <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, pt: 2, mt: { xs: 4, md: 3 } }}>
       <Button
         variant="outlined"
-        startIcon={<ArrowBack />}
+        startIcon={<ArrowBack sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />}
         onClick={() => navigate(-1)}
         sx={{
           borderRadius: 2,

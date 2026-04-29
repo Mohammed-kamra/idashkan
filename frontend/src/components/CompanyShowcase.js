@@ -3,6 +3,7 @@ import { Box, Typography, Avatar, Button } from "@mui/material";
 import { Link } from "react-router-dom";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { useTheme } from "@mui/material/styles";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -13,9 +14,10 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 
 const CompanyShowcase = memo(function CompanyShowcase({ companies }) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { locName } = useLocalizedContent();
   const isDark = theme.palette.mode === "dark";
+  const isRtl = i18n.dir() === "rtl";
 
   if (!companies || companies.length === 0) return null;
 
@@ -125,11 +127,6 @@ const CompanyShowcase = memo(function CompanyShowcase({ companies }) {
           component={Link}
           to="/companies"
           size="small"
-          endIcon={
-            <ArrowForwardIosIcon
-              sx={{ fontSize: "0.6rem !important", transform: "rotate(180deg)" }}
-            />
-          }
           sx={{
             textTransform: "none",
             fontWeight: 600,
@@ -139,7 +136,9 @@ const CompanyShowcase = memo(function CompanyShowcase({ companies }) {
             py: 0.5,
             borderRadius: 2,
             "&:hover": {
-              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(30,111,217,0.06)",
+              background: isDark
+                ? "rgba(255,255,255,0.06)"
+                : "rgba(30,111,217,0.06)",
             },
           }}
         >

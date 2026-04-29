@@ -182,7 +182,8 @@ function DataEntryEntityAutocomplete({
 }
 
 export default function PendingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
   const { user, isAuthenticated } = useAuth();
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
@@ -579,7 +580,9 @@ export default function PendingPage() {
         <Button
           component={Link}
           to="/profile"
-          startIcon={<ArrowBackIcon />}
+          startIcon={
+            <ArrowBackIcon sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />
+          }
           size="small"
           variant="text"
         >

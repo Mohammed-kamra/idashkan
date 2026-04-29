@@ -45,7 +45,8 @@ const FavouritesPage = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === "rtl";
   const { locName } = useLocalizedContent();
   const { getLikedProducts, toggleLike, isProductLiked, user, recordView } =
     useUserTracking();
@@ -172,7 +173,7 @@ const FavouritesPage = () => {
       <Box sx={{ py: 3, px: 2 }}>
         <Button
           variant="outlined"
-          startIcon={<ArrowBack />}
+          startIcon={<ArrowBack sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />}
           onClick={() => navigate(-1)}
           sx={{
             mt: { xs: 4, md: 3 },
@@ -213,7 +214,7 @@ const FavouritesPage = () => {
       <Box sx={{ py: 3, px: 2 }}>
         <Button
           variant="outlined"
-          startIcon={<ArrowBack />}
+          startIcon={<ArrowBack sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />}
           onClick={() => navigate(-1)}
           sx={{
             mt: { xs: 4, md: 3 },
@@ -254,7 +255,7 @@ const FavouritesPage = () => {
     >
       <Button
         variant="outlined"
-        startIcon={<ArrowBack />}
+        startIcon={<ArrowBack sx={{ transform: isRtl ? "scaleX(-1)" : undefined }} />}
         onClick={() => navigate(-1)}
         sx={{
           mt: { xs: 4, md: 3 },
