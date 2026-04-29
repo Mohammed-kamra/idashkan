@@ -14,15 +14,11 @@ import {
   Container,
   Typography,
   Box,
-  Alert,
-  IconButton,
-  Collapse,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
 import rtlPlugin from "stylis-plugin-rtl";
-import CloseIcon from "@mui/icons-material/Close";
 
 const MainPage = lazy(() => import("./pages/MainPage"));
 const ReelsPage = lazy(() => import("./pages/reels"));
@@ -131,13 +127,6 @@ function AppContent() {
   const isDataEntryPage = location.pathname === "/admin";
   const isHomePage = location.pathname === "/";
   const { effectiveTheme, activeFontKey } = useActiveTheme();
-  const [showTestBanner, setShowTestBanner] = useState(() => {
-    try {
-      return localStorage.getItem("testBannerClosed.v1") !== "1";
-    } catch {
-      return true;
-    }
-  });
 
   /** Shown on every cold load (browser tab or WebView) — no one-time skip. */
   const [splashFinished, setSplashFinished] = useState(false);
@@ -289,41 +278,6 @@ function AppContent() {
             transition: "opacity 0.35s ease-out",
           }}
         >
-          <Collapse in={showTestBanner} appear={false}>
-            <Alert
-              severity="warning"
-              variant="filled"
-              action={
-                <IconButton
-                  aria-label={t("Close")}
-                  color="inherit"
-                  size="small"
-                  onClick={() => {
-                    setShowTestBanner(false);
-                    try {
-                      localStorage.setItem("testBannerClosed.v1", "1");
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              }
-              sx={{
-                borderRadius: 0,
-                fontWeight: 700,
-                textAlign: "center",
-                py: 0.75,
-                px: 1.5,
-                position: "sticky",
-                top: 0,
-                zIndex: (t) => t.zIndex.appBar + 1,
-              }}
-            >
-              {t("All data is just test, nothing is real yet")}
-            </Alert>
-          </Collapse>
           <ConnectionLostBanner />
           <AppUpdateBanner />
           <NavigationBar
