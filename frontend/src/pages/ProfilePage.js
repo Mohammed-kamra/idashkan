@@ -591,17 +591,16 @@ const ProfilePage = () => {
   const handleBack = useCallback(() => {
     if (pageClosing) return;
     setPageClosing(true);
+    // Webviews can report unstable history stacks on first load.
+    // Always route to home explicitly so close action is deterministic.
     window.setTimeout(() => {
-      if (window.history.length > 1) {
-        navigate(-1);
-        return;
-      }
-      navigate("/");
+      navigate("/", { replace: true });
     }, 170);
   }, [navigate, pageClosing]);
 
   return (
     <Box
+      onClick={handleBack}
       sx={{
         position: "fixed",
         inset: 0,
@@ -614,6 +613,7 @@ const ProfilePage = () => {
       }}
     >
       <Paper
+        onClick={(e) => e.stopPropagation()}
         elevation={0}
         sx={{
           borderRadius: 0,
