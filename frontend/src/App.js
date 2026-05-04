@@ -69,6 +69,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import NotificationEnableBanner from "./components/NotificationEnableBanner";
 import SplashScreen from "./components/SplashScreen";
 import ConnectionLostBanner from "./components/ConnectionLostBanner";
+import NetworkDebugBanner from "./components/NetworkDebugBanner";
 import AppUpdateBanner from "./components/AppUpdateBanner";
 import Loader from "./components/Loader";
 import {
@@ -88,6 +89,8 @@ import { appVisitAPI } from "./services/api";
 import { getDeviceId } from "./utils/deviceId";
 import { installGlobalImageLazyLoading } from "./utils/globalImageLazyLoading";
 import { schedulePrefetchSearchPageWhenIdle } from "./utils/prefetchSearchPage";
+import { useExternalLinkInterceptor } from "./hooks/useExternalLinkInterceptor";
+import { NetworkStatusProvider } from "./context/NetworkStatusContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,6 +142,9 @@ function AppContent() {
   useEffect(() => {
     return installGlobalImageLazyLoading();
   }, []);
+
+  /** External https/wa.me/maps/mailto open outside embedded WebView where possible */
+  useExternalLinkInterceptor(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,6 +285,10 @@ function AppContent() {
           }}
         >
           <ConnectionLostBanner />
+          {import.meta.env.DEV ||
+          import.meta.env.VITE_DEBUG_NETWORK === "true" ? (
+            <NetworkDebugBanner />
+          ) : null}
           <AppUpdateBanner />
           <NavigationBar
             darkMode={darkMode}
@@ -524,8 +534,10 @@ const Root = () => (
                 <ActiveThemeProvider>
                   <NotificationProvider>
                     <Router>
-                      <ScrollToTop />
-                      <App />
+                      <NetworkStatusProvider>
+                        <ScrollToTop />
+                        <App />
+                      </NetworkStatusProvider>
                     </Router>
                   </NotificationProvider>
                 </ActiveThemeProvider>

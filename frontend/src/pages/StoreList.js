@@ -28,6 +28,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import SearchIcon from "@mui/icons-material/Search";
 import Loader from "../components/Loader";
+import { getSyncErrorHint } from "../utils/apiError";
 import { useTranslation } from "react-i18next";
 import { useCityFilter } from "../context/CityFilterContext";
 import { resolveMediaUrl } from "../utils/mediaUrl";
@@ -252,8 +253,7 @@ const StoreList = () => {
       setError(
         err.response?.data?.message ||
           err.response?.data?.msg ||
-          err.message ||
-          t("Network error. Please check your connection."),
+          getSyncErrorHint(err, t("Network error. Please check your connection.")),
       );
     } finally {
       setLoading(false);

@@ -43,6 +43,7 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PersonAddDisabledIcon from "@mui/icons-material/PersonAddDisabled";
 import Loader from "../components/Loader";
+import ApiConnectionErrorPanel from "../components/ApiConnectionErrorPanel";
 import BrandShowcase from "../components/BrandShowcase";
 import ProductDetailDialog from "../components/ProductDetailDialog";
 import CompanyShowcase from "../components/CompanyShowcase";
@@ -71,6 +72,8 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { useContentRefresh } from "../context/ContentRefreshContext";
 import { readMainPageCache, writeMainPageCache } from "../utils/mainPageCache";
 import useOnlineStatus from "../hooks/useOnlineStatus";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { resolveConnectionFailure } from "../utils/apiError";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import { storeMatchesSelectedCity } from "../utils/cityMatch";
 import {
@@ -185,7 +188,8 @@ const MainPage = () => {
   const [loading, setLoading] = useState(
     () => mainPageBootstrapPayload == null,
   );
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState(null);
+  const loadStartedAtRef = useRef(0);
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -465,6 +469,8 @@ const MainPage = () => {
     () => mainPageBootstrapPayload?.bannerAds ?? [],
   );
   const isOnline = useOnlineStatus();
+  const { isInternetReachable } = useNetworkStatus();
+  const reachabilityPrevRef = useRef(null);
 
   const bannerAdsWithImages = useMemo(
     () =>
@@ -497,9 +503,10 @@ const MainPage = () => {
 
   const fetchData = useCallback(
     async ({ silent = false } = {}) => {
+      loadStartedAtRef.current = Date.now();
       try {
         if (!silent) setLoading(true);
-        setError("");
+        setLoadError(null);
         const fullPayload = await fetchMainPageFullBundle({
           refreshKey,
           queryClient,
@@ -510,11 +517,16 @@ const MainPage = () => {
         });
         applyMainPagePayload(fullPayload);
       } catch (err) {
-        setError(
-          err.response
-            ? "Server error. Please try again later."
-            : "Network error. Please check your connection.",
-        );
+        const elapsed = Date.now() - loadStartedAtRef.current;
+        const pad = Math.max(0, 480 - elapsed);
+        await new Promise((r) => setTimeout(r, pad));
+        try {
+          const { variant } = await resolveConnectionFailure(err);
+          const v = variant === "client" ? "generic" : variant;
+          setLoadError({ variant: v });
+        } catch {
+          setLoadError({ variant: "generic" });
+        }
         console.error("Error fetching data:", err);
       } finally {
         if (!silent) setLoading(false);
@@ -522,6 +534,35 @@ const MainPage = () => {
     },
     [refreshKey, applyMainPagePayload, queryClient],
   );
+
+  /** When connectivity returns, retry home bundle and dismiss connection-related full-page errors. */
+  useEffect(() => {
+    const prev = reachabilityPrevRef.current;
+    reachabilityPrevRef.current = isInternetReachable;
+    if (prev !== false || isInternetReachable !== true) return;
+    if (!loadError?.variant) return;
+    const retryVariants = new Set([
+      "offline",
+      "backend",
+      "dns",
+      "timeout",
+      "generic",
+    ]);
+    if (!retryVariants.has(loadError.variant)) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await fetchData({ silent: true });
+        if (!cancelled) setLoadError(null);
+      } catch {
+        /* fetchData sets loadError in catch */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isInternetReachable, loadError?.variant, fetchData]);
 
   useEffect(() => {
     if (!isMobile) {
@@ -554,7 +595,7 @@ const MainPage = () => {
         setLoading(false);
       }
       queryClient.setQueryData(mainPageQueryKeys.hydrated(refreshKey), cached);
-      setError("");
+      setLoadError(null);
       // Skip the follow-up silent refetch whenever we hydrate from memory: refetch rebuilds
       // the payload and would change non‑VIP order (shuffle is reload-only) or fight scroll restore.
       skipInitialSilentRefreshRef.current = true;
@@ -2066,7 +2107,20 @@ const MainPage = () => {
         ))}
       </Box>
     );
-  if (error) return <Loader message={error} />;
+  if (loadError?.variant) {
+    return (
+      <ApiConnectionErrorPanel
+        variant={loadError.variant}
+        onRetry={() => {
+          setLoadError(null);
+          fetchData();
+        }}
+        onReloadApp={() => {
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   return (
     <Box

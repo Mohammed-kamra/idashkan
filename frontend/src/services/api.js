@@ -1,28 +1,23 @@
 import axios from "axios";
+import { classifyApiError } from "../utils/apiError";
+import { emitNetworkDebug } from "../utils/networkDebug";
+import {
+  getResolvedApiBaseUrl,
+  logResolvedApiBaseDev,
+} from "../config/backendUrl";
 
-// Proxy mode: use same-origin /api (avoids CORS, works on mobile). Set VITE_USE_PROXY=true in Vercel.
-const USE_PROXY = import.meta.env.VITE_USE_PROXY === "true";
-const ENV_API_BASE = (import.meta.env.VITE_API_BASE_URL || "").trim();
-const shouldPreferSameOriginApi = (() => {
-  if (typeof window === "undefined") return false;
-  const host = String(window.location.hostname || "").toLowerCase();
-  const isLocalHost =
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host === "::1" ||
-    host.endsWith(".localhost");
-  return !isLocalHost;
-})();
-const API_BASE_URL = USE_PROXY
-  ? "/api"
-  : ENV_API_BASE || (shouldPreferSameOriginApi ? "/api" : "http://localhost:5000/api");
+const API_BASE_URL = getResolvedApiBaseUrl();
+logResolvedApiBaseDev(API_BASE_URL);
+
+/** Default request timeout (large uploads override per-call). */
+const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 10000);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 45000,
+  timeout: DEFAULT_TIMEOUT_MS,
 });
 
 // Add auth token to requests when available
@@ -34,22 +29,46 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Retry failed requests (helps with flaky mobile networks)
+// Retry transport failures only (not HTTP 4xx/5xx). Exponential backoff; max 3 attempts.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config || {};
-    const isNetworkError =
-      !error.response &&
-      (error.message === "Network Error" ||
-        error.code === "ERR_NETWORK" ||
-        error.code === "ECONNABORTED");
+    const hasResponse = !!error.response;
+    const cls = classifyApiError(error);
+    const isTransportFailure =
+      !hasResponse &&
+      (cls.kind === "network" ||
+        cls.kind === "dns" ||
+        (cls.kind === "unknown" &&
+          (error.message === "Network Error" || error.code === "ERR_NETWORK")));
 
     const retryCount = originalRequest._retryCount || 0;
-    if (isNetworkError && retryCount < 2) {
+    const maxRetries = 2;
+
+    if (!hasResponse || error.response?.status >= 500) {
+      emitNetworkDebug({
+        kind: cls.kind,
+        code: error.code,
+        message: error.message,
+        status: error.response?.status,
+        url: originalRequest?.url,
+        baseURL: originalRequest?.baseURL,
+      });
+    }
+
+    if (isTransportFailure && retryCount < maxRetries) {
       originalRequest._retryCount = retryCount + 1;
-      await new Promise((r) => setTimeout(r, 2000 * (retryCount + 1)));
+      const backoffMs = 1000 * 2 ** retryCount;
+      await new Promise((r) => setTimeout(r, backoffMs));
       return api(originalRequest);
+    }
+    if (import.meta.env.DEV) {
+      const u = originalRequest?.baseURL
+        ? `${String(originalRequest.baseURL).replace(/\/$/, "")}/${String(originalRequest.url || "").replace(/^\//, "")}`
+        : String(originalRequest?.url || "");
+      // eslint-disable-next-line no-console
+      console.warn("[api] request failed:", u, error?.message, cls);
     }
     return Promise.reject(error);
   },
@@ -118,10 +137,18 @@ export const categoryAPI = {
   uploadCategoryImage: async (categoryId, file) => {
     const formData = new FormData();
     formData.append("image", file);
-    const res = await fetch(`${API_BASE_URL}/categories/${categoryId}/image`, {
-      method: "POST",
-      body: formData,
-    });
+    const ac = new AbortController();
+    const tid = window.setTimeout(() => ac.abort(), 120000);
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/categories/${categoryId}/image`, {
+        method: "POST",
+        body: formData,
+        signal: ac.signal,
+      });
+    } finally {
+      window.clearTimeout(tid);
+    }
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `Upload failed with status ${res.status}`);

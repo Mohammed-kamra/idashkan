@@ -791,6 +791,30 @@ export const resources = {
       Previous: "Previous",
       Next: "Next",
       "Feedback details": "Feedback details",
+      "error.state.offline.title": "No internet connection",
+      "error.state.offline.body":
+        "We could not reach the internet. Check Wi‑Fi or mobile data, then try again.",
+      "error.state.server.title": "Service temporarily unavailable",
+      "error.state.server.body":
+        "The server is not responding. Please try again in a moment.",
+      "error.state.timeout.title": "Request timed out",
+      "error.state.timeout.body":
+        "The connection is slow or the server took too long. Try again.",
+      "error.state.backend.title": "Cannot reach the app server",
+      "error.state.backend.body":
+        "Your internet works, but we could not reach iDashkan. Please try again or reload the app.",
+      "error.state.dns.title": "Connection problem",
+      "error.state.dns.body":
+        "We could not resolve the server address. Check your connection or try again later.",
+      "error.state.generic.title": "Something went wrong",
+      "error.state.generic.body": "Could not load data. Please try again.",
+      "error.state.reload_app": "Reload app",
+      "error.state.retry": "Try again",
+      "error.banner.unreachable": "Backend unreachable",
+      "error.banner.dns": "DNS / lookup error",
+      "error.banner.timeout": "Timeout",
+      "connection.issue.banner":
+        "Connection issue: your internet works, but the app could not load data. Tap reload or try again.",
     },
   },
   ar: {
@@ -814,6 +838,30 @@ export const resources = {
       "Loading...": "جارٍ التحميل...",
       "Network error. Please check your connection.":
         "خطأ في الشبكة. تحقق من اتصالك.",
+      "error.state.offline.title": "لا يوجد اتصال بالإنترنت",
+      "error.state.offline.body":
+        "تعذر الوصول إلى الإنترنت. تحقق من الواي فاي أو بيانات الجوال ثم أعد المحاولة.",
+      "error.state.server.title": "الخدمة غير متاحة مؤقتاً",
+      "error.state.server.body":
+        "الخادم لا يستجيب. يرجى المحاولة بعد قليل.",
+      "error.state.timeout.title": "انتهت مهلة الطلب",
+      "error.state.timeout.body":
+        "الاتصال بطيء أو استغرق الخادم وقتاً طويلاً. أعد المحاولة.",
+      "error.state.backend.title": "تعذر الوصول إلى خادم التطبيق",
+      "error.state.backend.body":
+        "إنترنتك يعمل، لكننا لم نتمكن من الوصول إلى iDashkan. أعد المحاولة أو أعد تحميل التطبيق.",
+      "error.state.dns.title": "مشكلة في الاتصال",
+      "error.state.dns.body":
+        "تعذر العثور على عنوان الخادم. تحقق من الاتصال أو حاول لاحقاً.",
+      "error.state.generic.title": "حدث خطأ ما",
+      "error.state.generic.body": "تعذر تحميل البيانات. حاول مرة أخرى.",
+      "error.state.reload_app": "إعادة تحميل التطبيق",
+      "error.state.retry": "حاول مرة أخرى",
+      "error.banner.unreachable": "الخادم غير متاح",
+      "error.banner.dns": "خطأ DNS",
+      "error.banner.timeout": "انتهت المهلة",
+      "connection.issue.banner":
+        "مشكلة اتصال: الإنترنت يعمل لكن تعذر تحميل البيانات. أعد التحميل أو حاول مرة أخرى.",
       "Search for items...": "ابحث عن عناصر...",
       "View all products": "عرض جميع المنتجات",
       "Show more": "عرض المزيد",
@@ -1573,6 +1621,30 @@ export const resources = {
       "Loading...": "تکایە چاوەڕوانبە ....",
       "Network error. Please check your connection.":
         "پەیوەندییەکەت پچڕا . تکایە چێکى ئینتەرنێتەکەت بکە",
+      "error.state.offline.title": "هیچ ئینتەرنێتێک نییە",
+      "error.state.offline.body":
+        "نەمانتوانی بگەین بە ئینتەرنێت. وایفای یان داتای مۆبایل بپشکنە و دووبارە هەوڵ بدەوە.",
+      "error.state.server.title": "خزمەتگوزارییەکە بۆ کاتێک بەردەست نییە",
+      "error.state.server.body":
+        "سێرڤەر وەڵام ناداتەوە. تکایە دواتر هەوڵ بدەوە.",
+      "error.state.timeout.title": "کاتی داواکاری تەواو بوو",
+      "error.state.timeout.body":
+        "پەیوەندی هێواشە یان سێرڤەر زۆر درێژە. دووبارە هەوڵ بدەوە.",
+      "error.state.backend.title": "ناتوانین بگەین بە سێرڤەری ئەپەکە",
+      "error.state.backend.body":
+        "ئینتەرنێتەکەت کار دەکات، بەڵام نەمانتوانی بگەین بە iDashkan. دووبارە هەوڵ بدەوە یان ئەپەکە نوێ بکەرەوە.",
+      "error.state.dns.title": "کێشەی پەیوەندی",
+      "error.state.dns.body":
+        "نەمانتوانی ناونیشانی سێرڤەر بدۆزینەوە. پەیوەندی بپشکنە یان دواتر هەوڵ بدەوە.",
+      "error.state.generic.title": "هەڵەیەک ڕوویدا",
+      "error.state.generic.body": "نەتوانرا داتا بباردرێت. دووبارە هەوڵ بدەوە.",
+      "error.state.reload_app": "ئەپەکە نوێ بکەرەوە",
+      "error.state.retry": "دووبارە هەوڵ بدەوە",
+      "error.banner.unreachable": "سێرڤەر بەردەست نییە",
+      "error.banner.dns": "هەڵەی DNS",
+      "error.banner.timeout": "کاتی داواکاری تەواو بوو",
+      "connection.issue.banner":
+        "کێشەی پەیوەندی: ئینتەرنێت هەیە بەڵام داتا نابێتەوە. نوێکردنەوە یان دووبارە هەوڵ بدەوە.",
       "Search for items...": "گەڕان بۆ شتەکان...",
       "View all products": "پیشاندانی هەموو کاڵاکان",
       "Show more": "زیاتر پیشان بدە",

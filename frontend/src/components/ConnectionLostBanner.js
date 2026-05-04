@@ -3,7 +3,7 @@ import { Alert, Box, Stack, Typography, useTheme } from "@mui/material";
 import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
 import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
 import { useTranslation } from "react-i18next";
-import useOnlineStatus from "../hooks/useOnlineStatus";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 
 const RESTORED_MS = 3000;
 
@@ -13,12 +13,13 @@ const RESTORED_MS = 3000;
 export default function ConnectionLostBanner() {
   const theme = useTheme();
   const { t } = useTranslation();
-  const isOnline = useOnlineStatus();
+  const { isInternetReachable, recheck } = useNetworkStatus();
+  const isOffline = isInternetReachable === false;
   const [showRestored, setShowRestored] = useState(false);
   const wasOfflineRef = useRef(false);
 
   useEffect(() => {
-    if (!isOnline) {
+    if (isOffline) {
       wasOfflineRef.current = true;
       setShowRestored(false);
       return;
@@ -29,9 +30,9 @@ export default function ConnectionLostBanner() {
       const id = window.setTimeout(() => setShowRestored(false), RESTORED_MS);
       return () => window.clearTimeout(id);
     }
-  }, [isOnline]);
+  }, [isOffline]);
 
-  if (!isOnline) {
+  if (isOffline) {
     return (
       <Box
         role="status"
@@ -78,6 +79,23 @@ export default function ConnectionLostBanner() {
                 )}
               </Typography>
             </Box>
+            <Typography
+              component="button"
+              type="button"
+              variant="caption"
+              onClick={() => void recheck()}
+              sx={{
+                cursor: "pointer",
+                border: "none",
+                background: "transparent",
+                color: "inherit",
+                textDecoration: "underline",
+                fontWeight: 700,
+                alignSelf: { xs: "flex-start", sm: "center" },
+              }}
+            >
+              {t("error.state.retry")}
+            </Typography>
           </Stack>
         </Alert>
       </Box>

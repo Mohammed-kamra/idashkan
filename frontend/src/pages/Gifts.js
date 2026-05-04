@@ -30,6 +30,7 @@ import { useCityFilter } from "../context/CityFilterContext";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
+import { getSyncErrorHint } from "../utils/apiError";
 import {
   isExpiryStillValid,
   getExpiryRemainingInfo,
@@ -105,8 +106,7 @@ const Gifts = () => {
       setError(
         err.response?.data?.message ||
           err.response?.data?.msg ||
-          err.message ||
-          "Network error. Please check your connection.",
+          getSyncErrorHint(err, "Network error. Please check your connection."),
       );
       console.error("Error fetching gifts data:", err);
       // Set empty arrays on error to prevent "not iterable" errors

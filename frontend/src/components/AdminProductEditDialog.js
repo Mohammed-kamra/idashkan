@@ -37,8 +37,9 @@ import {
 } from "../utils/expiryDate";
 import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
 import { resolveMediaUrl } from "../utils/mediaUrl";
+import { getResolvedBackendOrigin } from "../config/backendUrl";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const API_URL = getResolvedBackendOrigin();
 
 function productToEditForm(data) {
   if (!data) return null;

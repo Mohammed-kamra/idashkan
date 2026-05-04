@@ -33,8 +33,6 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import WifiOffRoundedIcon from "@mui/icons-material/WifiOffRounded";
-import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 import { useUserTracking } from "../hooks/useUserTracking";
@@ -52,8 +50,12 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import ProductDetailDialog from "../components/ProductDetailDialog";
+import ApiConnectionErrorPanel from "../components/ApiConnectionErrorPanel";
+import { resolveConnectionFailure } from "../utils/apiError";
 import { productStoreMatchesCity } from "../utils/cityMatch";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+
 const storeTypeIdFromValue = (storeTypeId) => {
   if (storeTypeId == null || storeTypeId === "") return null;
   if (typeof storeTypeId === "object" && storeTypeId._id != null) {
@@ -82,7 +84,6 @@ const ProductCategory = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
-  /** null | "network" | "generic" */
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -349,16 +350,35 @@ const ProductCategory = () => {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      const isNetwork =
-        !err?.response &&
-        (err?.message === "Network Error" ||
-          err?.code === "ERR_NETWORK" ||
-          err?.code === "ECONNABORTED");
-      setError(isNetwork ? "network" : "generic");
+      try {
+        const { variant } = await resolveConnectionFailure(err);
+        setError(variant === "client" ? "generic" : variant);
+      } catch {
+        setError("generic");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const { isInternetReachable } = useNetworkStatus();
+  const categoryReachPrevRef = useRef(null);
+
+  useEffect(() => {
+    const prev = categoryReachPrevRef.current;
+    categoryReachPrevRef.current = isInternetReachable;
+    if (prev !== false || isInternetReachable !== true) return;
+    if (!error) return;
+    const retryVariants = new Set([
+      "offline",
+      "backend",
+      "dns",
+      "timeout",
+      "generic",
+    ]);
+    if (!retryVariants.has(error)) return;
+    void fetchCategories();
+  }, [isInternetReachable, error]);
 
   const fetchCategoryTypes = async (categoryId) => {
     try {
@@ -1850,94 +1870,23 @@ const ProductCategory = () => {
   }
 
   if (error) {
-    const isNetwork = error === "network";
     return (
-      <Box
-        sx={{
-          minHeight: { xs: "60vh", sm: "50vh" },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          px: 2,
-          py: 4,
-        }}
-      >
-        <Paper
-          elevation={0}
-          sx={{
-            maxWidth: 440,
-            width: "100%",
-            p: { xs: 3, sm: 4 },
-            textAlign: "center",
-            borderRadius: 3,
-            border: "1px solid",
-            borderColor: "divider",
-            bgcolor:
-              theme.palette.mode === "dark"
-                ? "rgba(255,255,255,0.04)"
-                : "grey.50",
+      <Box sx={{ py: 2, px: { xs: 1, sm: 2 } }}>
+        <ApiConnectionErrorPanel
+          variant={error}
+          onRetry={() => {
+            setError(null);
+            fetchCategories();
           }}
-        >
-          {isNetwork ? (
-            <WifiOffRoundedIcon
-              sx={{
-                fontSize: 56,
-                color: "warning.main",
-                mb: 2,
-                opacity: 0.95,
-              }}
-            />
-          ) : (
-            <ErrorOutlineRoundedIcon
-              color="error"
-              sx={{ fontSize: 56, mb: 2, opacity: 0.9 }}
-            />
-          )}
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-            {isNetwork ? t("No connection") : t("Could not load categories")}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mb: 3, lineHeight: 1.65 }}
-          >
-            {isNetwork
-              ? t(
-                  "You are offline or the network is unavailable. Connect to the internet and try again.",
-                )
-              : t(
-                  "Something went wrong while loading categories. Please try again in a moment.",
-                )}
-          </Typography>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            justifyContent="center"
-            alignItems="stretch"
-          >
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={() => {
-                setError(null);
-                fetchCategories();
-              }}
-              sx={{ borderRadius: 2, py: 1.25, fontWeight: 700 }}
-            >
-              {t("Try again")}
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              fullWidth
-              onClick={() => navigate("/")}
-              sx={{ borderRadius: 2, py: 1.25 }}
-            >
-              {t("Back to home")}
-            </Button>
-          </Stack>
-        </Paper>
+          onReloadApp={() => {
+            window.location.reload();
+          }}
+        />
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1, pb: 3 }}>
+          <Button variant="text" onClick={() => navigate("/")}>
+            {t("Back to home")}
+          </Button>
+        </Box>
       </Box>
     );
   }

@@ -4,18 +4,18 @@ dashkan.net is hosted on Hostgator. The build is uploaded to cPanel File Manager
 
 ## Build steps
 
-### 1. Create `.env.production`
+### 1. `.env.production`
 
-Copy `.env.production.example` to `.env.production` and set your **real backend URL**:
+The repo includes `frontend/.env.production` with **Railway** URLs. To override, edit that file (or set `VITE_*` in CI before `npm run build`):
 
 ```
-REACT_APP_API_BASE_URL=https://your-actual-backend.onrender.com/api
-REACT_APP_BACKEND_URL=https://your-actual-backend.onrender.com
+VITE_API_BASE_URL=https://idashkan-production.up.railway.app/api
+VITE_BACKEND_URL=https://idashkan-production.up.railway.app
 ```
 
-- Use **HTTPS** – mobile blocks mixed content (HTTP from HTTPS page).
-- Do **not** set `REACT_APP_USE_PROXY` – that is for Vercel only.
-- Do **not** use `localhost` – mobile cannot reach your computer.
+- Use **HTTPS** – mobile blocks mixed content.
+- Do **not** set `VITE_USE_PROXY` for Hostgator – that is for Vercel same-origin proxy only.
+- Do **not** use `localhost` in production builds.
 
 ### 2. Build
 

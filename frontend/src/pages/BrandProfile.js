@@ -98,6 +98,7 @@ import {
 } from "../utils/expiryDate";
 import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
+import { getSyncErrorHint } from "../utils/apiError";
 import {
   trackOwnerProfileView,
   trackOwnerContactClick,
@@ -389,8 +390,7 @@ const BrandProfile = () => {
       setError(
         err.response?.data?.message ||
           err.response?.data?.msg ||
-          err.message ||
-          "Network error. Please check your connection.",
+          getSyncErrorHint(err, "Network error. Please check your connection."),
       );
       console.error("Error fetching brand data:", err);
     } finally {

@@ -61,8 +61,9 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import InventoryIcon from "@mui/icons-material/Inventory";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { getResolvedBackendOrigin } from "../config/backendUrl";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const API_URL = getResolvedBackendOrigin();
 
 const FILTERS = [
   { value: "all", key: "pendingFilterAll" },

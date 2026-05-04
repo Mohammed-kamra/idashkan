@@ -55,6 +55,7 @@ mongoose.connection.once("open", async () => {
 // Middleware - CORS: allow known frontends + localhost; mobile needs explicit origins
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:5173",
   "https://dashkan.net",
   "https://www.dashkan.net",
   "https://idiscount.vercel.app",

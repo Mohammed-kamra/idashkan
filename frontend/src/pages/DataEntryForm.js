@@ -101,8 +101,9 @@ import { useCityFilter } from "../context/CityFilterContext";
 import MultilingualFieldGroup from "../components/MultilingualFieldGroup";
 import { formatPriceDigits } from "../utils/formatPriceNumber";
 import { parseOptionalNonNegativePrice } from "../utils/productPriceInput";
+import { getResolvedBackendOrigin } from "../config/backendUrl";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const API_URL = getResolvedBackendOrigin();
 
 /** Resolve Mongo id for product create from a store document (populate or raw id). */
 function getStoreTypeIdFromStore(store) {

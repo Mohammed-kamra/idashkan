@@ -43,7 +43,6 @@ import {
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import { isExpiryStillValid } from "../utils/expiryDate";
 import ProductDetailDialog from "../components/ProductDetailDialog";
-import useOnlineStatus from "../hooks/useOnlineStatus";
 import {
   logSearchEvent,
   recordSearchClick,
@@ -91,7 +90,6 @@ const SearchPage = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const isOnline = useOnlineStatus();
   const searchPageLogIdRef = useRef(null);
 
   const userId = user?.id || user?._id || null;
@@ -138,18 +136,6 @@ const SearchPage = () => {
       setLoading(true);
       setSearched(true);
       try {
-        if (!isOnline) {
-          searchPageLogIdRef.current = null;
-          setResults({
-            products: [],
-            stores: [],
-            brands: [],
-            companies: [],
-            categories: [],
-            categoryTypes: [],
-          });
-          return;
-        }
         const res = await searchAPI.search(trimmed, selectedCity || null);
         const data = res?.data?.data || res?.data || {};
         const visibleProducts = (data.products || []).filter((product) => {
@@ -209,7 +195,6 @@ const SearchPage = () => {
       refreshRecentSearches,
       selectedCity,
       openDraftCart,
-      isOnline,
     ],
   );
 

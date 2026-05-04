@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { giftAPI, jobAPI, productAPI, storeAPI, videoAPI } from "../services/api";
 import { isExpiryStillValid } from "../utils/expiryDate";
+import { getSyncErrorHint } from "../utils/apiError";
 
 export default function useStoreProfile(storeId) {
   const [store, setStore] = useState(null);
@@ -39,8 +40,7 @@ export default function useStoreProfile(storeId) {
       setError(
         err.response?.data?.message ||
           err.response?.data?.msg ||
-          err.message ||
-          "Network error. Please check your connection.",
+          getSyncErrorHint(err, "Network error. Please check your connection."),
       );
     } finally {
       setLoading(false);

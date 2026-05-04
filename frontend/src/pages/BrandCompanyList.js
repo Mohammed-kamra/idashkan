@@ -37,6 +37,7 @@ import { useLocalizedContent } from "../hooks/useLocalizedContent";
 import { getAllLocalizedFieldValues } from "../utils/localize";
 import { useCityFilter } from "../context/CityFilterContext";
 import { storeMatchesSelectedCity } from "../utils/cityMatch";
+import { getSyncErrorHint } from "../utils/apiError";
 
 function capitalize(s) {
   return typeof s === "string" && s.length > 0
@@ -290,8 +291,7 @@ const BrandCompanyList = ({ variant }) => {
       setError(
         err.response?.data?.message ||
           err.response?.data?.msg ||
-          err.message ||
-          t("Network error. Please check your connection."),
+          getSyncErrorHint(err, t("Network error. Please check your connection.")),
       );
       console.error("Error fetching Brands:", err);
     } finally {

@@ -6,9 +6,7 @@ If the app works on **laptop** but shows **"Network error"** on **mobile** (iOS/
 
 Replace `YOUR-BACKEND.onrender.com` with your actual backend host in **both** rewrites in `vercel.json`.
 
-**Example:** If your backend is `https://idiscount-api.onrender.com`:
-- Change to: `"destination": "https://idiscount-api.onrender.com/api/:path*"`
-- And: `"destination": "https://idiscount-api.onrender.com/uploads/:path*"`
+**Production:** `vercel.json` rewrites point to **Railway** (`idashkan-production.up.railway.app`). To change the backend, edit `destination` in `frontend/vercel.json` and redeploy.
 
 ## Step 2: Vercel Environment Variables
 
@@ -16,10 +14,10 @@ In Vercel → your project → **Settings → Environment Variables**, add:
 
 | Variable | Value |
 |----------|-------|
-| `REACT_APP_USE_PROXY` | `true` |
-| `REACT_APP_BACKEND_URL` | *(leave empty or delete)* |
+| `VITE_USE_PROXY` | `true` |
+| `VITE_BACKEND_URL` | *(leave empty or delete)* |
 
-When using the proxy, `REACT_APP_BACKEND_URL` should be empty so images load from the same origin via the proxy.
+When using the proxy, leave `VITE_BACKEND_URL` empty so images resolve via same-origin `/uploads` → Railway (see `vercel.json`).
 
 ## Step 3: Redeploy
 
